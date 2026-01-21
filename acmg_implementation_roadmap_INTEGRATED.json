@@ -1,0 +1,253 @@
+{
+  "metadata": {
+    "generated": "2026-01-21T15:29:33.949444",
+    "version": "2.1.0",
+    "integration_note": "Adjusted for Scripts 1-2 completion",
+    "confidence_note": "All estimates \u00b125% based on typical project variance"
+  },
+  "prerequisites": {
+    "script_1_security": {
+      "name": "Security & Performance Utilities (Script 1)",
+      "status": "required",
+      "components": [
+        "SecuritySanitizer.validate_acmg_code()",
+        "SecuritySanitizer.sanitize_classification()",
+        "SecuritySanitizer.validate_hgvs()",
+        "PerformanceOptimizer utilities"
+      ],
+      "integration_points": [
+        "Validate ACMG codes before storing",
+        "Sanitize classifications in reports",
+        "Validate HGVS in user input"
+      ],
+      "estimated_integration": "2 days",
+      "benefit": "Security validation, data integrity"
+    },
+    "script_2_file_structure": {
+      "name": "File Structure Optimization (Script 2)",
+      "status": "recommended",
+      "components": [
+        "All files under 500 lines",
+        "Clean module organization",
+        "Proper separation of concerns"
+      ],
+      "integration_points": [
+        "Easier to add new ACMG evidence functions",
+        "Better code navigation",
+        "Reduced merge conflicts"
+      ],
+      "estimated_benefit": "~10% faster development",
+      "time_savings": "2-3 weeks over full ACMG implementation"
+    },
+    "recommendation": {
+      "order": "Complete Script 1 \u2192 Script 2 \u2192 Script 3",
+      "rationale": "Security foundation + clean structure = faster ACMG development",
+      "total_setup_time": "4 weeks (1 week Script 1 + 3 weeks Script 2)"
+    }
+  },
+  "setup_phase": {
+    "name": "Setup Phase (Complete Scripts 1-2 First)",
+    "duration": "4 weeks total",
+    "phases": [
+      {
+        "name": "Script 1: Security Integration",
+        "duration": "1 week",
+        "deliverables": [
+          "SecuritySanitizer integrated",
+          "ACMG validators available",
+          "Performance utilities ready"
+        ]
+      },
+      {
+        "name": "Script 2: File Structure",
+        "duration": "3 weeks",
+        "deliverables": [
+          "All files under 500 lines",
+          "Clean module organization",
+          "All tests passing"
+        ]
+      }
+    ],
+    "benefit_to_acmg": "~10% faster development, better code quality"
+  },
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Quick Wins",
+      "duration_weeks": "3-4 weeks (\u00b125%, adjusted for clean structure)",
+      "effort_days": "3-5 days",
+      "effort_days_nominal": 4,
+      "original_estimate": 5,
+      "time_saved": 1,
+      "confidence": "Medium-High (higher due to prerequisites)",
+      "target_codes": 1,
+      "target_coverage": "39%",
+      "prerequisites_required": [
+        "Script 1: SecuritySanitizer integrated (REQUIRED)",
+        "Script 2: File structure optimized (RECOMMENDED)",
+        "All existing tests passing"
+      ],
+      "integration_tasks": [
+        {
+          "task": "Verify security utilities available",
+          "effort_days": 0.5,
+          "description": "Test SecuritySanitizer.validate_acmg_code() etc."
+        },
+        {
+          "task": "Set up ACMG validation framework",
+          "effort_days": 1,
+          "description": "Create base classes using clean structure from Script 2"
+        }
+      ],
+      "codes": [
+        {
+          "code": "PS1",
+          "description": "Same amino acid change as established pathogenic variant",
+          "effort_days": 4,
+          "original_effort": 5,
+          "data_sources": [
+            "ClinVar",
+            "HGMD"
+          ],
+          "uses_security": true
+        }
+      ],
+      "deliverables": [
+        "PS1, PM5 implementation (same position variants)",
+        "Enhanced PP5 (multiple sources with validation)",
+        "BP6 implementation (benign from sources)",
+        "Unit tests for all new codes",
+        "Integration with SecuritySanitizer",
+        "Documentation updates"
+      ],
+      "dependencies": [
+        "ClinVar database already available",
+        "SecuritySanitizer.validate_acmg_code() (Script 1)",
+        "No new external data sources required"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Population & Predictions",
+      "duration_weeks": "5-9 weeks (\u00b125%, adjusted from 6-10)",
+      "effort_days": "30-50 days (nominal: 40, was 45)",
+      "time_saved": 5,
+      "confidence": "Medium",
+      "target_codes": 7,
+      "target_coverage": "64%",
+      "integration_benefits": [
+        "Clean file structure speeds implementation",
+        "Security validation already in place",
+        "Better separation of concerns"
+      ],
+      "deliverables": [
+        "gnomAD v4.1 integration (150GB local DB)",
+        "dbNSFP v4.4 integration (prediction scores)",
+        "PM2, BS2 (population frequency)",
+        "PP3, BP4 (in silico predictions)",
+        "PP4 (phenotype matching with HPO)",
+        "PM6 (assumed de novo)",
+        "All outputs use SecuritySanitizer"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "VEP & Splice Integration",
+      "duration_weeks": "8-14 weeks (\u00b125%, adjusted from 9-15)",
+      "effort_days": "24-40 days (nominal: 32, was 35)",
+      "time_saved": 3,
+      "confidence": "Medium-Low",
+      "target_codes": 2,
+      "target_coverage": "71%",
+      "integration_benefits": [
+        "Modular structure simplifies VEP integration",
+        "Security framework handles VEP output validation"
+      ],
+      "deliverables": [
+        "Ensembl VEP v110 installation",
+        "SpliceAI integration",
+        "PM1 (functional domains via VEP)",
+        "BP7 (splice impact prediction)",
+        "HGVS validation using Script 1"
+      ],
+      "risks": [
+        "VEP installation can be complex",
+        "SpliceAI compute requirements high",
+        "May need GPU for batch processing"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Clinical Curation System",
+      "duration_weeks": "Ongoing (no fixed timeline)",
+      "effort_days": "Ongoing with clinical geneticist",
+      "confidence": "N/A - Manual",
+      "target_codes": 8,
+      "target_coverage": "100%",
+      "integration_benefits": [
+        "SecuritySanitizer validates manual entries",
+        "Clean structure makes curation interface easier"
+      ],
+      "deliverables": [
+        "Manual evidence entry system",
+        "PS2-PS4, PM3, PP1, BS3-BS4, BP2, BP5",
+        "Integration with clinical workflow",
+        "Evidence provenance tracking",
+        "Clinical geneticist training",
+        "All inputs validated with Script 1"
+      ],
+      "notes": [
+        "These codes require expert judgment",
+        "Cannot be fully automated",
+        "System enables curators to enter evidence"
+      ]
+    }
+  ],
+  "total_investment": {
+    "setup_weeks": "4 weeks (Scripts 1-2)",
+    "automated_phases": "16-27 weeks (\u00b125%, adjusted from 18-30)",
+    "total_timeline": "20-31 weeks (including setup)",
+    "effort_days_range": "68-115 days (adjusted from 75-125)",
+    "effort_days_nominal": 90,
+    "time_saved_total": "10 days (~10%) due to prerequisites",
+    "estimated_cost_range": "$43,000-$72,000",
+    "estimated_cost_nominal": "$57,000 (was $63,000)",
+    "cost_savings": "$6,000 due to efficiency gains",
+    "cost_assumptions": [
+      "Developer rate: $800/day",
+      "Includes implementation + testing + documentation",
+      "Does NOT include clinical geneticist time (Phase 4)",
+      "Assumes Scripts 1-2 completed before ACMG work"
+    ]
+  },
+  "pilot_recommendation": {
+    "description": "2-week pilot to validate Phase 1 estimates",
+    "scope": "Implement PS1 only (4 days \u00b125%, was 5 days)",
+    "expected_outcome": "3-5 days actual",
+    "decision_point": "If >6 days, re-estimate all phases +50%",
+    "benefit": "Reduces risk of large-scale overruns",
+    "note": "Faster due to clean structure from Script 2"
+  },
+  "integration_checklist": {
+    "before_starting": [
+      "\u2713 Script 1 integrated and tested",
+      "\u2713 SecuritySanitizer.validate_acmg_code() working",
+      "\u2713 SecuritySanitizer.sanitize_classification() working",
+      "\u2713 Script 2 file splitting complete",
+      "\u2713 All files under 500 lines",
+      "\u2713 All existing tests passing"
+    ],
+    "during_phase_1": [
+      "Use SecuritySanitizer for all ACMG code validation",
+      "Use sanitize_classification() for all outputs",
+      "Leverage clean file structure for new modules",
+      "Follow 500-line limit for new files"
+    ],
+    "during_phases_2_3": [
+      "Validate all external data with SecuritySanitizer",
+      "Use PerformanceOptimizer for large datasets",
+      "Maintain clean module structure from Script 2"
+    ]
+  },
+  "validation_note": "These estimates are based on analysis of similar bioinformatics projects and typical ACMG implementation complexity. Estimates have been adjusted DOWN by ~10% to account for efficiency gains from completing Scripts 1-2 first (security foundation + clean structure). Actual effort depends on team experience, code quality, and unforeseen integration challenges. STRONGLY RECOMMEND completing Scripts 1-2 before beginning ACMG implementation to realize these time savings."
+}

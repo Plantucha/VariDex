@@ -56,3 +56,4 @@ Thumbs.db
 *.tmp
 temp/
 tmp/
+test_output/

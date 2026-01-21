@@ -22,6 +22,7 @@ import time
 from varidex.version import __version__
 from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES, CLINVAR_STAR_RATINGS
+from varidex.core.classifier.text_utils import normalize_text, split_delimited_value
 from varidex.core.classifier.config import ACMGConfig, ACMGMetrics
 from varidex.exceptions import ACMGValidationError, ACMGClassificationError
 
@@ -38,29 +39,6 @@ SORTED_STAR_RATINGS = sorted(CLINVAR_STAR_RATINGS.items(), key=lambda x: -len(x[
 
 
 @lru_cache(maxsize=1024)
-def normalize_text(text: Optional[str]) -> str:
-    """Normalize text for consistent matching (cached)."""
-    if pd.isna(text) or not text:
-        return ""
-    return str(text).strip().lower()
-
-
-def split_delimited_value(value: str, delimiters: str = ",;") -> List[str]:
-    """Split string on multiple delimiters and spaces."""
-    if not value:
-        return []
-
-    result = [value]
-    for delim in delimiters:
-        result = [item for part in result for item in part.split(delim)]
-
-    final_result = []
-    for item in result:
-        parts = item.split()
-        final_result.extend(parts)
-
-    return [x.strip() for x in final_result if x.strip()]
-
 
 class ACMGClassifier:
     """Enterprise-grade ACMG 2015 variant classifier.

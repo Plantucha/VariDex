@@ -46,7 +46,7 @@ VariDex is a production-ready Python package designed for genomic variant analys
 ### 🎯 Core Capabilities
 
 - **ACMG 2015 Compliant Classification**
-  - Full implementation of ACMG/AMP 2015 guidelines
+  - Partial ACMG implementation (7/28 evidence codes, 25% coverage)
   - Evidence codes: PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4, BP1-7
   - Automated variant classification (Pathogenic/Likely Pathogenic/VUS/Likely Benign/Benign)
 
@@ -74,7 +74,7 @@ VariDex is a production-ready Python package designed for genomic variant analys
 ### 🛡️ Quality Standards
 
 - ✅ **100% Test Coverage** - All 12/12 installation tests passing
-- ✅ **Production Ready** - Fully operational system
+- ⚠️ **Research/Beta Stage** - Not validated for clinical diagnostics - Fully operational system
 - ✅ **Clean Code** - All files under 500 lines
 - ✅ **Proper Packaging** - Standard Python package structure
 - ✅ **Type Safety** - Type hints throughout
