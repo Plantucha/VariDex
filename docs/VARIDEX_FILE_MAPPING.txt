@@ -1,0 +1,59 @@
+# VariDex File Mapping Reference
+# Maps download filenames → installation destinations
+# Version: 6.0.0
+# Date: January 20, 2026
+
+## Package Structure Files (__init__.py)
+
+varidex__init__.py                          → varidex/__init__.py
+varidex_core__init__.py                     → varidex/core/__init__.py
+varidex_core_classifier__init__.py          → varidex/core/classifier/__init__.py
+varidex_io__init__.py                       → varidex/io/__init__.py
+varidex_io_loaders__init__.py               → varidex/io/loaders/__init__.py
+varidex_reports__init__.py                  → varidex/reports/__init__.py
+varidex_reports_templates__init__.py        → varidex/reports/templates/__init__.py
+varidex_pipeline__init__.py                 → varidex/pipeline/__init__.py
+varidex_utils__init__.py                    → varidex/utils/__init__.py
+
+## Core Python Modules (.py files)
+
+varidex_exceptions.py                       → varidex/exceptions.py
+
+# These files need .txt → .py rename:
+varidex_version.txt                         → varidex/version.py
+varidex_core_config.txt                     → varidex/core/config.py
+varidex_core_models.txt                     → varidex/core/models.py
+varidex_core_schema.txt                     → varidex/core/schema.py
+varidex_core_genotype.txt                   → varidex/core/genotype.py
+varidex_core_classifier_engine.txt          → varidex/core/classifier/engine.py
+varidex_core_classifier_config.txt          → varidex/core/classifier/config.py
+varidex_core_classifier_metrics.txt         → varidex/core/classifier/metrics.py
+rules.txt                                   → varidex/core/classifier/rules.py
+varidex_io_validators.txt                   → varidex/io/validators.py
+varidex_io_validators_advanced.txt          → varidex/io/validators_advanced.py
+varidex_io_matching.txt                     → varidex/io/matching.py
+varidex_io_loaders_clinvar.txt              → varidex/io/loaders/clinvar.py
+varidex_io_loaders_user.txt                 → varidex/io/loaders/user.py
+varidex_reports_generator.txt               → varidex/reports/generator.py
+varidex_pipeline_orchestrator.txt           → varidex/pipeline/orchestrator.py
+stages.txt                                  → varidex/pipeline/stages.py
+varidex_utils_helpers.txt                   → varidex/utils/helpers.py
+
+## File Count Summary
+
+__init__.py files:    9
+Python modules:      18
+Total files:         27
+
+## Naming Convention Rules
+
+✓ Use: snake_case module names
+✓ Use: .py extension for Python files
+✓ Use: Semantic names (not file1, file2, etc.)
+✓ Use: Package structure (varidex/core/classifier/)
+
+✗ Avoid: Numbered prefixes (file5, file6)
+✗ Avoid: Version in filename (v6.0.0, v5.2)
+✗ Avoid: Status markers (PERFECT, FINAL)
+✗ Avoid: .txt extension on Python code
+✗ Avoid: Letter suffixes (6a, 6B)

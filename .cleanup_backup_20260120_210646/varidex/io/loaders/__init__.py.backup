@@ -1,0 +1,38 @@
+"""
+Data Loaders
+============
+
+Loaders for ClinVar and user genome files.
+
+Modules:
+    - clinvar: ClinVar VCF, TSV, variant_summary loaders
+    - user: User genome loaders (23andMe, VCF, TSV)
+
+Usage:
+    from varidex.io.loaders import load_clinvar_file, load_user_file
+"""
+
+from varidex.version import get_version
+
+__version__ = get_version("io.loader")
+
+try:
+    from varidex.io.loaders.clinvar import (
+        load_clinvar_file,
+        detect_clinvar_file_type
+    )
+    from varidex.io.loaders.user import (
+        load_user_file,
+        load_23andme_file,
+        detect_user_file_type
+    )
+
+    __all__ = [
+        "load_clinvar_file",
+        "detect_clinvar_file_type",
+        "load_user_file",
+        "load_23andme_file", 
+        "detect_user_file_type"
+    ]
+except ImportError:
+    __all__ = []

@@ -1,0 +1,91 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2026 VariDex Development Team
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+================================================================================
+ADDITIONAL TERMS FOR NETWORK USE (AGPL Section 13)
+================================================================================
+
+If you modify this Program and make it available to users over a network,
+you MUST make the complete corresponding source code available under the
+terms of this license.
+
+This requirement applies to:
+  • SaaS platforms offering VariDex-based variant analysis
+  • Cloud-hosted genomic interpretation services
+  • Web-based ACMG classification tools using VariDex
+  • API services that expose VariDex functionality to remote users
+  • Any network-accessible service using modified VariDex code
+
+You must provide:
+  1. All source code for your modifications
+  2. Build and installation instructions
+  3. Any dependencies and configuration files
+  4. A clear mechanism for users to download the complete source
+
+For the full AGPL v3 license text, see:
+https://www.gnu.org/licenses/agpl-3.0.txt
+
+================================================================================
+COMMERCIAL LICENSING AVAILABLE
+================================================================================
+
+If you wish to use VariDex in a manner NOT permitted by AGPL v3, including:
+
+  ✗ Integrating into proprietary diagnostic platforms (closed-source)
+  ✗ Clinical decision support systems without source disclosure
+  ✗ SaaS offerings where you keep modifications private
+  ✗ OEM/bundling in commercial genomics products
+  ✗ CLIA/CAP laboratory systems with proprietary workflows
+
+A COMMERCIAL LICENSE is available that allows you to:
+
+  ✓ Use VariDex in closed-source products
+  ✓ Keep your modifications and improvements private
+  ✓ Integrate into proprietary clinical workflows
+  ✓ Offer hosted services without source disclosure
+  ✓ Bundle with commercial instruments or software
+
+PRICING TIERS:
+  • Startup/Clinic (<10 users):     $10,000/year
+  • Professional (<50 users):       $25,000/year
+  • Enterprise (unlimited/SaaS):    Custom pricing
+
+INCLUDED:
+  • Bug fixes and security patches
+  • Email support
+  • Version updates (minor releases)
+  • Major version upgrades (v6.x → v7.x)
+
+For commercial licensing inquiries:
+  Email:   plantucha@gmail.com
+  Website: https://github.com/Plantucha/varidex
+  Docs:    See LICENSING.md and COMMERCIAL_LICENSE.md
+
+Response time: 2-3 business days
+
+================================================================================
+PROJECT INFORMATION
+================================================================================
+
+VariDex v6.0.0 - ACMG 2015 Variant Classification System
+Repository: https://github.com/Plantucha/varidex
+Documentation: See README.md
+Citation: See README.md section "Citation"
+
+For questions about licensing terms or to discuss your use case:
+Contact plantucha@gmail.com

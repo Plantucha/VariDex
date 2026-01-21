@@ -1,0 +1,211 @@
+"""
+VariDex Exception Module
+=========================
+Custom exceptions for variant analysis pipeline.
+"""
+
+from enum import Enum
+from typing import Any, Optional
+
+__all__ = [
+    "VaridexError",
+    "ValidationError", 
+    "DataLoadError",
+    "ClassificationError",
+    "ReportError",
+    "ACMGValidationError",
+    "ACMGClassificationError",
+    "ACMGConfigurationError",
+    "ErrorCode",
+    "validate_not_none",
+    "validate_not_empty",
+    "validate_type",
+]
+
+
+class ErrorCode(Enum):
+    """Error codes for categorizing exceptions."""
+    VALIDATION = "VALIDATION"
+    DATA_LOAD = "DATA_LOAD"
+    CLASSIFICATION = "CLASSIFICATION"
+    REPORT = "REPORT"
+    CONFIG = "CONFIG"
+
+
+class VaridexError(Exception):
+    """Base exception for all VariDex errors."""
+
+    def __init__(self, message: str, code: Optional[ErrorCode] = None, context: Optional[dict] = None):
+        super().__init__(message)
+        self.code = code
+        self.context = context or {}
+
+
+class ValidationError(VaridexError):
+    """Raised when validation fails."""
+
+    def __init__(self, message: str, context: Optional[dict] = None):
+        super().__init__(message, ErrorCode.VALIDATION, context)
+
+
+class DataLoadError(VaridexError):
+    """Raised when data loading fails."""
+
+    def __init__(self, message: str, context: Optional[dict] = None):
+        super().__init__(message, ErrorCode.DATA_LOAD, context)
+
+
+class ClassificationError(VaridexError):
+    """Raised when variant classification fails."""
+
+    def __init__(self, message: str, context: Optional[dict] = None):
+        super().__init__(message, ErrorCode.CLASSIFICATION, context)
+
+
+class ReportError(VaridexError):
+    """Raised when report generation fails."""
+
+    def __init__(self, message: str, context: Optional[dict] = None):
+        super().__init__(message, ErrorCode.REPORT, context)
+
+
+# ACMG-specific exception aliases
+ACMGValidationError = ValidationError
+ACMGClassificationError = ClassificationError
+ACMGConfigurationError = ValidationError  # Configuration errors are validation errors
+
+
+# Validation helper functions
+def validate_not_none(value: Any, name: str) -> None:
+    """Raise ValidationError if value is None."""
+    if value is None:
+        raise ValidationError(f"{name} cannot be None")
+
+
+def validate_not_empty(value: Any, name: str) -> None:
+    """Raise ValidationError if value is empty."""
+    if not value:
+        raise ValidationError(f"{name} cannot be empty")
+
+
+def validate_type(value: Any, expected_type: type, name: str) -> None:
+    """Raise ValidationError if value is not of expected type."""
+    if not isinstance(value, expected_type):
+        raise ValidationError(
+            f"{name} must be {expected_type.__name__}, got {type(value).__name__}"
+        )
+
+
+# Self-test
+if __name__ == "__main__":
+    print("=" * 70)
+    print("EXCEPTIONS MODULE - Self-Test")
+    print("=" * 70)
+
+    passed = 0
+    total = 13
+
+    # Test 1
+    try:
+        raise VaridexError("test")
+        assert False
+    except VaridexError:
+        print("✓ Test 1: Base VaridexError")
+        passed += 1
+
+    # Test 2
+    try:
+        raise ValidationError("test", {"field": "value"})
+        assert False
+    except ValidationError as e:
+        assert e.context == {"field": "value"}
+        print("✓ Test 2: ValidationError with context")
+        passed += 1
+
+    # Test 3
+    try:
+        raise DataLoadError("test")
+        assert False
+    except DataLoadError:
+        print("✓ Test 3: DataLoadError")
+        passed += 1
+
+    # Test 4
+    try:
+        raise ClassificationError("test")
+        assert False
+    except ClassificationError:
+        print("✓ Test 4: ClassificationError")
+        passed += 1
+
+    # Test 5
+    try:
+        raise ReportError("test")
+        assert False
+    except ReportError:
+        print("✓ Test 5: ReportError")
+        passed += 1
+
+    # Test 6
+    try:
+        raise ACMGValidationError("test")
+        assert False
+    except ValidationError:
+        print("✓ Test 6: ACMGValidationError alias works")
+        passed += 1
+
+    # Test 7
+    try:
+        raise ACMGClassificationError("test")
+        assert False
+    except ClassificationError:
+        print("✓ Test 7: ACMGClassificationError alias works")
+        passed += 1
+
+    # Test 8: NEW - ACMGConfigurationError
+    try:
+        raise ACMGConfigurationError("test")
+        assert False
+    except ValidationError:
+        print("✓ Test 8: ACMGConfigurationError alias works")
+        passed += 1
+
+    # Test 9
+    try:
+        validate_not_none(None, "test")
+        assert False
+    except ValidationError:
+        print("✓ Test 9: validate_not_none")
+        passed += 1
+
+    # Test 10
+    try:
+        validate_not_empty("", "test")
+        assert False
+    except ValidationError:
+        print("✓ Test 10: validate_not_empty")
+        passed += 1
+
+    # Test 11
+    try:
+        validate_type("string", int, "test")
+        assert False
+    except ValidationError:
+        print("✓ Test 11: validate_type")
+        passed += 1
+
+    # Test 12
+    assert ErrorCode.VALIDATION.value == "VALIDATION"
+    print("✓ Test 12: ErrorCode enum")
+    passed += 1
+
+    # Test 13
+    for name in __all__:
+        assert name in globals(), f"{name} not defined"
+    print("✓ Test 13: All exports defined")
+    passed += 1
+
+    print("=" * 70)
+    print(f"Self-test: {passed}/{total} passed")
+    print("✅ ALL TESTS PASSED" if passed == total else "❌ SOME TESTS FAILED")
+    print("=" * 70)
