@@ -24,7 +24,7 @@ class DataValidator:
         Returns:
             True if valid, False otherwise
         """
-        required_fields = ['chromosome', 'position']
+        required_fields = ["chromosome", "position"]
         return all(field in variant for field in required_fields)
 
     @staticmethod
@@ -60,19 +60,11 @@ def classify_variants_production(variants: List[Dict], classifier) -> List[Dict]
     for variant in variants:
         try:
             # Basic classification
-            result = {
-                'variant': variant,
-                'classification': 'VUS',  # Default
-                'evidence': []
-            }
+            result = {"variant": variant, "classification": "VUS", "evidence": []}  # Default
             results.append(result)
         except Exception as e:
             logger.error(f"Error classifying variant: {e}")
-            results.append({
-                'variant': variant,
-                'classification': 'ERROR',
-                'error': str(e)
-            })
+            results.append({"variant": variant, "classification": "ERROR", "error": str(e)})
 
     return results
 
@@ -104,13 +96,13 @@ def parse_variant_key(key: str) -> Dict[str, Any]:
         Dictionary with variant components
     """
     try:
-        parts = key.split(':')
+        parts = key.split(":")
         if len(parts) >= 4:
             return {
-                'chromosome': parts[0],
-                'position': int(parts[1]),
-                'ref': parts[2],
-                'alt': parts[3]
+                "chromosome": parts[0],
+                "position": int(parts[1]),
+                "ref": parts[2],
+                "alt": parts[3],
             }
     except Exception:
         pass
@@ -119,8 +111,8 @@ def parse_variant_key(key: str) -> Dict[str, Any]:
 
 
 __all__ = [
-    'DataValidator',
-    'classify_variants_production',
-    'format_variant_key',
-    'parse_variant_key'
+    "DataValidator",
+    "classify_variants_production",
+    "format_variant_key",
+    "parse_variant_key",
 ]

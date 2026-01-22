@@ -2,14 +2,23 @@
 Complete tests for exception hierarchy.
 Target: 100% coverage of varidex/exceptions.py
 """
+
 import pytest
 from typing import Type, Any
 from varidex.exceptions import (
-    VaridexError, ValidationError, DataLoadError,
-    ClassificationError, ReportError, FileProcessingError,
-    ACMGValidationError, ACMGClassificationError,
-    ACMGConfigurationError, ErrorCode,
-    validate_not_none, validate_not_empty, validate_type
+    VaridexError,
+    ValidationError,
+    DataLoadError,
+    ClassificationError,
+    ReportError,
+    FileProcessingError,
+    ACMGValidationError,
+    ACMGClassificationError,
+    ACMGConfigurationError,
+    ErrorCode,
+    validate_not_none,
+    validate_not_empty,
+    validate_type,
 )
 
 pytestmark = pytest.mark.unit
@@ -23,6 +32,7 @@ EXCEPTION_CLASSES = [
 ]
 
 EMPTY_VALUES = [("", "empty string"), ([], "empty list"), ({}, "empty dict")]
+
 
 @pytest.mark.smoke
 class TestExceptionHierarchy:

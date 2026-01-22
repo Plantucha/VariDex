@@ -43,8 +43,14 @@ CANON_IN_SILICO_SCORES = "in_silico_scores"
 REQUIRED_CLINVAR_DF = (CANON_CHROM, CANON_POS, CANON_REF, CANON_ALT, CANON_COORD_KEY)
 REQUIRED_USER_DF = (CANON_CHROM, CANON_POS, CANON_GT)
 REQUIRED_MATCHED_DF = (
-    CANON_CHROM, CANON_POS, CANON_GT,
-    "gene", "clinical_sig", "review_status", "variant_type", "molecular_consequence"
+    CANON_CHROM,
+    CANON_POS,
+    CANON_GT,
+    "gene",
+    "clinical_sig",
+    "review_status",
+    "variant_type",
+    "molecular_consequence",
 )
 
 # ---------------- Alias maps (generic) ----------------
@@ -55,17 +61,14 @@ DEFAULT_ALIASES: Dict[str, str] = {
     "chrom": CANON_CHROM,
     "chr": CANON_CHROM,
     "chromosome": CANON_CHROM,
-
     # position
     "pos": CANON_POS,
     "position": CANON_POS,
     "start": CANON_POS,
-
     # identifiers
     "id": CANON_RSID,
     "rs# (dbsnp)": CANON_RSID,
     "rsid": CANON_RSID,
-
     # alleles
     "ref": CANON_REF,
     "reference": CANON_REF,
@@ -73,11 +76,9 @@ DEFAULT_ALIASES: Dict[str, str] = {
     "alt": CANON_ALT,
     "alternate": CANON_ALT,
     "alt_allele": CANON_ALT,
-
     # genotype
     "gt": CANON_GT,
     "genotype": CANON_GT,
-
     # common ClinVar-style spellings
     "clinicalsignificance": "clinical_sig",
     "clinical significance": "clinical_sig",
@@ -93,7 +94,6 @@ DEFAULT_ALIASES: Dict[str, str] = {
     "molecularconsequence": "molecular_consequence",
     "molecular consequence": "molecular_consequence",
     "molecular_consequence": "molecular_consequence",
-
     # optional future
     "gnomad_af": CANON_GNOMAD_AF,
     "population_af": CANON_POPULATION_AF,
@@ -169,6 +169,8 @@ def coerce_types(df: pd.DataFrame) -> pd.DataFrame:
             out[c] = pd.to_numeric(out[c], errors="coerce")
 
     if CANON_TOTAL_POINTS in out.columns:
-        out[CANON_TOTAL_POINTS] = pd.to_numeric(out[CANON_TOTAL_POINTS], errors="coerce").astype("Int64")
+        out[CANON_TOTAL_POINTS] = pd.to_numeric(out[CANON_TOTAL_POINTS], errors="coerce").astype(
+            "Int64"
+        )
 
     return out

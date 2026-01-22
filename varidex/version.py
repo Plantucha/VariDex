@@ -15,16 +15,18 @@ versions = {
     "io.loader": "6.0.0",
     "reports.generator": "6.0.0",
     "pipeline": "6.0.0",
-    "utils.helpers": "6.0.0"
+    "utils.helpers": "6.0.0",
 }
 
 acmg_version = "2015"
 acmg_reference = "Richards et al. 2015, PMID 25741868"
 build_date = "2026-01-20"
 
+
 def get_version(component="package"):
     """Get version for component."""
     return versions.get(component, version)
+
 
 def get_full_version_info():
     """Get complete version info."""
@@ -34,6 +36,7 @@ def get_full_version_info():
         "acmg_version": acmg_version,
         "acmg_reference": acmg_reference,
     }
+
 
 if __name__ == "__main__":
     print("VariDex v" + version)

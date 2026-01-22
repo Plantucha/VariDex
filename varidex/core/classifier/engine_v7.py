@@ -9,7 +9,7 @@ Enabled Evidence (10 codes):
     - PM2: Absent/rare in population databases (gnomAD)
     - PM4: Protein length changes
     - PP2: Missense in missense-rare genes
-  
+
   Benign:
     - BA1: Common polymorphism >5% (gnomAD)
     - BS1: Allele frequency too high >1% (gnomAD)
@@ -33,7 +33,7 @@ from varidex.core.classifier.config import ACMGConfig
 from varidex.core.services.population_frequency import (
     PopulationFrequencyService,
     InheritanceMode,
-    FrequencyThresholds
+    FrequencyThresholds,
 )
 from varidex.integrations.gnomad_client import GnomadClient
 
@@ -42,26 +42,26 @@ logger = logging.getLogger(__name__)
 
 class ACMGClassifierV7(ACMGClassifier):
     """Enhanced ACMG classifier with gnomAD population frequency integration.
-    
+
     Extends ACMGClassifier v6.3 with:
     - PM2: Absent/rare in gnomAD
     - BA1: Common polymorphism in gnomAD
     - BS1: Frequency too high in gnomAD
-    
+
     Maintains backward compatibility and graceful degradation.
     """
-    
+
     VERSION = "7.0.0"
-    
+
     def __init__(
         self,
         config: Optional[ACMGConfig] = None,
         enable_gnomad: bool = True,
         gnomad_client: Optional[GnomadClient] = None,
-        frequency_thresholds: Optional[FrequencyThresholds] = None
+        frequency_thresholds: Optional[FrequencyThresholds] = None,
     ):
         """Initialize enhanced classifier with gnomAD integration.
-        
+
         Args:
             config: ACMG configuration
             enable_gnomad: Enable gnomAD queries (disable for testing)
@@ -70,17 +70,15 @@ class ACMGClassifierV7(ACMGClassifier):
         """
         # Initialize base classifier
         super().__init__(config)
-        
+
         # Initialize frequency service
         self.enable_gnomad = enable_gnomad
         self.frequency_service = None
-        
+
         if enable_gnomad:
             try:
                 self.frequency_service = PopulationFrequencyService(
-                    gnomad_client=gnomad_client,
-                    thresholds=frequency_thresholds,
-                    enable_gnomad=True
+                    gnomad_client=gnomad_client, thresholds=frequency_thresholds, enable_gnomad=True
                 )
                 logger.info(f"ACMGClassifierV7 {self.VERSION} initialized with gnomAD")
             except Exception as e:
@@ -90,248 +88,245 @@ class ACMGClassifierV7(ACMGClassifier):
                 self.frequency_service = None
         else:
             logger.info(f"ACMGClassifierV7 {self.VERSION} initialized without gnomAD")
-    
+
     def _extract_variant_coordinates(self, variant: VariantData) -> Optional[Dict[str, Any]]:
         """Extract coordinates from variant for gnomAD query.
-        
+
         Args:
             variant: VariantData object
-        
+
         Returns:
             Dictionary with chromosome, position, ref, alt or None
         """
         try:
             # Try to get coordinates from variant attributes
             coords = {}
-            
+
             # Chromosome
-            if hasattr(variant, 'chromosome') and variant.chromosome:
-                coords['chromosome'] = str(variant.chromosome)
-            elif hasattr(variant, 'chrom') and variant.chrom:
-                coords['chromosome'] = str(variant.chrom)
+            if hasattr(variant, "chromosome") and variant.chromosome:
+                coords["chromosome"] = str(variant.chromosome)
+            elif hasattr(variant, "chrom") and variant.chrom:
+                coords["chromosome"] = str(variant.chrom)
             else:
                 return None
-            
+
             # Position
-            if hasattr(variant, 'position') and variant.position:
-                coords['position'] = int(variant.position)
-            elif hasattr(variant, 'pos') and variant.pos:
-                coords['position'] = int(variant.pos)
+            if hasattr(variant, "position") and variant.position:
+                coords["position"] = int(variant.position)
+            elif hasattr(variant, "pos") and variant.pos:
+                coords["position"] = int(variant.pos)
             else:
                 return None
-            
+
             # Reference allele
-            if hasattr(variant, 'ref_allele') and variant.ref_allele:
-                coords['ref'] = str(variant.ref_allele)
-            elif hasattr(variant, 'ref') and variant.ref:
-                coords['ref'] = str(variant.ref)
+            if hasattr(variant, "ref_allele") and variant.ref_allele:
+                coords["ref"] = str(variant.ref_allele)
+            elif hasattr(variant, "ref") and variant.ref:
+                coords["ref"] = str(variant.ref)
             else:
                 return None
-            
+
             # Alternate allele
-            if hasattr(variant, 'alt_allele') and variant.alt_allele:
-                coords['alt'] = str(variant.alt_allele)
-            elif hasattr(variant, 'alt') and variant.alt:
-                coords['alt'] = str(variant.alt)
+            if hasattr(variant, "alt_allele") and variant.alt_allele:
+                coords["alt"] = str(variant.alt_allele)
+            elif hasattr(variant, "alt") and variant.alt:
+                coords["alt"] = str(variant.alt)
             else:
                 return None
-            
+
             # Gene (optional)
-            if hasattr(variant, 'gene') and variant.gene:
-                coords['gene'] = str(variant.gene)
-            
+            if hasattr(variant, "gene") and variant.gene:
+                coords["gene"] = str(variant.gene)
+
             return coords
-            
+
         except Exception as e:
             logger.warning(f"Failed to extract variant coordinates: {e}")
             return None
-    
+
     def _infer_inheritance_mode(self, variant: VariantData) -> InheritanceMode:
         """Infer inheritance mode from variant data.
-        
+
         Args:
             variant: VariantData object
-        
+
         Returns:
             InheritanceMode enum
         """
         try:
             # Check if inheritance mode is provided
-            if hasattr(variant, 'inheritance_mode') and variant.inheritance_mode:
+            if hasattr(variant, "inheritance_mode") and variant.inheritance_mode:
                 mode_str = str(variant.inheritance_mode).lower()
-                if 'dominant' in mode_str or 'ad' in mode_str:
+                if "dominant" in mode_str or "ad" in mode_str:
                     return InheritanceMode.DOMINANT
-                elif 'recessive' in mode_str or 'ar' in mode_str:
+                elif "recessive" in mode_str or "ar" in mode_str:
                     return InheritanceMode.RECESSIVE
-                elif 'x-linked' in mode_str or 'xl' in mode_str:
+                elif "x-linked" in mode_str or "xl" in mode_str:
                     return InheritanceMode.X_LINKED
-            
+
             # Check chromosome for X-linked
-            if hasattr(variant, 'chromosome'):
-                chrom = str(variant.chromosome).replace('chr', '').upper()
-                if chrom == 'X':
+            if hasattr(variant, "chromosome"):
+                chrom = str(variant.chromosome).replace("chr", "").upper()
+                if chrom == "X":
                     return InheritanceMode.X_LINKED
-            
+
             # Default to unknown
             return InheritanceMode.UNKNOWN
-            
+
         except Exception as e:
             logger.debug(f"Failed to infer inheritance mode: {e}")
             return InheritanceMode.UNKNOWN
-    
+
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
         """Assign ACMG evidence codes including gnomAD-based codes.
-        
+
         Extends base classifier with PM2, BA1, BS1 from gnomAD.
-        
+
         Args:
             variant: VariantData object
-        
+
         Returns:
             ACMGEvidenceSet with evidence codes
         """
         # Get base evidence from parent classifier (PVS1, PM4, PP2, BP1, BP3)
         evidence = super().assign_evidence(variant)
-        
+
         # Add gnomAD-based evidence if enabled
         if self.enable_gnomad and self.frequency_service:
             try:
                 # Extract coordinates
                 coords = self._extract_variant_coordinates(variant)
-                
+
                 if coords is None:
                     logger.debug("No coordinates for gnomAD query, skipping frequency analysis")
                     evidence.conflicts.add("Missing coordinates for gnomAD")
                     return evidence
-                
+
                 # Infer inheritance mode
                 inheritance = self._infer_inheritance_mode(variant)
-                
+
                 # Query population frequency
                 freq_evidence = self.frequency_service.analyze_frequency(
-                    chromosome=coords['chromosome'],
-                    position=coords['position'],
-                    ref=coords['ref'],
-                    alt=coords['alt'],
+                    chromosome=coords["chromosome"],
+                    position=coords["position"],
+                    ref=coords["ref"],
+                    alt=coords["alt"],
                     inheritance=inheritance,
-                    gene=coords.get('gene')
+                    gene=coords.get("gene"),
                 )
-                
+
                 # Add evidence codes
                 if freq_evidence.pm2:
                     evidence.pm.add("PM2")
                     logger.info(f"PM2: {freq_evidence.reasoning}")
-                
+
                 if freq_evidence.ba1:
                     evidence.ba.add("BA1")
                     logger.info(f"BA1: {freq_evidence.reasoning}")
-                
+
                 if freq_evidence.bs1:
                     evidence.bs.add("BS1")
                     logger.info(f"BS1: {freq_evidence.reasoning}")
-                
+
                 # Store frequency info for reference
-                if hasattr(evidence, 'metadata'):
-                    evidence.metadata['gnomad_af'] = freq_evidence.max_af
-                    evidence.metadata['gnomad_population'] = freq_evidence.max_af_population
-                
+                if hasattr(evidence, "metadata"):
+                    evidence.metadata["gnomad_af"] = freq_evidence.max_af
+                    evidence.metadata["gnomad_population"] = freq_evidence.max_af_population
+
                 logger.debug(f"Frequency analysis: {freq_evidence.summary()}")
-                
+
             except Exception as e:
                 logger.error(f"gnomAD frequency analysis failed: {e}")
                 evidence.conflicts.add(f"gnomAD error: {str(e)}")
-        
+
         # Convert sets to lists (inherited from parent)
-        for attr in ['pvs', 'ps', 'pm', 'pp', 'ba', 'bs', 'bp']:
+        for attr in ["pvs", "ps", "pm", "pp", "ba", "bs", "bp"]:
             setattr(evidence, attr, list(getattr(evidence, attr)))
-        
+
         return evidence
-    
+
     def classify_variant(self, variant: VariantData) -> Tuple[str, str, ACMGEvidenceSet, float]:
         """Complete classification pipeline with gnomAD integration.
-        
+
         Args:
             variant: VariantData object
-        
+
         Returns:
             Tuple of (classification, confidence, evidence, duration)
         """
         start_time = time.time()
-        
+
         try:
             # Assign evidence (includes gnomAD)
             evidence = self.assign_evidence(variant)
-            
+
             # Combine evidence using parent logic
             classification, confidence = self.combine_evidence(evidence)
-            
+
             duration = time.time() - start_time
-            
+
             # Record metrics
             if self.metrics:
                 self.metrics.record_success(duration, classification, evidence)
-            
+
             logger.info(
                 f"Classified {variant} → {classification} ({confidence}) "
                 f"in {duration:.3f}s [gnomAD: {self.enable_gnomad}]"
             )
-            
+
             return classification, confidence, evidence, duration
-            
+
         except Exception as e:
             duration = time.time() - start_time
             if self.metrics:
                 self.metrics.record_failure()
-            
+
             logger.error(f"Classification pipeline failed: {e}", exc_info=True)
             return "Uncertain Significance", f"Error: {str(e)}", ACMGEvidenceSet(), duration
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Health check with gnomAD service status.
-        
+
         Returns:
             Dictionary with health status
         """
         health = super().health_check()
-        
+
         # Add gnomAD status
-        health['gnomad'] = {
-            'enabled': self.enable_gnomad,
-            'service_initialized': self.frequency_service is not None
+        health["gnomad"] = {
+            "enabled": self.enable_gnomad,
+            "service_initialized": self.frequency_service is not None,
         }
-        
+
         if self.frequency_service:
             try:
-                health['gnomad']['statistics'] = self.frequency_service.get_statistics()
+                health["gnomad"]["statistics"] = self.frequency_service.get_statistics()
             except Exception as e:
-                health['gnomad']['error'] = str(e)
-        
-        health['version'] = self.VERSION
-        
+                health["gnomad"]["error"] = str(e)
+
+        health["version"] = self.VERSION
+
         return health
-    
+
     def get_enabled_codes(self) -> Dict[str, list]:
         """Get list of enabled evidence codes.
-        
+
         Returns:
             Dictionary with pathogenic and benign evidence codes
         """
-        codes = {
-            'pathogenic': ['PVS1', 'PM4', 'PP2'],
-            'benign': ['BP1', 'BP3']
-        }
-        
+        codes = {"pathogenic": ["PVS1", "PM4", "PP2"], "benign": ["BP1", "BP3"]}
+
         if self.enable_gnomad:
-            codes['pathogenic'].append('PM2')
-            codes['benign'].extend(['BA1', 'BS1'])
-        
+            codes["pathogenic"].append("PM2")
+            codes["benign"].extend(["BA1", "BS1"])
+
         return codes
 
 
 if __name__ == "__main__":
-    print("="*80)
+    print("=" * 80)
     print(f"ACMG Classifier V7 {ACMGClassifierV7.VERSION} - gnomAD Integration")
-    print("="*80)
+    print("=" * 80)
     print("\nEnabled Evidence Codes:")
     classifier = ACMGClassifierV7(enable_gnomad=False)
     codes = classifier.get_enabled_codes()
@@ -339,7 +334,7 @@ if __name__ == "__main__":
     print(f"  Benign: {', '.join(codes['benign'])}")
     print("\nWith gnomAD: +PM2, +BA1, +BS1 (10 total codes)")
     print("Without gnomAD: 7 codes (falls back to v6 behavior)")
-    print("="*80)
+    print("=" * 80)
 else:
     logger.info(f"ACMGClassifierV7 {ACMGClassifierV7.VERSION} loaded")
     logger.info("  Enhanced with gnomAD population frequency (PM2, BA1, BS1)")

@@ -30,22 +30,24 @@ def calculate_evidence_score(evidence: ACMGEvidenceSet, config: ACMGConfig) -> T
     weights = config.get_evidence_weights()
 
     path_score = (
-        len(evidence.pvs) * weights['PVS'] +
-        len(evidence.ps) * weights['PS'] +
-        len(evidence.pm) * weights['PM'] +
-        len(evidence.pp) * weights['PP']
+        len(evidence.pvs) * weights["PVS"]
+        + len(evidence.ps) * weights["PS"]
+        + len(evidence.pm) * weights["PM"]
+        + len(evidence.pp) * weights["PP"]
     )
 
     benign_score = (
-        len(evidence.ba) * weights['BA'] +
-        len(evidence.bs) * weights['BS'] +
-        len(evidence.bp) * weights['BP']
+        len(evidence.ba) * weights["BA"]
+        + len(evidence.bs) * weights["BS"]
+        + len(evidence.bp) * weights["BP"]
     )
 
     return float(path_score), float(benign_score)
 
 
-def validate_evidence_combination(evidence: ACMGEvidenceSet, config: ACMGConfig) -> Tuple[bool, List[str]]:
+def validate_evidence_combination(
+    evidence: ACMGEvidenceSet, config: ACMGConfig
+) -> Tuple[bool, List[str]]:
     """
     Validate evidence combination follows ACMG guidelines.
 
@@ -71,12 +73,19 @@ def validate_evidence_combination(evidence: ACMGEvidenceSet, config: ACMGConfig)
         path_score, benign_score = calculate_evidence_score(evidence, config)
         warnings.append(f"Conflicting evidence: Path={path_score}, Benign={benign_score}")
 
-    total_evidence = (len(evidence.pvs) + len(evidence.ps) + len(evidence.pm) + 
-                     len(evidence.pp) + len(evidence.ba) + len(evidence.bs) + len(evidence.bp))
+    total_evidence = (
+        len(evidence.pvs)
+        + len(evidence.ps)
+        + len(evidence.pm)
+        + len(evidence.pp)
+        + len(evidence.ba)
+        + len(evidence.bs)
+        + len(evidence.bp)
+    )
     if total_evidence == 0:
         warnings.append("No evidence codes assigned")
 
-    return len([w for w in warnings if 'error' in w.lower()]) == 0, warnings
+    return len([w for w in warnings if "error" in w.lower()]) == 0, warnings
 
 
 def combine_evidence(evidence: ACMGEvidenceSet, config: ACMGConfig) -> Tuple[str, str]:
@@ -123,7 +132,10 @@ def combine_evidence(evidence: ACMGEvidenceSet, config: ACMGConfig) -> Tuple[str
         total = path_score + benign_score
         path_ratio = path_score / total if total > 0 else 0
 
-        if path_score >= config.strong_evidence_threshold and            benign_score >= config.strong_evidence_threshold:
+        if (
+            path_score >= config.strong_evidence_threshold
+            and benign_score >= config.strong_evidence_threshold
+        ):
             return "Uncertain Significance", f"Strong conflict ({path_score}v{benign_score})"
 
         if config.conflict_balanced_min <= path_ratio <= config.conflict_balanced_max:

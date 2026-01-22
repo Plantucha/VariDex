@@ -1,4 +1,4 @@
-'''VariDex Comprehensive Validators - Prevents v6.0.0 bugs'''
+"""VariDex Comprehensive Validators - Prevents v6.0.0 bugs"""
 
 import re
 import pandas as pd
@@ -11,19 +11,38 @@ logger = logging.getLogger(__name__)
 class ComprehensiveValidator:
     """Comprehensive validation for variant data."""
 
-    VALID_CHROMOSOMES = set([str(i) for i in range(1, 23)] + ['X', 'Y', 'MT', 'M'])
+    VALID_CHROMOSOMES = set([str(i) for i in range(1, 23)] + ["X", "Y", "MT", "M"])
 
     CHROMOSOME_BOUNDS = {
-        '1': 248956422, '2': 242193529, '3': 198295559, '4': 190214555,
-        '5': 181538259, '6': 170805979, '7': 159345973, '8': 145138636,
-        '9': 138394717, '10': 133797422, '11': 135086622, '12': 133275309,
-        '13': 114364328, '14': 107043718, '15': 101991189, '16': 90338345,
-        '17': 83257441, '18': 80373285, '19': 58617616, '20': 64444167,
-        '21': 46709983, '22': 50818468, 'X': 156040895, 'Y': 57227415,
-        'MT': 16569, 'M': 16569
+        "1": 248956422,
+        "2": 242193529,
+        "3": 198295559,
+        "4": 190214555,
+        "5": 181538259,
+        "6": 170805979,
+        "7": 159345973,
+        "8": 145138636,
+        "9": 138394717,
+        "10": 133797422,
+        "11": 135086622,
+        "12": 133275309,
+        "13": 114364328,
+        "14": 107043718,
+        "15": 101991189,
+        "16": 90338345,
+        "17": 83257441,
+        "18": 80373285,
+        "19": 58617616,
+        "20": 64444167,
+        "21": 46709983,
+        "22": 50818468,
+        "X": 156040895,
+        "Y": 57227415,
+        "MT": 16569,
+        "M": 16569,
     }
 
-    VALID_NUCLEOTIDES = set('ACGTN')
+    VALID_NUCLEOTIDES = set("ACGTN")
 
     @staticmethod
     def validate_rsid(rsid: str) -> Tuple[bool, Optional[str]]:
@@ -31,7 +50,7 @@ class ComprehensiveValidator:
         if not rsid or pd.isna(rsid):
             return True, None
         rsid_str = str(rsid).strip()
-        if not re.match(r'^rs\d+$', rsid_str):
+        if not re.match(r"^rs\d+$", rsid_str):
             return False, f"Invalid rsID format: {rsid_str}"
         return True, None
 
@@ -40,7 +59,7 @@ class ComprehensiveValidator:
         """Validate chromosome identifier."""
         if not chromosome or pd.isna(chromosome):
             return False, "Missing chromosome"
-        chrom_str = str(chromosome).strip().upper().replace('CHR', '')
+        chrom_str = str(chromosome).strip().upper().replace("CHR", "")
         if chrom_str not in ComprehensiveValidator.VALID_CHROMOSOMES:
             return False, f"Invalid chromosome: {chromosome}"
         return True, None
@@ -56,7 +75,7 @@ class ComprehensiveValidator:
             return False, f"Invalid position: {position}"
         if pos_int < 1:
             return False, f"Position must be >= 1"
-        chrom_norm = str(chromosome).upper().replace('CHR', '')
+        chrom_norm = str(chromosome).upper().replace("CHR", "")
         max_pos = ComprehensiveValidator.CHROMOSOME_BOUNDS.get(chrom_norm)
         if max_pos and pos_int > max_pos:
             return False, f"Position {pos_int} exceeds chr{chrom_norm} length"
@@ -70,7 +89,7 @@ class ComprehensiveValidator:
         allele_str = str(allele).strip().upper()
         if len(allele_str) == 0:
             return False, f"Empty {allele_type} allele"
-        if allele_str in ['-', '.', '*']:
+        if allele_str in ["-", ".", "*"]:
             return True, None
         invalid_chars = set(allele_str) - ComprehensiveValidator.VALID_NUCLEOTIDES
         if invalid_chars:
@@ -81,31 +100,31 @@ class ComprehensiveValidator:
     def validate_variant_complete(cls, variant_data: Dict) -> Tuple[bool, List[str]]:
         """Comprehensive variant validation."""
         errors = []
-        required = ['chromosome', 'position', 'ref_allele', 'alt_allele']
+        required = ["chromosome", "position", "ref_allele", "alt_allele"]
         for field in required:
             if field not in variant_data or variant_data[field] is None:
                 errors.append(f"Missing: {field}")
         if errors:
             return False, errors
 
-        if 'rsid' in variant_data:
-            valid, error = cls.validate_rsid(variant_data['rsid'])
+        if "rsid" in variant_data:
+            valid, error = cls.validate_rsid(variant_data["rsid"])
             if not valid:
                 errors.append(error)
 
-        valid, error = cls.validate_chromosome(variant_data['chromosome'])
+        valid, error = cls.validate_chromosome(variant_data["chromosome"])
         if not valid:
             errors.append(error)
 
-        valid, error = cls.validate_position(variant_data['position'], variant_data['chromosome'])
+        valid, error = cls.validate_position(variant_data["position"], variant_data["chromosome"])
         if not valid:
             errors.append(error)
 
-        valid, error = cls.validate_allele(variant_data['ref_allele'], 'reference')
+        valid, error = cls.validate_allele(variant_data["ref_allele"], "reference")
         if not valid:
             errors.append(error)
 
-        valid, error = cls.validate_allele(variant_data['alt_allele'], 'alternate')
+        valid, error = cls.validate_allele(variant_data["alt_allele"], "alternate")
         if not valid:
             errors.append(error)
 
@@ -127,7 +146,7 @@ class ComprehensiveValidator:
                 valid_indices.append(idx)
             else:
                 invalid_record = variant_dict.copy()
-                invalid_record['error_reason'] = '; '.join(errors)
+                invalid_record["error_reason"] = "; ".join(errors)
                 invalid_records.append(invalid_record)
 
         valid_df = df.loc[valid_indices].copy()

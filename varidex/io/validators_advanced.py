@@ -22,17 +22,24 @@ logger = logging.getLogger(__name__)
 
 # ==================== VALIDATION REPORT MODEL ====================
 
+
 @dataclass
 class ValidationReport:
     """Comprehensive validation report. Uses __slots__ for efficiency."""
-    __slots__ = ('filepath', 'timestamp', 'results', 'overall_status')
+
+    __slots__ = ("filepath", "timestamp", "results", "overall_status")
     filepath: Path
     timestamp: datetime.datetime
     results: List[ValidationResult]
     overall_status: str
 
-    def __init__(self, filepath: Path, timestamp: datetime.datetime,
-                 results: List[ValidationResult], overall_status: str):
+    def __init__(
+        self,
+        filepath: Path,
+        timestamp: datetime.datetime,
+        results: List[ValidationResult],
+        overall_status: str,
+    ):
         self.filepath = filepath
         self.timestamp = timestamp
         self.results = results
@@ -41,21 +48,21 @@ class ValidationReport:
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON export."""
         return {
-            'filepath': str(self.filepath),
-            'timestamp': self.timestamp.isoformat(),
-            'overall_status': self.overall_status,
-            'checks_passed': sum(1 for r in self.results if r.passed),
-            'checks_failed': sum(1 for r in self.results if not r.passed),
-            'results': [
+            "filepath": str(self.filepath),
+            "timestamp": self.timestamp.isoformat(),
+            "overall_status": self.overall_status,
+            "checks_passed": sum(1 for r in self.results if r.passed),
+            "checks_failed": sum(1 for r in self.results if not r.passed),
+            "results": [
                 {
-                    'check': r.check_name,
-                    'passed': r.passed,
-                    'message': r.message,
-                    'severity': r.severity,
-                    'details': r.details
+                    "check": r.check_name,
+                    "passed": r.passed,
+                    "message": r.message,
+                    "severity": r.severity,
+                    "details": r.details,
                 }
                 for r in self.results
-            ]
+            ],
         }
 
     def to_text(self) -> str:
@@ -82,14 +89,17 @@ class ValidationReport:
         lines.append("=" * 70)
         return "\n".join(lines)
 
+
 # ==================== CUSTOM VALIDATION RULES ====================
 
 _CUSTOM_RULES: Dict[str, Callable[[Path], ValidationResult]] = {}
+
 
 def add_custom_rule(name: str, validator: Callable[[Path], ValidationResult]):
     """Register a custom validation rule."""
     _CUSTOM_RULES[name] = validator
     logger.debug(f"Registered custom rule: {name}")
+
 
 def remove_custom_rule(name: str) -> bool:
     """Unregister a custom validation rule."""
@@ -99,18 +109,22 @@ def remove_custom_rule(name: str) -> bool:
         return True
     return False
 
+
 def get_custom_rules() -> Dict[str, Callable]:
     """Get all registered custom rules."""
     return _CUSTOM_RULES.copy()
+
 
 def clear_custom_rules():
     """Clear all custom validation rules."""
     _CUSTOM_RULES.clear()
     logger.debug("Cleared all custom rules")
 
+
 # ==================== VIRUS SCANNING HOOK ====================
 
 _VIRUS_SCANNER: Optional[Callable[[Path], Tuple[bool, str]]] = None
+
 
 def set_virus_scanner(scanner: Callable[[Path], Tuple[bool, str]]):
     """Register a virus scanning function."""
@@ -118,55 +132,64 @@ def set_virus_scanner(scanner: Callable[[Path], Tuple[bool, str]]):
     _VIRUS_SCANNER = scanner
     logger.info("Virus scanner registered")
 
+
 def remove_virus_scanner():
     """Unregister the virus scanner."""
     global _VIRUS_SCANNER
     _VIRUS_SCANNER = None
     logger.info("Virus scanner removed")
 
+
 def scan_for_viruses(filepath: Path) -> ValidationResult:
     """Scan file for viruses if scanner configured."""
     if _VIRUS_SCANNER is None:
         return ValidationResult(
-            True, "virus_scan",
-            "No virus scanner configured (optional)", "info"
+            True, "virus_scan", "No virus scanner configured (optional)", "info"
         )
 
     try:
         is_clean, message = _VIRUS_SCANNER(filepath)
         return ValidationResult(
-            is_clean, "virus_scan", message,
+            is_clean,
+            "virus_scan",
+            message,
             "error" if not is_clean else "info",
-            {'scanner_active': True}
+            {"scanner_active": True},
         )
     except (OSError, RuntimeError) as e:
         return ValidationResult(
-            False, "virus_scan",
-            f"Virus scan error: {e}", "warning",
-            {'error': str(e)}
+            False, "virus_scan", f"Virus scan error: {e}", "warning", {"error": str(e)}
         )
 
+
 # ==================== OPTIMIZED VALIDATION CACHING ====================
+
 
 @lru_cache(maxsize=256)
 def _file_identity(filepath_str: str, mtime: float, size: int) -> str:
     """Create cache key from file identity."""
     return f"{filepath_str}:{mtime}:{size}"
 
+
 @lru_cache(maxsize=256)
 def _cached_content_validation(filepath_str: str, mtime: float, size: int) -> bool:
     """Cached content type validation result."""
     from varidex.io.validators import validate_content_type
+
     return validate_content_type(Path(filepath_str)).passed
+
 
 @lru_cache(maxsize=256)
 def _cached_encoding_validation(filepath_str: str, mtime: float, size: int) -> bool:
     """Cached encoding validation result."""
     from varidex.io.validators import validate_encoding
+
     return validate_encoding(Path(filepath_str)).passed
 
-def validate_with_cache(filepath: Path, 
-                       validation_func: Callable[[Path], ValidationResult]) -> ValidationResult:
+
+def validate_with_cache(
+    filepath: Path, validation_func: Callable[[Path], ValidationResult]
+) -> ValidationResult:
     """Validate with automatic caching. Optimized: single LRU layer."""
     if not filepath.exists():
         return validation_func(filepath)
@@ -177,22 +200,29 @@ def validate_with_cache(filepath: Path,
 
         func_name = validation_func.__name__
 
-        if func_name == 'validate_content_type':
+        if func_name == "validate_content_type":
             passed = _cached_content_validation(str(filepath), stat.st_mtime, stat.st_size)
-            return ValidationResult(passed, "content_type", 
-                                  "Cached result" if passed else "Failed", 
-                                  "info" if passed else "error")
-        elif func_name == 'validate_encoding':
+            return ValidationResult(
+                passed,
+                "content_type",
+                "Cached result" if passed else "Failed",
+                "info" if passed else "error",
+            )
+        elif func_name == "validate_encoding":
             passed = _cached_encoding_validation(str(filepath), stat.st_mtime, stat.st_size)
-            return ValidationResult(passed, "encoding",
-                                  "Cached result" if passed else "Failed",
-                                  "info" if passed else "error")
+            return ValidationResult(
+                passed,
+                "encoding",
+                "Cached result" if passed else "Failed",
+                "info" if passed else "error",
+            )
         else:
             return validation_func(filepath)
 
     except (OSError, PermissionError) as e:
         logger.warning(f"Caching error for {filepath.name}: {e}")
         return validation_func(filepath)
+
 
 def clear_validation_cache():
     """Clear all validation caches."""
@@ -201,26 +231,31 @@ def clear_validation_cache():
     _file_identity.cache_clear()
     logger.debug("Validation cache cleared")
 
+
 def get_cache_stats() -> Dict[str, Any]:
     """Get validation cache statistics."""
     return {
-        'content_cache': _cached_content_validation.cache_info()._asdict(),
-        'encoding_cache': _cached_encoding_validation.cache_info()._asdict(),
-        'identity_cache': _file_identity.cache_info()._asdict(),
+        "content_cache": _cached_content_validation.cache_info()._asdict(),
+        "encoding_cache": _cached_encoding_validation.cache_info()._asdict(),
+        "identity_cache": _file_identity.cache_info()._asdict(),
     }
+
 
 # ==================== COMPREHENSIVE VALIDATION REPORT GENERATOR ====================
 
-def generate_validation_report(filepath: Path, 
-                               include_optional: bool = True,
-                               custom_checks: bool = True,
-                               use_cache: bool = True) -> ValidationReport:
+
+def generate_validation_report(
+    filepath: Path,
+    include_optional: bool = True,
+    custom_checks: bool = True,
+    use_cache: bool = True,
+) -> ValidationReport:
     """Generate comprehensive validation report. Optimized: optional caching."""
     from varidex.io.validators import (
         validate_content_type,
         validate_encoding,
         validate_permissions,
-        validate_parent_symlinks
+        validate_parent_symlinks,
     )
 
     results = []
@@ -243,11 +278,11 @@ def generate_validation_report(filepath: Path,
             try:
                 results.append(rule_func(filepath))
             except (ValueError, OSError, RuntimeError) as e:
-                results.append(ValidationResult(
-                    False, rule_name,
-                    f"Custom rule error: {e}", "error",
-                    {'error': str(e)}
-                ))
+                results.append(
+                    ValidationResult(
+                        False, rule_name, f"Custom rule error: {e}", "error", {"error": str(e)}
+                    )
+                )
 
     errors = sum(1 for r in results if not r.passed and r.severity == "error")
     warnings = sum(1 for r in results if not r.passed and r.severity == "warning")
@@ -258,12 +293,13 @@ def generate_validation_report(filepath: Path,
         filepath=filepath,
         timestamp=datetime.datetime.now(),
         results=results,
-        overall_status=overall
+        overall_status=overall,
     )
 
-def batch_validate(filepaths: List[Path], 
-                  parallel: bool = False,
-                  **kwargs) -> List[ValidationReport]:
+
+def batch_validate(
+    filepaths: List[Path], parallel: bool = False, **kwargs
+) -> List[ValidationReport]:
     """Validate multiple files. Optimized: optional parallel processing."""
     reports = []
 
@@ -276,29 +312,34 @@ def batch_validate(filepaths: List[Path],
             reports.append(report)
         except (ValueError, OSError) as e:
             logger.error(f"Error validating {filepath}: {e}")
-            reports.append(ValidationReport(
-                filepath=filepath,
-                timestamp=datetime.datetime.now(),
-                results=[ValidationResult(
-                    False, "batch_validation",
-                    f"Validation error: {e}", "error"
-                )],
-                overall_status="failed"
-            ))
+            reports.append(
+                ValidationReport(
+                    filepath=filepath,
+                    timestamp=datetime.datetime.now(),
+                    results=[
+                        ValidationResult(
+                            False, "batch_validation", f"Validation error: {e}", "error"
+                        )
+                    ],
+                    overall_status="failed",
+                )
+            )
 
     return reports
 
-def export_reports(reports: List[ValidationReport], 
-                  output_path: Path,
-                  format: str = 'json') -> bool:
+
+def export_reports(
+    reports: List[ValidationReport], output_path: Path, format: str = "json"
+) -> bool:
     """Export validation reports to file. Optimized: supports JSON/text."""
     try:
-        if format == 'json':
+        if format == "json":
             import json
-            with open(output_path, 'w') as f:
+
+            with open(output_path, "w") as f:
                 json.dump([r.to_dict() for r in reports], f, indent=2)
-        elif format == 'text':
-            with open(output_path, 'w') as f:
+        elif format == "text":
+            with open(output_path, "w") as f:
                 for report in reports:
                     f.write(report.to_text() + "\n\n")
         else:
@@ -311,9 +352,10 @@ def export_reports(reports: List[ValidationReport],
         logger.error(f"Export failed: {e}")
         return False
 
+
 # ==================== SELF-TEST ====================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import tempfile
     import json
 
@@ -325,6 +367,7 @@ if __name__ == '__main__':
     tests_total = 7
 
     try:
+
         def custom_rule(p: Path) -> ValidationResult:
             return ValidationResult(True, "custom", "OK", "info")
 
@@ -337,6 +380,7 @@ if __name__ == '__main__':
         print(f"✗ Test 1: {e}")
 
     try:
+
         def mock_scanner(p: Path) -> Tuple[bool, str]:
             return (True, "Clean")
 
@@ -354,7 +398,7 @@ if __name__ == '__main__':
         print(f"✗ Test 2: {e}")
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='w') as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
             tmp.write("cache test")
             tmp_path = Path(tmp.name)
 
@@ -365,7 +409,7 @@ if __name__ == '__main__':
         assert result1.passed and result2.passed
 
         stats = get_cache_stats()
-        assert 'encoding_cache' in stats
+        assert "encoding_cache" in stats
 
         clear_validation_cache()
         tmp_path.unlink()
@@ -375,13 +419,13 @@ if __name__ == '__main__':
         print(f"✗ Test 3: {e}")
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='w') as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
             tmp.write("test")
             tmp_path = Path(tmp.name)
 
         report = generate_validation_report(tmp_path, include_optional=False)
         assert isinstance(report, ValidationReport)
-        assert report.overall_status in ['passed', 'failed', 'warning']
+        assert report.overall_status in ["passed", "failed", "warning"]
 
         tmp_path.unlink()
         print("✓ Test 4: Report generation")
@@ -390,17 +434,17 @@ if __name__ == '__main__':
         print(f"✗ Test 4: {e}")
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='w') as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
             tmp.write("test")
             tmp_path = Path(tmp.name)
 
         report = generate_validation_report(tmp_path, include_optional=False)
 
         report_dict = report.to_dict()
-        assert 'overall_status' in report_dict
+        assert "overall_status" in report_dict
 
         report_text = report.to_text()
-        assert 'VALIDATION REPORT' in report_text
+        assert "VALIDATION REPORT" in report_text
 
         tmp_path.unlink()
         print("✓ Test 5: Report formats")
@@ -411,7 +455,7 @@ if __name__ == '__main__':
     try:
         temp_files = []
         for i in range(3):
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='w')
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w")
             tmp.write(f"test {i}")
             temp_files.append(Path(tmp.name))
             tmp.close()
@@ -428,17 +472,17 @@ if __name__ == '__main__':
         print(f"✗ Test 6: {e}")
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='w') as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
             tmp.write("export test")
             tmp_path = Path(tmp.name)
 
         report = generate_validation_report(tmp_path, include_optional=False)
 
-        output_json = Path(tempfile.gettempdir()) / 'test_report.json'
-        output_text = Path(tempfile.gettempdir()) / 'test_report.txt'
+        output_json = Path(tempfile.gettempdir()) / "test_report.json"
+        output_text = Path(tempfile.gettempdir()) / "test_report.txt"
 
-        assert export_reports([report], output_json, format='json')
-        assert export_reports([report], output_text, format='text')
+        assert export_reports([report], output_json, format="json")
+        assert export_reports([report], output_text, format="text")
 
         output_json.unlink()
         output_text.unlink()

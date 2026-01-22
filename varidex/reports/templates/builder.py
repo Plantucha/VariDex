@@ -15,15 +15,15 @@ from typing import Dict, Optional
 try:
     from varidex.version import __version__
 except ImportError:
-    __version__ = '6.0.0'
+    __version__ = "6.0.0"
 
 from varidex.reports.templates.components import (
     build_stats_dashboard,
     build_classification_legend,
-    build_truncation_warning
+    build_truncation_warning,
 )
 
-__all__ = ['generate_html_template', 'generate_minimal_template']
+__all__ = ["generate_html_template", "generate_minimal_template"]
 
 
 def _generate_nonce() -> str:
@@ -34,7 +34,7 @@ def _generate_nonce() -> str:
 def _validate_css_path(css_file: str) -> str:
     """Validate CSS path to prevent directory traversal."""
     safe = os.path.basename(css_file)
-    return safe if all(c.isalnum() or c in '.-_' for c in safe) else "styles.css"
+    return safe if all(c.isalnum() or c in ".-_" for c in safe) else "styles.css"
 
 
 def _validate_custom_code(code: Optional[str], code_type: str, max_len: int = 10000) -> str:
@@ -42,13 +42,21 @@ def _validate_custom_code(code: Optional[str], code_type: str, max_len: int = 10
     if not code:
         return ""
     code = code[:max_len] if len(code) > max_len else code
-    bad = ['</style>', '</script>', 'javascript:', 'onerror=', 'onload=']
+    bad = ["</style>", "</script>", "javascript:", "onerror=", "onload="]
     return "" if any(p in code.lower() for p in bad) else code
 
 
 def _validate_stats(stats: Dict[str, int]) -> Dict[str, int]:
     """Validate stats dictionary."""
-    keys = ['total', 'pathogenic', 'likely_pathogenic', 'vus', 'likely_benign', 'benign', 'conflicts']
+    keys = [
+        "total",
+        "pathogenic",
+        "likely_pathogenic",
+        "vus",
+        "likely_benign",
+        "benign",
+        "conflicts",
+    ]
     validated = {}
     for k in keys:
         try:
@@ -67,7 +75,7 @@ def generate_html_template(
     output_filename: str,
     custom_css: Optional[str] = None,
     custom_js: Optional[str] = None,
-    css_file: str = "styles.css"
+    css_file: str = "styles.css",
 ) -> str:
     """
     Generate HTML report with maximum security.
@@ -89,14 +97,14 @@ def generate_html_template(
     stats = _validate_stats(stats)
     nonce = _generate_nonce()
     safe_css = _validate_css_path(css_file)
-    safe_custom_css = _validate_custom_code(custom_css, 'CSS')
-    safe_custom_js = _validate_custom_code(custom_js, 'JS')
+    safe_custom_css = _validate_custom_code(custom_css, "CSS")
+    safe_custom_js = _validate_custom_code(custom_js, "JS")
     safe_fname = html.escape(output_filename)
 
     try:
         dt = datetime.now()
-        current_time = dt.strftime('%Y-%m-%d %H:%M:%S')
-        current_date = dt.strftime('%Y-%m-%d')
+        current_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+        current_date = dt.strftime("%Y-%m-%d")
     except:
         current_time = current_date = "N/A"
 
@@ -105,7 +113,9 @@ def generate_html_template(
 
     stats_dash = build_stats_dashboard(stats, nonce)
     legend = build_classification_legend(stats, nonce)
-    warning = build_truncation_warning(is_truncated, html_max_variants, total_significant, safe_fname)
+    warning = build_truncation_warning(
+        is_truncated, html_max_variants, total_significant, safe_fname
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -202,12 +212,12 @@ def generate_minimal_template(stats: Dict[str, int], table_rows: str = "") -> st
     stats = _validate_stats(stats)
     try:
         dt = datetime.now()
-        current_time = dt.strftime('%Y-%m-%d %H:%M:%S')
-        current_date = dt.strftime('%Y-%m-%d')
+        current_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+        current_date = dt.strftime("%Y-%m-%d")
     except:
         current_time = current_date = "N/A"
 
-    pc = stats['pathogenic'] + stats['likely_pathogenic']
+    pc = stats["pathogenic"] + stats["likely_pathogenic"]
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -246,20 +256,25 @@ if __name__ == "__main__":
     print("HTML TEMPLATE BUILDER v6.0.0")
     print("=" * 70)
     test_stats = {
-        'total': 1000, 'pathogenic': 5, 'likely_pathogenic': 3,
-        'vus': 50, 'likely_benign': 200, 'benign': 742, 'conflicts': 2
+        "total": 1000,
+        "pathogenic": 5,
+        "likely_pathogenic": 3,
+        "vus": 50,
+        "likely_benign": 200,
+        "benign": 742,
+        "conflicts": 2,
     }
     try:
         html = generate_html_template(
             stats=test_stats,
-            table_rows='<tr><td>🔴</td><td>rs123</td><td>BRCA1</td><td>A/G</td><td>Het</td><td>Pathogenic</td><td>⭐⭐⭐</td><td>PVS1</td></tr>',
+            table_rows="<tr><td>🔴</td><td>rs123</td><td>BRCA1</td><td>A/G</td><td>Het</td><td>Pathogenic</td><td>⭐⭐⭐</td><td>PVS1</td></tr>",
             is_truncated=False,
             total_significant=58,
             html_max_variants=100,
-            output_filename='test'
+            output_filename="test",
         )
         print(f"Generated: {len(html):,} chars")
-        assert 'nonce-' in html and 'unsafe-inline' not in html
+        assert "nonce-" in html and "unsafe-inline" not in html
         print("Security: PASS ✅")
     except ImportError:
         print("NOTE: components.py not found - create it first")

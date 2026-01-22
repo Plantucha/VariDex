@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 __all__ = [
     "VaridexError",
-    "ValidationError", 
+    "ValidationError",
     "DataLoadError",
     "ClassificationError",
     "ReportError",
@@ -26,6 +26,7 @@ __all__ = [
 
 class ErrorCode(Enum):
     """Error codes for categorizing exceptions."""
+
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
     CLASSIFICATION = "CLASSIFICATION"
@@ -37,7 +38,9 @@ class ErrorCode(Enum):
 class VaridexError(Exception):
     """Base exception for all VariDex errors."""
 
-    def __init__(self, message: str, code: Optional[ErrorCode] = None, context: Optional[dict] = None):
+    def __init__(
+        self, message: str, code: Optional[ErrorCode] = None, context: Optional[dict] = None
+    ):
         super().__init__(message)
         self.code = code
         self.context = context or {}

@@ -19,7 +19,7 @@ from varidex.exceptions import (
     ValidationError,
     DataLoadError,
     ClassificationError,
-    ReportError
+    ReportError,
 )
 
 __version__ = version
@@ -27,10 +27,10 @@ __all__ = [
     "version",
     "get_version",
     "VaridexError",
-    "ValidationError", 
+    "ValidationError",
     "DataLoadError",
     "ClassificationError",
-    "ReportError"
+    "ReportError",
 ]
 
 # Optional import manager

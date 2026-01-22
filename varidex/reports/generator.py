@@ -25,29 +25,35 @@ from varidex.core.models import VariantData
 try:
     from varidex.exceptions import ValidationError, ReportError
 except ImportError:
+
     class ValidationError(Exception):
         pass
+
     class ReportError(Exception):
         pass
+
 
 # Import ACMG_TIERS from config
 try:
     from varidex.core.config import ACMG_TIERS
 except ImportError:
     ACMG_TIERS = {
-        'Pathogenic': {'icon': '🔴', 'priority': 1},
-        'Likely Pathogenic': {'icon': '🟠', 'priority': 2},
-        'Uncertain Significance': {'icon': '⚪', 'priority': 3},
-        'Likely Benign': {'icon': '🟢', 'priority': 4},
-        'Benign': {'icon': '🔵', 'priority': 5},
+        "Pathogenic": {"icon": "🔴", "priority": 1},
+        "Likely Pathogenic": {"icon": "🟠", "priority": 2},
+        "Uncertain Significance": {"icon": "⚪", "priority": 3},
+        "Likely Benign": {"icon": "🟢", "priority": 4},
+        "Benign": {"icon": "🔵", "priority": 5},
     }
 
 # Fallback imports for formatters
 try:
     from varidex.reports.formatters import (
-        generate_csv_report, generate_json_report,
-        generate_html_report, generate_conflict_report
+        generate_csv_report,
+        generate_json_report,
+        generate_html_report,
+        generate_conflict_report,
     )
+
     FORMATTERS_AVAILABLE = True
 except ImportError:
     FORMATTERS_AVAILABLE = False
@@ -57,19 +63,41 @@ logger = logging.getLogger(__name__)
 
 # ========== CONSTANTS ==========
 DATAFRAME_COLUMNS = [
-    'rsid', 'chromosome', 'position', 'gene', 'genotype', 'normalized_genotype',
-    'zygosity', 'genotype_class', 'acmg_classification', 'confidence', 'star_rating',
-    'has_conflicts', 'clinical_significance', 'review_status', 'num_submitters',
-    'variant_type', 'molecular_consequence', 'pvs_evidence', 'ps_evidence',
-    'pm_evidence', 'pp_evidence', 'ba_evidence', 'bs_evidence', 'bp_evidence',
-    'all_pathogenic_evidence', 'all_benign_evidence', 'icon'
+    "rsid",
+    "chromosome",
+    "position",
+    "gene",
+    "genotype",
+    "normalized_genotype",
+    "zygosity",
+    "genotype_class",
+    "acmg_classification",
+    "confidence",
+    "star_rating",
+    "has_conflicts",
+    "clinical_significance",
+    "review_status",
+    "num_submitters",
+    "variant_type",
+    "molecular_consequence",
+    "pvs_evidence",
+    "ps_evidence",
+    "pm_evidence",
+    "pp_evidence",
+    "ba_evidence",
+    "bs_evidence",
+    "bp_evidence",
+    "all_pathogenic_evidence",
+    "all_benign_evidence",
+    "icon",
 ]
 
 PROGRESS_THRESHOLD = 1000
 MAX_VARIANTS_WARNING = 1_000_000
-TIMESTAMP_FORMAT = '%Y%m%d_%H%M%S'
-UNKNOWN_ICON = '❓'
+TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
+UNKNOWN_ICON = "❓"
 UNKNOWN_PRIORITY = 99
+
 
 # ========== VALIDATION HELPERS ==========
 def _validate_variants(variants: List[VariantData]) -> None:
@@ -83,6 +111,7 @@ def _validate_variants(variants: List[VariantData]) -> None:
     if len(variants) > MAX_VARIANTS_WARNING:
         logger.warning(f"⚠️  Large dataset: {len(variants):,} variants")
 
+
 def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
     """Validate DataFrame has required columns."""
     if df.empty:
@@ -91,12 +120,13 @@ def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
     if missing:
         raise ValidationError(f"Missing required columns: {missing}")
 
+
 # ========== CORE FUNCTIONS ==========
 def create_results_dataframe(
     classified_variants: List[VariantData],
     include_evidence: bool = True,
     include_metadata: bool = True,
-    show_progress: bool = True
+    show_progress: bool = True,
 ) -> pd.DataFrame:
     """
     Create standardized 27-column DataFrame from classified variants.
@@ -124,6 +154,7 @@ def create_results_dataframe(
     if show_bar:
         try:
             from tqdm import tqdm
+
             iterator = tqdm(classified_variants, desc="Building DF", unit="var")
         except ImportError:
             iterator = classified_variants
@@ -132,58 +163,72 @@ def create_results_dataframe(
 
     records = []
     for variant in iterator:
-        tier = ACMG_TIERS.get(variant.acmg_classification, 
-                              {'icon': UNKNOWN_ICON, 'priority': UNKNOWN_PRIORITY})
+        tier = ACMG_TIERS.get(
+            variant.acmg_classification, {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY}
+        )
 
         record = {
-            'rsid': variant.rsid or '', 'chromosome': variant.chromosome or '',
-            'position': variant.position or '', 'gene': variant.gene or '',
-            'genotype': variant.genotype or '',
-            'normalized_genotype': variant.normalized_genotype or '',
-            'zygosity': variant.zygosity or '',
-            'genotype_class': variant.genotype_class or '',
-            'acmg_classification': variant.acmg_classification or '',
-            'confidence': variant.confidence_level or '',
-            'star_rating': variant.star_rating or 0,
-            'has_conflicts': getattr(variant, 'has_conflicts', False),
-            'clinical_significance': variant.clinical_sig or '',
-            'review_status': variant.review_status or '',
-            'num_submitters': variant.num_submitters or 0,
-            'variant_type': variant.variant_type or '',
-            'molecular_consequence': variant.molecular_consequence or '',
-            'icon': tier['icon'], 'sort_priority': tier['priority']
+            "rsid": variant.rsid or "",
+            "chromosome": variant.chromosome or "",
+            "position": variant.position or "",
+            "gene": variant.gene or "",
+            "genotype": variant.genotype or "",
+            "normalized_genotype": variant.normalized_genotype or "",
+            "zygosity": variant.zygosity or "",
+            "genotype_class": variant.genotype_class or "",
+            "acmg_classification": variant.acmg_classification or "",
+            "confidence": variant.confidence_level or "",
+            "star_rating": variant.star_rating or 0,
+            "has_conflicts": getattr(variant, "has_conflicts", False),
+            "clinical_significance": variant.clinical_sig or "",
+            "review_status": variant.review_status or "",
+            "num_submitters": variant.num_submitters or 0,
+            "variant_type": variant.variant_type or "",
+            "molecular_consequence": variant.molecular_consequence or "",
+            "icon": tier["icon"],
+            "sort_priority": tier["priority"],
         }
 
         if include_evidence and variant.acmg_evidence:
             ev = variant.acmg_evidence
-            record.update({
-                'pvs_evidence': ' | '.join(ev.pvs) if ev.pvs else '',
-                'ps_evidence': ' | '.join(ev.ps) if ev.ps else '',
-                'pm_evidence': ' | '.join(ev.pm) if ev.pm else '',
-                'pp_evidence': ' | '.join(ev.pp) if ev.pp else '',
-                'ba_evidence': ' | '.join(ev.ba) if ev.ba else '',
-                'bs_evidence': ' | '.join(ev.bs) if ev.bs else '',
-                'bp_evidence': ' | '.join(ev.bp) if ev.bp else '',
-                'all_pathogenic_evidence': ' + '.join(ev.all_pathogenic()),
-                'all_benign_evidence': ' + '.join(ev.all_benign())
-            })
+            record.update(
+                {
+                    "pvs_evidence": " | ".join(ev.pvs) if ev.pvs else "",
+                    "ps_evidence": " | ".join(ev.ps) if ev.ps else "",
+                    "pm_evidence": " | ".join(ev.pm) if ev.pm else "",
+                    "pp_evidence": " | ".join(ev.pp) if ev.pp else "",
+                    "ba_evidence": " | ".join(ev.ba) if ev.ba else "",
+                    "bs_evidence": " | ".join(ev.bs) if ev.bs else "",
+                    "bp_evidence": " | ".join(ev.bp) if ev.bp else "",
+                    "all_pathogenic_evidence": " + ".join(ev.all_pathogenic()),
+                    "all_benign_evidence": " + ".join(ev.all_benign()),
+                }
+            )
         else:
-            record.update({
-                'pvs_evidence': '', 'ps_evidence': '', 'pm_evidence': '',
-                'pp_evidence': '', 'ba_evidence': '', 'bs_evidence': '',
-                'bp_evidence': '', 'all_pathogenic_evidence': '',
-                'all_benign_evidence': ''
-            })
+            record.update(
+                {
+                    "pvs_evidence": "",
+                    "ps_evidence": "",
+                    "pm_evidence": "",
+                    "pp_evidence": "",
+                    "ba_evidence": "",
+                    "bs_evidence": "",
+                    "bp_evidence": "",
+                    "all_pathogenic_evidence": "",
+                    "all_benign_evidence": "",
+                }
+            )
 
         records.append(record)
 
     df = pd.DataFrame(records)
-    df = df.sort_values(by=['sort_priority', 'star_rating'], ascending=[True, False])
-    df = df.drop(columns=['sort_priority'])[DATAFRAME_COLUMNS]
+    df = df.sort_values(by=["sort_priority", "star_rating"], ascending=[True, False])
+    df = df.drop(columns=["sort_priority"])[DATAFRAME_COLUMNS]
 
     elapsed = time.time() - start_time
     logger.info(f"✓ Created: {len(df):,} rows × 27 cols ({elapsed:.2f}s)")
     return df
+
 
 def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, float]]:
     """
@@ -200,37 +245,45 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
         >>> print(stats['pathogenic'], stats['pathogenic_pct'])
         5 2.5
     """
-    _validate_dataframe(results_df, ['acmg_classification'])
+    _validate_dataframe(results_df, ["acmg_classification"])
     total = len(results_df)
 
     stats = {
-        'total': total,
-        'pathogenic': int((results_df['acmg_classification'] == 'Pathogenic').sum()),
-        'likely_pathogenic': int((results_df['acmg_classification'] == 'Likely Pathogenic').sum()),
-        'vus': int((results_df['acmg_classification'] == 'Uncertain Significance').sum()),
-        'likely_benign': int((results_df['acmg_classification'] == 'Likely Benign').sum()),
-        'benign': int((results_df['acmg_classification'] == 'Benign').sum()),
-        'conflicts': int(results_df['has_conflicts'].sum()) if 'has_conflicts' in results_df else 0
+        "total": total,
+        "pathogenic": int((results_df["acmg_classification"] == "Pathogenic").sum()),
+        "likely_pathogenic": int((results_df["acmg_classification"] == "Likely Pathogenic").sum()),
+        "vus": int((results_df["acmg_classification"] == "Uncertain Significance").sum()),
+        "likely_benign": int((results_df["acmg_classification"] == "Likely Benign").sum()),
+        "benign": int((results_df["acmg_classification"] == "Benign").sum()),
+        "conflicts": int(results_df["has_conflicts"].sum()) if "has_conflicts" in results_df else 0,
     }
 
     # Add percentages
     if total > 0:
-        for key in ['pathogenic', 'likely_pathogenic', 'vus', 'likely_benign', 'benign', 'conflicts']:
-            stats[f'{key}_pct'] = round(100 * stats[key] / total, 2)
+        for key in [
+            "pathogenic",
+            "likely_pathogenic",
+            "vus",
+            "likely_benign",
+            "benign",
+            "conflicts",
+        ]:
+            stats[f"{key}_pct"] = round(100 * stats[key] / total, 2)
 
     logger.info(f"Stats: {stats['pathogenic']} path, {stats['vus']} VUS")
     return stats
 
+
 def generate_all_reports(
     results_df: pd.DataFrame,
-    output_dir: Union[Path, str] = Path('results'),
+    output_dir: Union[Path, str] = Path("results"),
     title: str = "Genetic Variant Analysis",
     generate_csv: bool = True,
     generate_json: bool = True,
     generate_html: bool = True,
     generate_conflicts: bool = True,
     json_full_data: bool = True,
-    fail_on_any_error: bool = False
+    fail_on_any_error: bool = False,
 ) -> Dict[str, Path]:
     """
     Orchestrate all report generation using formatters.py.
@@ -266,7 +319,7 @@ def generate_all_reports(
     if not FORMATTERS_AVAILABLE:
         raise ReportError("Formatters module not available")
 
-    _validate_dataframe(results_df, ['acmg_classification'])
+    _validate_dataframe(results_df, ["acmg_classification"])
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -283,7 +336,7 @@ def generate_all_reports(
         csv_file = output_dir / f"classified_variants_{timestamp}.csv"
         try:
             result = generate_csv_report(results_df, csv_file)
-            generated['csv'] = result
+            generated["csv"] = result
             size_kb = result.stat().st_size / 1024
             logger.info(f"✓ CSV: {result.name} ({size_kb:.1f} KB)")
         except Exception as e:
@@ -297,7 +350,7 @@ def generate_all_reports(
         json_file = output_dir / f"classified_variants_{timestamp}.json"
         try:
             result = generate_json_report(results_df, json_file, full_data=json_full_data)
-            generated['json'] = result
+            generated["json"] = result
             size_kb = result.stat().st_size / 1024
             logger.info(f"✓ JSON: {result.name} ({size_kb:.1f} KB)")
         except Exception as e:
@@ -311,7 +364,7 @@ def generate_all_reports(
         html_file = output_dir / f"classified_variants_{timestamp}.html"
         try:
             result = generate_html_report(results_df, html_file)
-            generated['html'] = result
+            generated["html"] = result
             size_kb = result.stat().st_size / 1024
             logger.info(f"✓ HTML: {result.name} ({size_kb:.1f} KB)")
         except Exception as e:
@@ -326,7 +379,7 @@ def generate_all_reports(
         try:
             result = generate_conflict_report(results_df, conflicts_file)
             if result:
-                generated['conflicts'] = result
+                generated["conflicts"] = result
                 size_kb = result.stat().st_size / 1024
                 logger.info(f"✓ Conflicts: {result.name} ({size_kb:.1f} KB)")
             else:
@@ -348,23 +401,36 @@ def generate_all_reports(
 
     return generated
 
+
 # ========== SELF-TEST ==========
 def _self_test() -> bool:
     """Comprehensive self-test with 7 edge cases."""
     from varidex.core.models import ACMGEvidence
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING varidex_reports_generator v6.0.0 (PERFECT 10/10)")
-    print("="*60)
+    print("=" * 60)
 
     # Test 1: Normal variants
     variants = [
-        VariantData(rsid='rs12345', chromosome='1', position=12345, gene='BRCA1',
-                    genotype='AG', acmg_classification='Pathogenic',
-                    acmg_evidence=ACMGEvidence(pvs=['PVS1'], ps=['PS1'])),
-        VariantData(rsid='rs67890', chromosome='2', position=67890, gene='TP53',
-                    genotype='CC', acmg_classification='Benign',
-                    acmg_evidence=ACMGEvidence(ba=['BA1']))
+        VariantData(
+            rsid="rs12345",
+            chromosome="1",
+            position=12345,
+            gene="BRCA1",
+            genotype="AG",
+            acmg_classification="Pathogenic",
+            acmg_evidence=ACMGEvidence(pvs=["PVS1"], ps=["PS1"]),
+        ),
+        VariantData(
+            rsid="rs67890",
+            chromosome="2",
+            position=67890,
+            gene="TP53",
+            genotype="CC",
+            acmg_classification="Benign",
+            acmg_evidence=ACMGEvidence(ba=["BA1"]),
+        ),
     ]
     df = create_results_dataframe(variants, show_progress=False)
     assert len(df) == 2 and len(df.columns) == 27
@@ -372,14 +438,15 @@ def _self_test() -> bool:
 
     # Test 2: Stats with percentages
     stats = calculate_report_stats(df)
-    assert stats['total'] == 2 and 'pathogenic_pct' in stats
+    assert stats["total"] == 2 and "pathogenic_pct" in stats
     print("✓ Test 2: Statistics + percentages")
 
     # Test 3: Variant without evidence
-    edge = VariantData(rsid='rs99999', chromosome='X', position=99999,
-                       acmg_classification='Uncertain Significance')
+    edge = VariantData(
+        rsid="rs99999", chromosome="X", position=99999, acmg_classification="Uncertain Significance"
+    )
     df_edge = create_results_dataframe([edge], show_progress=False)
-    assert len(df_edge) == 1 and df_edge.iloc[0]['pvs_evidence'] == ''
+    assert len(df_edge) == 1 and df_edge.iloc[0]["pvs_evidence"] == ""
     print("✓ Test 3: Variant without evidence")
 
     # Test 4-5: Validation errors
@@ -397,8 +464,9 @@ def _self_test() -> bool:
 
     # Test 6: Function signatures
     import inspect
+
     sig = inspect.signature(generate_all_reports)
-    required = ['results_df', 'output_dir', 'fail_on_any_error']
+    required = ["results_df", "output_dir", "fail_on_any_error"]
     assert all(p in sig.parameters for p in required)
     print("✓ Test 6: Function signatures")
 
@@ -406,15 +474,21 @@ def _self_test() -> bool:
     assert len(DATAFRAME_COLUMNS) == 27 and PROGRESS_THRESHOLD == 1000
     print("✓ Test 7: Constants validation")
 
-    print("="*60)
+    print("=" * 60)
     print("✅ ALL 7 TESTS PASSED - 10/10 PERFECT")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
     return True
 
+
 __all__ = [
-    'create_results_dataframe', 'calculate_report_stats', 'generate_all_reports',
-    'DATAFRAME_COLUMNS', 'ACMG_TIERS', 'PROGRESS_THRESHOLD', 'MAX_VARIANTS_WARNING'
+    "create_results_dataframe",
+    "calculate_report_stats",
+    "generate_all_reports",
+    "DATAFRAME_COLUMNS",
+    "ACMG_TIERS",
+    "PROGRESS_THRESHOLD",
+    "MAX_VARIANTS_WARNING",
 ]
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _self_test()

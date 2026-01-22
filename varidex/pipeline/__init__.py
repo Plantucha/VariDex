@@ -6,7 +6,7 @@ VariDex Pipeline Module
 
 Stages:
     1. Load ClinVar data
-    2. Load user genome data  
+    2. Load user genome data
     3. Match variants (hybrid rsID + coordinates)
     4. Classify variants (ACMG 2015)
     5. Generate reports
@@ -27,9 +27,12 @@ from varidex.version import get_version
 
 __version__ = get_version("pipeline")
 
+
 def run_pipeline(*args, **kwargs):
     """Run the complete variant analysis pipeline. Lazy import wrapper."""
     from varidex.pipeline.orchestrator import run_pipeline as _run
+
     return _run(*args, **kwargs)
+
 
 __all__ = ["run_pipeline"]

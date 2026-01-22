@@ -1,4 +1,4 @@
-'''VariDex Schema Standardizer - Eliminates naming inconsistencies'''
+"""VariDex Schema Standardizer - Eliminates naming inconsistencies"""
 
 import pandas as pd
 from typing import List, Tuple
@@ -11,39 +11,39 @@ class SchemaStandardizer:
     """Standardizes column naming across all VariDex DataFrames."""
 
     CANONICAL_SCHEMA = {
-        'coord_key': 'coord_key',
-        'rsid': 'rsid', 
-        'chromosome': 'chromosome',
-        'position': 'position',
-        'ref_allele': 'ref_allele',
-        'alt_allele': 'alt_allele',
-        'gene': 'gene',
-        'clinical_sig': 'clinical_sig',
-        'review_status': 'review_status',
-        'variant_type': 'variant_type',
-        'molecular_consequence': 'molecular_consequence',
-        'genotype': 'genotype',
-        'normalized_genotype': 'normalized_genotype',
-        'zygosity': 'zygosity',
-        'acmg_classification': 'acmg_classification'
+        "coord_key": "coord_key",
+        "rsid": "rsid",
+        "chromosome": "chromosome",
+        "position": "position",
+        "ref_allele": "ref_allele",
+        "alt_allele": "alt_allele",
+        "gene": "gene",
+        "clinical_sig": "clinical_sig",
+        "review_status": "review_status",
+        "variant_type": "variant_type",
+        "molecular_consequence": "molecular_consequence",
+        "genotype": "genotype",
+        "normalized_genotype": "normalized_genotype",
+        "zygosity": "zygosity",
+        "acmg_classification": "acmg_classification",
     }
 
     COLUMN_ALIASES = {
-        'coord_key': ['coordkey', 'coordinate_key', 'coordinatekey'],
-        'rsid': ['rs_id', 'rsID', 'RS', 'dbSNP'],
-        'chromosome': ['chr', 'chrom', 'CHROM', 'Chromosome'],
-        'position': ['pos', 'POS', 'Position', 'PositionVCF', 'Start'],
-        'ref_allele': ['ref', 'REF', 'reference', 'refallele'],
-        'alt_allele': ['alt', 'ALT', 'alternate', 'altallele'],
-        'gene': ['Gene', 'gene_symbol', 'GeneSymbol', 'Genes'],
-        'clinical_sig': ['clinicalsig', 'ClinicalSignificance', 'clinsig'],
-        'review_status': ['reviewstatus', 'ReviewStatus'],
-        'variant_type': ['varianttype', 'VariantType', 'Type'],
-        'molecular_consequence': ['molecularconsequence', 'consequence'],
-        'genotype': ['Genotype', 'GT'],
-        'normalized_genotype': ['normalizedgenotype', 'norm_genotype'],
-        'zygosity': ['Zygosity'],
-        'acmg_classification': ['acmgclassification', 'classification', 'ACMG']
+        "coord_key": ["coordkey", "coordinate_key", "coordinatekey"],
+        "rsid": ["rs_id", "rsID", "RS", "dbSNP"],
+        "chromosome": ["chr", "chrom", "CHROM", "Chromosome"],
+        "position": ["pos", "POS", "Position", "PositionVCF", "Start"],
+        "ref_allele": ["ref", "REF", "reference", "refallele"],
+        "alt_allele": ["alt", "ALT", "alternate", "altallele"],
+        "gene": ["Gene", "gene_symbol", "GeneSymbol", "Genes"],
+        "clinical_sig": ["clinicalsig", "ClinicalSignificance", "clinsig"],
+        "review_status": ["reviewstatus", "ReviewStatus"],
+        "variant_type": ["varianttype", "VariantType", "Type"],
+        "molecular_consequence": ["molecularconsequence", "consequence"],
+        "genotype": ["Genotype", "GT"],
+        "normalized_genotype": ["normalizedgenotype", "norm_genotype"],
+        "zygosity": ["Zygosity"],
+        "acmg_classification": ["acmgclassification", "classification", "ACMG"],
     }
 
     @classmethod
@@ -55,9 +55,9 @@ class SchemaStandardizer:
 
         rename_map = {}
         for col in df.columns:
-            col_lower = col.lower().replace('_', '').replace('-', '')
+            col_lower = col.lower().replace("_", "").replace("-", "")
             for canonical, aliases in cls.COLUMN_ALIASES.items():
-                alias_patterns = [a.lower().replace('_', '').replace('-', '') for a in aliases]
+                alias_patterns = [a.lower().replace("_", "").replace("-", "") for a in aliases]
                 if col_lower in alias_patterns:
                     rename_map[col] = canonical
                     break

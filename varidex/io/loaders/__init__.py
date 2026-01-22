@@ -11,12 +11,14 @@ __all__ = ["load_clinvar_file", "load_user_file", "load_vcf_file"]
 def load_clinvar_file(*args, **kwargs):
     """Load ClinVar data file. Lazy import wrapper."""
     from varidex.io.loaders.clinvar import load_clinvar_file as _load
+
     return _load(*args, **kwargs)
 
 
 def load_user_file(*args, **kwargs):
     """Load user genome file. Lazy import wrapper."""
     from varidex.io.loaders.user import load_user_file as _load
+
     return _load(*args, **kwargs)
 
 
@@ -40,4 +42,5 @@ def load_vcf_file(*args, **kwargs):
     except Exception as e:
         # If that fails, try user file loader
         from varidex.io.loaders.user import load_user_file
+
         return load_user_file(*args, **kwargs)

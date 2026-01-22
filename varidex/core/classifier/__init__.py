@@ -26,21 +26,19 @@ try:
     from varidex.core.classifier.engine import ACMGClassifier
     from varidex.core.classifier.config import ACMGConfig, get_preset
     from varidex.core.classifier.metrics import ACMGMetrics
-    from varidex.core.classifier.rules import (
-        combine_evidence,
-        validate_evidence_combination
-    )
+    from varidex.core.classifier.rules import combine_evidence, validate_evidence_combination
 
     __all__ = [
         "ACMGClassifier",
-        "ACMGConfig", 
+        "ACMGConfig",
         "get_preset",
         "ACMGMetrics",
         "combine_evidence",
-        "validate_evidence_combination"
+        "validate_evidence_combination",
     ]
 except ImportError as e:
     # Graceful degradation if dependencies missing
     import warnings
+
     warnings.warn(f"Could not import classifier components: {e}")
     __all__ = []

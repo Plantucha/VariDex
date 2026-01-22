@@ -19,11 +19,11 @@ def normalize_chromosome(chrom: str) -> str:
         Normalized chromosome name
     """
     # Remove 'chr' prefix if present
-    chrom = str(chrom).replace('chr', '').replace('Chr', '').replace('CHR', '')
+    chrom = str(chrom).replace("chr", "").replace("Chr", "").replace("CHR", "")
 
     # Normalize MT/M to MT
-    if chrom in ['M', 'm']:
-        return 'MT'
+    if chrom in ["M", "m"]:
+        return "MT"
 
     return chrom.upper()
 
@@ -77,14 +77,14 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # Normalize chromosome column if it exists
-    chrom_cols = ['Chromosome', 'chromosome', 'Chr', 'chr', 'CHROM']
+    chrom_cols = ["Chromosome", "chromosome", "Chr", "chr", "CHROM"]
     for col in chrom_cols:
         if col in df.columns:
             df[col] = df[col].apply(normalize_chromosome)
             break
 
     # Normalize position columns if they exist
-    pos_cols = ['Position', 'position', 'Pos', 'pos', 'POS', 'Start', 'start']
+    pos_cols = ["Position", "position", "Pos", "pos", "POS", "Start", "start"]
     for col in pos_cols:
         if col in df.columns:
             df[col] = df[col].apply(normalize_position)

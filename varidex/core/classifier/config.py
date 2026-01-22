@@ -113,7 +113,7 @@ class ACMGConfig:
             )
 
         # Check log level
-        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level not in valid_levels:
             raise ACMGConfigurationError(
                 f"Invalid log level '{self.log_level}'. Must be one of {valid_levels}"
@@ -121,8 +121,13 @@ class ACMGConfig:
 
         # Check weights are positive
         weights = [
-            self.weight_pvs, self.weight_ps, self.weight_pm, self.weight_pp,
-            self.weight_ba, self.weight_bs, self.weight_bp
+            self.weight_pvs,
+            self.weight_ps,
+            self.weight_pm,
+            self.weight_pp,
+            self.weight_ba,
+            self.weight_bs,
+            self.weight_bp,
         ]
         if any(w <= 0 for w in weights):
             raise ACMGConfigurationError("All evidence weights must be positive")
@@ -140,39 +145,39 @@ class ACMGConfig:
             # weights={'PVS': 8, ...}
         """
         return {
-            'PVS': self.weight_pvs,
-            'PS': self.weight_ps,
-            'PM': self.weight_pm,
-            'PP': self.weight_pp,
-            'BA': self.weight_ba,
-            'BS': self.weight_bs,
-            'BP': self.weight_bp,
+            "PVS": self.weight_pvs,
+            "PS": self.weight_ps,
+            "PM": self.weight_pm,
+            "PP": self.weight_pp,
+            "BA": self.weight_ba,
+            "BS": self.weight_bs,
+            "BP": self.weight_bp,
         }
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary for serialization."""
         return {
-            'feature_flags': {
-                'pvs1': self.enable_pvs1,
-                'pm4': self.enable_pm4,
-                'pp2': self.enable_pp2,
-                'pm2': self.enable_pm2,
-                'ba1': self.enable_ba1,
-                'bs1': self.enable_bs1,
-                'bp1': self.enable_bp1,
-                'bp3': self.enable_bp3,
-                'bp7': self.enable_bp7,
+            "feature_flags": {
+                "pvs1": self.enable_pvs1,
+                "pm4": self.enable_pm4,
+                "pp2": self.enable_pp2,
+                "pm2": self.enable_pm2,
+                "ba1": self.enable_ba1,
+                "bs1": self.enable_bs1,
+                "bp1": self.enable_bp1,
+                "bp3": self.enable_bp3,
+                "bp7": self.enable_bp7,
             },
-            'weights': self.get_evidence_weights(),
-            'thresholds': {
-                'conflict_balanced_min': self.conflict_balanced_min,
-                'conflict_balanced_max': self.conflict_balanced_max,
-                'strong_evidence': self.strong_evidence_threshold,
+            "weights": self.get_evidence_weights(),
+            "thresholds": {
+                "conflict_balanced_min": self.conflict_balanced_min,
+                "conflict_balanced_max": self.conflict_balanced_max,
+                "strong_evidence": self.strong_evidence_threshold,
             },
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ACMGConfig':
+    def from_dict(cls, data: Dict[str, Any]) -> "ACMGConfig":
         """
         Create config from dictionary.
 
@@ -183,25 +188,25 @@ class ACMGConfig:
             ACMGConfig instance
         """
         return cls(
-            enable_pvs1=data.get('enable_pvs1', True),
-            enable_pm4=data.get('enable_pm4', True),
-            enable_pp2=data.get('enable_pp2', True),
-            enable_pm2=data.get('enable_pm2', False),
-            enable_ba1=data.get('enable_ba1', True),
-            enable_bs1=data.get('enable_bs1', True),
-            enable_bp1=data.get('enable_bp1', True),
-            enable_bp3=data.get('enable_bp3', True),
-            enable_bp7=data.get('enable_bp7', False),
-            weight_pvs=data.get('weight_pvs', 8),
-            weight_ps=data.get('weight_ps', 4),
-            weight_pm=data.get('weight_pm', 2),
-            weight_pp=data.get('weight_pp', 1),
-            weight_ba=data.get('weight_ba', 8),
-            weight_bs=data.get('weight_bs', 4),
-            weight_bp=data.get('weight_bp', 1),
-            conflict_balanced_min=data.get('conflict_balanced_min', 0.4),
-            conflict_balanced_max=data.get('conflict_balanced_max', 0.6),
-            strong_evidence_threshold=data.get('strong_evidence_threshold', 4),
+            enable_pvs1=data.get("enable_pvs1", True),
+            enable_pm4=data.get("enable_pm4", True),
+            enable_pp2=data.get("enable_pp2", True),
+            enable_pm2=data.get("enable_pm2", False),
+            enable_ba1=data.get("enable_ba1", True),
+            enable_bs1=data.get("enable_bs1", True),
+            enable_bp1=data.get("enable_bp1", True),
+            enable_bp3=data.get("enable_bp3", True),
+            enable_bp7=data.get("enable_bp7", False),
+            weight_pvs=data.get("weight_pvs", 8),
+            weight_ps=data.get("weight_ps", 4),
+            weight_pm=data.get("weight_pm", 2),
+            weight_pp=data.get("weight_pp", 1),
+            weight_ba=data.get("weight_ba", 8),
+            weight_bs=data.get("weight_bs", 4),
+            weight_bp=data.get("weight_bp", 1),
+            conflict_balanced_min=data.get("conflict_balanced_min", 0.4),
+            conflict_balanced_max=data.get("conflict_balanced_max", 0.6),
+            strong_evidence_threshold=data.get("strong_evidence_threshold", 4),
         )
 
 
@@ -294,16 +299,20 @@ class ACMGMetrics:
             #  'success_rate': 0.995, 'avg_time_ms': 45.2, ...}
         """
         return {
-            'total': self.total_classifications,
-            'successful': self.successful_classifications,
-            'failed': self.failed_classifications,
-            'validation_errors': self.validation_errors,
-            'success_rate': self.get_success_rate(),
-            'avg_time_ms': self.get_avg_time(),
-            'min_time_ms': min(self.classification_times) * 1000 if self.classification_times else 0,
-            'max_time_ms': max(self.classification_times) * 1000 if self.classification_times else 0,
-            'evidence_counts': dict(self.evidence_counts),
-            'classification_distribution': dict(self.classification_distribution),
+            "total": self.total_classifications,
+            "successful": self.successful_classifications,
+            "failed": self.failed_classifications,
+            "validation_errors": self.validation_errors,
+            "success_rate": self.get_success_rate(),
+            "avg_time_ms": self.get_avg_time(),
+            "min_time_ms": (
+                min(self.classification_times) * 1000 if self.classification_times else 0
+            ),
+            "max_time_ms": (
+                max(self.classification_times) * 1000 if self.classification_times else 0
+            ),
+            "evidence_counts": dict(self.evidence_counts),
+            "classification_distribution": dict(self.classification_distribution),
         }
 
     def get_performance_report(self) -> str:
@@ -328,11 +337,7 @@ Classification Distribution:
 Top Evidence Codes:
 """
         # Sort evidence by frequency
-        evidence = sorted(
-            summary['evidence_counts'].items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:10]
+        evidence = sorted(summary["evidence_counts"].items(), key=lambda x: x[1], reverse=True)[:10]
 
         for code, count in evidence:
             report += f"  • {code}: {count:,}\n"
@@ -378,36 +383,36 @@ if __name__ == "__main__":
     print("=" * 80)
 
 
-def get_preset(name='balanced'):
+def get_preset(name="balanced"):
     """Get preset ACMG configuration."""
     presets = {
-        'strict': ACMGConfig(
-            config_name='strict',
-            config_description='Conservative preset',
+        "strict": ACMGConfig(
+            config_name="strict",
+            config_description="Conservative preset",
             weight_pvs=10,
             weight_ps=5,
             weight_pm=3,
             weight_pp=1,
-            strong_evidence_threshold=6
+            strong_evidence_threshold=6,
         ),
-        'balanced': ACMGConfig(
-            config_name='balanced',
-            config_description='Standard ACMG weights',
+        "balanced": ACMGConfig(
+            config_name="balanced",
+            config_description="Standard ACMG weights",
             weight_pvs=8,
             weight_ps=4,
             weight_pm=2,
             weight_pp=1,
-            strong_evidence_threshold=4
+            strong_evidence_threshold=4,
         ),
-        'lenient': ACMGConfig(
-            config_name='lenient',
-            config_description='Research preset',
+        "lenient": ACMGConfig(
+            config_name="lenient",
+            config_description="Research preset",
             weight_pvs=6,
             weight_ps=3,
             weight_pm=2,
             weight_pp=1,
-            strong_evidence_threshold=3
-        )
+            strong_evidence_threshold=3,
+        ),
     }
 
     if name not in presets:

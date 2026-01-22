@@ -12,19 +12,20 @@ from varidex.version import __version__
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 
-def normalize_column_names(df, source='unknown'):
+def normalize_column_names(df, source="unknown"):
     """Normalize column names for matching."""
     import pandas as pd
+
     renames = {}
 
-    if source == 'clinvar':
+    if source == "clinvar":
         # ClinVar VCF uses: CHROM, POS, ID, REF, ALT
-        if 'ID' in df.columns and 'rsid' not in df.columns:
-            renames['ID'] = 'rsid'
-        if 'REF' in df.columns and 'ref' not in df.columns:
-            renames['REF'] = 'ref'
-        if 'ALT' in df.columns and 'alt' not in df.columns:
-            renames['ALT'] = 'alt'
+        if "ID" in df.columns and "rsid" not in df.columns:
+            renames["ID"] = "rsid"
+        if "REF" in df.columns and "ref" not in df.columns:
+            renames["REF"] = "ref"
+        if "ALT" in df.columns and "alt" not in df.columns:
+            renames["ALT"] = "alt"
 
     if renames:
         df = df.rename(columns=renames)
@@ -32,9 +33,8 @@ def normalize_column_names(df, source='unknown'):
     return df
 
 
-
 logger = logging.getLogger(__name__)
-REQUIRED_COORD_COLUMNS = ['chromosome', 'position', 'ref_allele', 'alt_allele']
+REQUIRED_COORD_COLUMNS = ["chromosome", "position", "ref_allele", "alt_allele"]
 
 
 def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
@@ -46,10 +46,10 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
     Returns:
         Merged DataFrame with matched variants
     """
-    if 'rsid' not in user_df.columns or 'rsid' not in clinvar_df.columns:
+    if "rsid" not in user_df.columns or "rsid" not in clinvar_df.columns:
         logger.warning("rsID column missing, returning empty DataFrame")
         return pd.DataFrame()
-    matched = user_df.merge(clinvar_df, on='rsid', how='inner', suffixes=('_user', '_clinvar'))
+    matched = user_df.merge(clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar"))
     logger.info(f"rsID matches: {len(matched):,}")
     return matched
 
@@ -80,28 +80,27 @@ def match_by_coordinates(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.
         return pd.DataFrame()
 
     # CRITICAL FIX: Assign normalization return values (bug was here)
-    if 'coord_key' not in user_df.columns:
+    if "coord_key" not in user_df.columns:
         user_df = normalize_dataframe_coordinates(user_df)
-    if 'coord_key' not in clinvar_df.columns:
+    if "coord_key" not in clinvar_df.columns:
         clinvar_df = normalize_dataframe_coordinates(clinvar_df)
 
-    matched = user_df.merge(clinvar_df, on='coord_key', how='inner', suffixes=('_user', '_clinvar'))
+    matched = user_df.merge(clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar"))
     logger.info(f"Coordinate matches: {len(matched):,}")
     return matched
 
 
 def match_variants_hybrid(
     # Normalize column names
-
     clinvar_df: pd.DataFrame,
     user_df: pd.DataFrame,
-    clinvar_type: str = '',
-    user_type: str = ''
+    clinvar_type: str = "",
+    user_type: str = "",
 ) -> Tuple[pd.DataFrame, int, int]:
     # Normalize column names
     clinvar_df = normalize_column_names(clinvar_df.copy(), source="clinvar")
     user_df = normalize_column_names(user_df.copy(), source="user")
-    
+
     """Hybrid matching: try rsID first, fall back to coordinates.
 
     RECOMMENDED strategy:
@@ -131,7 +130,7 @@ def match_variants_hybrid(
     coord_count = 0
 
     # Try rsID matching first
-    if 'rsid' in user_df.columns and 'rsid' in clinvar_df.columns:
+    if "rsid" in user_df.columns and "rsid" in clinvar_df.columns:
         rsid_matched = match_by_rsid(user_df, clinvar_df)
         if len(rsid_matched) > 0:
             matches.append(rsid_matched)
@@ -139,10 +138,10 @@ def match_variants_hybrid(
             logger.info(f"✓ rsID: {rsid_count:,} matches")
 
     # Try coordinate matching for unmatched variants
-    if clinvar_type in ['vcf', 'vcf_tsv']:
-        if rsid_count > 0 and 'rsid' in user_df.columns:
-            matched_rsids = set(rsid_matched['rsid'])
-            unmatched = user_df[~user_df['rsid'].isin(matched_rsids)]
+    if clinvar_type in ["vcf", "vcf_tsv"]:
+        if rsid_count > 0 and "rsid" in user_df.columns:
+            matched_rsids = set(rsid_matched["rsid"])
+            unmatched = user_df[~user_df["rsid"].isin(matched_rsids)]
         else:
             unmatched = user_df
 
@@ -160,10 +159,10 @@ def match_variants_hybrid(
     combined = pd.concat(matches, ignore_index=True)
 
     # Deduplicate (prefer rsID matches if duplicate coord_key)
-    if 'coord_key' in combined.columns:
-        combined = combined.drop_duplicates(subset='coord_key', keep='first')
-    elif 'rsid' in combined.columns:
-        combined = combined.drop_duplicates(subset='rsid', keep='first')
+    if "coord_key" in combined.columns:
+        combined = combined.drop_duplicates(subset="coord_key", keep="first")
+    elif "rsid" in combined.columns:
+        combined = combined.drop_duplicates(subset="rsid", keep="first")
 
     coverage = len(combined) / len(user_df) * 100
     logger.info(f"{'='*60}")

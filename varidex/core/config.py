@@ -35,134 +35,144 @@ from varidex.version import __version__
 # ===================================================================
 __all__ = [
     # Version
-    '__version__',
+    "__version__",
     # File handling
-    'CHECKPOINT_DIR',
-    'CLASSIFICATION_TIMEOUT',
-    'CHUNK_SIZE',
-    'CLINVAR_FILE_TYPES',
-    'MATCH_MODE',
-    'VCF_COMPRESSION',
-    'VCF_CHROM_FORMAT',
-    'COORDINATE_SYSTEMS',
-    'DEFAULT_COORDINATE_SYSTEM',
+    "CHECKPOINT_DIR",
+    "CLASSIFICATION_TIMEOUT",
+    "CHUNK_SIZE",
+    "CLINVAR_FILE_TYPES",
+    "MATCH_MODE",
+    "VCF_COMPRESSION",
+    "VCF_CHROM_FORMAT",
+    "COORDINATE_SYSTEMS",
+    "DEFAULT_COORDINATE_SYSTEM",
     # Functions
-    'get_max_filesize',
-    'get_clinvar_description',
-    'is_in_functional_domain',
+    "get_max_filesize",
+    "get_clinvar_description",
+    "is_in_functional_domain",
     # Validation
-    'VALID_CHROMOSOMES',
-    'VALID_BASES',
-    'VALID_ALLELES',
+    "VALID_CHROMOSOMES",
+    "VALID_BASES",
+    "VALID_ALLELES",
     # Column mappings
-    'CLINVAR_COLUMNS',
+    "CLINVAR_COLUMNS",
     # Enums
-    'EvidenceStrength',
-    'EvidenceType',
+    "EvidenceStrength",
+    "EvidenceType",
     # Gene lists (ACTIVELY USED)
-    'LOF_GENES',
-    'MISSENSE_RARE_GENES',
-    'INHERITANCE_PATTERNS',
+    "LOF_GENES",
+    "MISSENSE_RARE_GENES",
+    "INHERITANCE_PATTERNS",
     # Ratings
-    'CLINVAR_STAR_RATINGS',
-    'ACMG_TIERS',
+    "CLINVAR_STAR_RATINGS",
+    "ACMG_TIERS",
     # Deprecated (but preserved for import compatibility)
-    'FUNCTIONAL_DOMAINS',  # Empty dict - PM1 disabled
-    'MAXFILESIZE',  # Use get_max_filesize() instead
+    "FUNCTIONAL_DOMAINS",  # Empty dict - PM1 disabled
+    "MAXFILESIZE",  # Use get_max_filesize() instead
 ]
 
 # ===================================================================
 # SECTION 3: FILE HANDLING CONSTANTS
 # ===================================================================
-CHECKPOINT_DIR = Path('.checkpoint')
+CHECKPOINT_DIR = Path(".checkpoint")
 CLASSIFICATION_TIMEOUT = 30  # seconds per variant batch
 CHUNK_SIZE = 50000  # Process variants in chunks
 
 # ClinVar file type specifications
 CLINVAR_FILE_TYPES = {
-    'variant_summary': {
-        'format': 'tsv',
-        'key_column': 'rsid',
-        'maxsize': 8 * 1024 * 1024 * 1024,  # 8GB
-        'description': 'NCBI summary format (rsID-indexed)'
+    "variant_summary": {
+        "format": "tsv",
+        "key_column": "rsid",
+        "maxsize": 8 * 1024 * 1024 * 1024,  # 8GB
+        "description": "NCBI summary format (rsID-indexed)",
     },
-    'vcf': {
-        'format': 'vcf',
-        'key_columns': ['CHROM', 'POS', 'REF', 'ALT'],
-        'maxsize': 25 * 1024 * 1024 * 1024,  # 25GB
-        'description': 'Full VCF format (position-based)'
+    "vcf": {
+        "format": "vcf",
+        "key_columns": ["CHROM", "POS", "REF", "ALT"],
+        "maxsize": 25 * 1024 * 1024 * 1024,  # 25GB
+        "description": "Full VCF format (position-based)",
     },
-    'vcf_tsv': {
-        'format': 'tsv',
-        'key_columns': ['chromosome', 'position', 'ref_allele', 'alt_allele'],
-        'maxsize': 12 * 1024 * 1024 * 1024,  # 12GB
-        'description': 'ClinVar position-based TSV (balanced size)'
-    }
+    "vcf_tsv": {
+        "format": "tsv",
+        "key_columns": ["chromosome", "position", "ref_allele", "alt_allele"],
+        "maxsize": 12 * 1024 * 1024 * 1024,  # 12GB
+        "description": "ClinVar position-based TSV (balanced size)",
+    },
 }
 
 # Pipeline behavior settings
-MATCH_MODE = 'hybrid'  # Options: 'rsid_only', 'position_only', 'hybrid'
-VCF_COMPRESSION = 'auto'  # Options: 'gzip', 'bgzip', 'uncompressed', 'auto'
-VCF_CHROM_FORMAT = 'numeric'  # Options: 'numeric' (1,X,Y) or 'chr' (chr1,chrX,chrY)
+MATCH_MODE = "hybrid"  # Options: 'rsid_only', 'position_only', 'hybrid'
+VCF_COMPRESSION = "auto"  # Options: 'gzip', 'bgzip', 'uncompressed', 'auto'
+VCF_CHROM_FORMAT = "numeric"  # Options: 'numeric' (1,X,Y) or 'chr' (chr1,chrX,chrY)
 
 # Coordinate system specifications (ENHANCED: added 'protein')
 COORDINATE_SYSTEMS = {
-    'genomic': {
-        'description': 'GRCh37/GRCh38 chromosomal positions',
-        'format': 'chr:position',
-        'example': '1:7412345-67',
-        'primary_use': 'VCF, ClinVar VCF, WGS data'
+    "genomic": {
+        "description": "GRCh37/GRCh38 chromosomal positions",
+        "format": "chr:position",
+        "example": "1:7412345-67",
+        "primary_use": "VCF, ClinVar VCF, WGS data",
     },
-    'cdna': {
-        'description': 'Transcript reference positions',
-        'format': 'c.X>Y',
-        'example': 'c.524G>A',
-        'primary_use': 'HGVS coding notation, transcript analysis'
+    "cdna": {
+        "description": "Transcript reference positions",
+        "format": "c.X>Y",
+        "example": "c.524G>A",
+        "primary_use": "HGVS coding notation, transcript analysis",
     },
-    'protein': {
-        'description': 'Protein reference positions',
-        'format': 'p.Xxx#Yyy',
-        'example': 'p.Arg337His',
-        'primary_use': 'HGVS protein notation (PM1 DISABLED)'
-    }
+    "protein": {
+        "description": "Protein reference positions",
+        "format": "p.Xxx#Yyy",
+        "example": "p.Arg337His",
+        "primary_use": "HGVS protein notation (PM1 DISABLED)",
+    },
 }
-DEFAULT_COORDINATE_SYSTEM = 'genomic'
+DEFAULT_COORDINATE_SYSTEM = "genomic"
 
 # ===================================================================
 # SECTION 4: VALIDATION CONSTANTS
 # ===================================================================
-VALID_CHROMOSOMES = set([str(i) for i in range(1, 23)] + ['X', 'Y', 'MT', 'M'])
-VALID_BASES = {'A', 'C', 'G', 'T', 'N'}
-VALID_ALLELES = VALID_BASES | {'I', 'D', '-'}
+VALID_CHROMOSOMES = set([str(i) for i in range(1, 23)] + ["X", "Y", "MT", "M"])
+VALID_BASES = {"A", "C", "G", "T", "N"}
+VALID_ALLELES = VALID_BASES | {"I", "D", "-"}
 
 # ===================================================================
 # SECTION 5: COLUMN MAPPINGS
 # ===================================================================
 CLINVAR_COLUMNS = {
-    'rsid': ['RS# (dbSNP)', 'dbSNP ID', 'AlleleID', 'rsid'],
-    'gene': ['GeneSymbol', 'Genes', 'GeneID', 'Gene'],
-    'clinical_sig': ['ClinicalSignificance', 'Clinical significance (Last reviewed)', 'ClinSig', 'Significance'],
-    'review_status': ['ReviewStatus', 'Review status', 'Status'],
-    'num_submitters': ['NumberSubmitters', 'Submitter count', 'Submitters'],
-    'variant_type': ['VariationType', 'Type', 'Variant type'],
-    'molecular_consequence': ['MolecularConsequence', 'Consequence', 'MC']
+    "rsid": ["RS# (dbSNP)", "dbSNP ID", "AlleleID", "rsid"],
+    "gene": ["GeneSymbol", "Genes", "GeneID", "Gene"],
+    "clinical_sig": [
+        "ClinicalSignificance",
+        "Clinical significance (Last reviewed)",
+        "ClinSig",
+        "Significance",
+    ],
+    "review_status": ["ReviewStatus", "Review status", "Status"],
+    "num_submitters": ["NumberSubmitters", "Submitter count", "Submitters"],
+    "variant_type": ["VariationType", "Type", "Variant type"],
+    "molecular_consequence": ["MolecularConsequence", "Consequence", "MC"],
 }
+
 
 # ===================================================================
 # SECTION 6: ENUMS
 # ===================================================================
 class EvidenceStrength(Enum):
     """ACMG evidence strength levels"""
+
     VERY_STRONG = "Very Strong"
     STRONG = "Strong"
     MODERATE = "Moderate"
     SUPPORTING = "Supporting"
     STANDALONE = "Stand-alone"
 
+
 class EvidenceType(Enum):
     """ACMG evidence direction"""
+
     PATHOGENIC = "Pathogenic"
     BENIGN = "Benign"
+
 
 # ===================================================================
 # SECTION 7: GENE LISTS (ENHANCED: added documentation)
@@ -171,65 +181,88 @@ class EvidenceType(Enum):
 # Loss-of-Function (LOF) genes where truncating variants are pathogenic
 LOF_GENES = {
     # Tumor suppressors where LOF = pathogenic
-    'BRCA1', 'BRCA2', 'TP53', 'PTEN', 'STK11', 'CDH1',
+    "BRCA1",
+    "BRCA2",
+    "TP53",
+    "PTEN",
+    "STK11",
+    "CDH1",
     # Neurofibromatosis
-    'NF1', 'NF2',
+    "NF1",
+    "NF2",
     # Von Hippel-Lindau
-    'VHL',
+    "VHL",
     # Tuberous sclerosis
-    'TSC1', 'TSC2',
+    "TSC1",
+    "TSC2",
     # Additional tumor suppressors
-    'RB1', 'WT1', 'PAX6',
+    "RB1",
+    "WT1",
+    "PAX6",
     # Hereditary paraganglioma
-    'SDHB', 'SDHD',
+    "SDHB",
+    "SDHD",
     # Lynch syndrome
-    'MLH1', 'MSH2', 'MSH6', 'PMS2',
+    "MLH1",
+    "MSH2",
+    "MSH6",
+    "PMS2",
     # Familial adenomatous polyposis
-    'APC',
+    "APC",
     # Multiple endocrine neoplasia
-    'MEN1', 'RET'
+    "MEN1",
+    "RET",
 }
 
 # Genes with well-characterized missense pathogenic variants
 MISSENSE_RARE_GENES = {
-    'CFTR', 'HBB', 'DMD', 'F8', 'F9',
-    'COL1A1', 'COL1A2', 'FBN1',
-    'PKD1', 'PKD2', 'LDLR'
+    "CFTR",
+    "HBB",
+    "DMD",
+    "F8",
+    "F9",
+    "COL1A1",
+    "COL1A2",
+    "FBN1",
+    "PKD1",
+    "PKD2",
+    "LDLR",
 }
 
 # Inheritance patterns by gene
 INHERITANCE_PATTERNS = {
-    'autosomal_dominant': {'BRCA1', 'BRCA2', 'TP53'},
-    'autosomal_recessive': {'CFTR', 'HBB'},
-    'x_linked_recessive': {'DMD', 'F8', 'F9'},
-    'mitochondrial': {'MT-ATP6', 'MT-CO1'}
+    "autosomal_dominant": {"BRCA1", "BRCA2", "TP53"},
+    "autosomal_recessive": {"CFTR", "HBB"},
+    "x_linked_recessive": {"DMD", "F8", "F9"},
+    "mitochondrial": {"MT-ATP6", "MT-CO1"},
 }
 
 # ===================================================================
 # SECTION 8: RATING/TIER CONSTANTS
 # ===================================================================
 CLINVAR_STAR_RATINGS = {
-    'practice guideline': 4,
-    'reviewed by expert panel': 3,
-    'criteria provided, multiple submitters, no conflicts': 2,
-    'criteria provided, multiple submitters': 2,
-    'criteria provided, single submitter': 1,
-    'no assertion criteria provided': 0,
+    "practice guideline": 4,
+    "reviewed by expert panel": 3,
+    "criteria provided, multiple submitters, no conflicts": 2,
+    "criteria provided, multiple submitters": 2,
+    "criteria provided, single submitter": 1,
+    "no assertion criteria provided": 0,
 }
 
 ACMG_TIERS = {
-    'Pathogenic': {'icon': '🔴', 'priority': 1},
-    'Likely Pathogenic': {'icon': '🟠', 'priority': 2},
-    'Uncertain Significance': {'icon': '⚪', 'priority': 3},
-    'Likely Benign': {'icon': '🟢', 'priority': 4},
-    'Benign': {'icon': '🟢', 'priority': 5},
+    "Pathogenic": {"icon": "🔴", "priority": 1},
+    "Likely Pathogenic": {"icon": "🟠", "priority": 2},
+    "Uncertain Significance": {"icon": "⚪", "priority": 3},
+    "Likely Benign": {"icon": "🟢", "priority": 4},
+    "Benign": {"icon": "🟢", "priority": 5},
 }
 
 # ===================================================================
 # SECTION 9: FUNCTIONS (ENHANCED: type validation)
 # ===================================================================
 
-def get_max_filesize(filetype: str = 'variant_summary') -> int:
+
+def get_max_filesize(filetype: str = "variant_summary") -> int:
     """
     Get max file size based on ClinVar format (STRICT validation).
 
@@ -255,10 +288,10 @@ def get_max_filesize(filetype: str = 'variant_summary') -> int:
             f"Valid options: {', '.join(CLINVAR_FILE_TYPES.keys())}"
         )
 
-    return CLINVAR_FILE_TYPES[filetype]['maxsize']
+    return CLINVAR_FILE_TYPES[filetype]["maxsize"]
 
 
-def get_clinvar_description(filetype: str = 'variant_summary') -> str:
+def get_clinvar_description(filetype: str = "variant_summary") -> str:
     """
     Get human-readable description of ClinVar file type.
 
@@ -269,7 +302,7 @@ def get_clinvar_description(filetype: str = 'variant_summary') -> str:
         Human-readable format description
     """
     if filetype in CLINVAR_FILE_TYPES:
-        return CLINVAR_FILE_TYPES[filetype]['description']
+        return CLINVAR_FILE_TYPES[filetype]["description"]
     return "Unknown format"
 
 
@@ -317,6 +350,7 @@ def verify_config():
     checks.append(f"Export control: {len(__all__)} public symbols")
     return checks
 
+
 # ===================================================================
 # SECTION 10: DEPRECATED CONSTANTS (preserved for compatibility)
 # ===================================================================
@@ -326,13 +360,14 @@ FUNCTIONAL_DOMAINS = {}  # Empty dict - PM1 disabled
 
 # Old constant name (deprecated)
 DEPRECATED_CONSTANTS = {
-    'MAXFILESIZE': 5 * 1024 * 1024 * 1024,  # Preserved value for import compatibility
+    "MAXFILESIZE": 5 * 1024 * 1024 * 1024,  # Preserved value for import compatibility
 }
-MAXFILESIZE = DEPRECATED_CONSTANTS['MAXFILESIZE']
+MAXFILESIZE = DEPRECATED_CONSTANTS["MAXFILESIZE"]
 
 # ===================================================================
 # SECTION 11: DEPRECATION HANDLING
 # ===================================================================
+
 
 def __getattribute__(name):
     """
@@ -342,8 +377,9 @@ def __getattribute__(name):
     - MAXFILESIZE: Redirects to get_max_filesize()
     - FUNCTIONAL_DOMAINS: Warns about PM1 disabled status
     """
-    if name == 'MAXFILESIZE':
+    if name == "MAXFILESIZE":
         import inspect
+
         frame = inspect.currentframe()
         if frame and frame.f_back:
             caller = frame.f_back
@@ -354,15 +390,15 @@ def __getattribute__(name):
                     f"MAXFILESIZE is deprecated (called from {filename}:{lineno}). "
                     "Use get_max_filesize() instead.",
                     DeprecationWarning,
-                    stacklevel=2
+                    stacklevel=2,
                 )
-        return DEPRECATED_CONSTANTS['MAXFILESIZE']
+        return DEPRECATED_CONSTANTS["MAXFILESIZE"]
 
-    if name == 'FUNCTIONAL_DOMAINS':
+    if name == "FUNCTIONAL_DOMAINS":
         warnings.warn(
             "FUNCTIONAL_DOMAINS is empty. PM1 disabled since v5.2.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return {}
 
@@ -373,7 +409,7 @@ def __getattribute__(name):
 # SELF-TEST
 # ===================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 70)
     print(f"CONFIG MODULE VERIFICATION v{__version__} 10/10")
     print("=" * 70)
@@ -386,10 +422,10 @@ if __name__ == '__main__':
     print("=" * 70)
 
     test_cases = [
-        ('BRCA1', 50, False, None, "Valid int - returns False (PM1 disabled)"),
-        ('BRCA1', -10, None, ValueError, "Negative - raises ValueError"),
-        ('BRCA1', 3.14, None, TypeError, "Float - raises TypeError"),
-        ('BRCA1', "100", None, TypeError, "String - raises TypeError"),
+        ("BRCA1", 50, False, None, "Valid int - returns False (PM1 disabled)"),
+        ("BRCA1", -10, None, ValueError, "Negative - raises ValueError"),
+        ("BRCA1", 3.14, None, TypeError, "Float - raises TypeError"),
+        ("BRCA1", "100", None, TypeError, "String - raises TypeError"),
     ]
 
     passed = 0

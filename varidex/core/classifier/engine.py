@@ -34,11 +34,20 @@ from varidex.exceptions import ACMGValidationError, ACMGClassificationError
 logger = logging.getLogger(__name__)
 
 # LOF indicators
-LOF_INDICATORS = frozenset([
-    'frameshift', 'nonsense', 'stop-gain', 'stop-gained',
-    'canonical-splice', 'splice-donor', 'splice-acceptor',
-    'start-lost', 'stop-lost', 'initiator-codon'
-])
+LOF_INDICATORS = frozenset(
+    [
+        "frameshift",
+        "nonsense",
+        "stop-gain",
+        "stop-gained",
+        "canonical-splice",
+        "splice-donor",
+        "splice-acceptor",
+        "start-lost",
+        "stop-lost",
+        "initiator-codon",
+    ]
+)
 
 SORTED_STAR_RATINGS = sorted(CLINVAR_STAR_RATINGS.items(), key=lambda x: -len(x[0]))
 
@@ -63,12 +72,14 @@ class ACMGClassifier:
         if self.config.enable_logging:
             logging.basicConfig(
                 level=getattr(logging, self.config.log_level),
-                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             )
 
-        logger.info(f"ACMGClassifier {__version__} Initialized: "
-                   f"PVS1={self.config.enable_pvs1}, PM2={self.config.enable_pm2}, "
-                   f"BP7={self.config.enable_bp7}")
+        logger.info(
+            f"ACMGClassifier {__version__} Initialized: "
+            f"PVS1={self.config.enable_pvs1}, PM2={self.config.enable_pm2}, "
+            f"BP7={self.config.enable_bp7}"
+        )
 
     @staticmethod
     @lru_cache(maxsize=512)
@@ -104,10 +115,10 @@ class ACMGClassifier:
                 return False, errors
 
             required_fields = {
-                'clinical_sig': 'Clinical significance',
-                'gene': 'Gene annotation',
-                'variant_type': 'Variant type',
-                'molecular_consequence': 'Molecular consequence'
+                "clinical_sig": "Clinical significance",
+                "gene": "Gene annotation",
+                "variant_type": "Variant type",
+                "molecular_consequence": "Molecular consequence",
             }
 
             for field, description in required_fields.items():
@@ -116,7 +127,7 @@ class ACMGClassifier:
                 elif pd.isna(getattr(variant, field)) or not getattr(variant, field):
                     errors.append(f"Empty {field}: {description}")
 
-            if hasattr(variant, 'star_rating'):
+            if hasattr(variant, "star_rating"):
                 if variant.star_rating < 0 or variant.star_rating > 4:
                     errors.append(f"Star rating out of bounds: {variant.star_rating}")
 
@@ -193,7 +204,7 @@ class ACMGClassifier:
                 return evidence
 
             # Check for conflicting interpretations
-            if 'conflict' in sig_lower or '/' in variant.clinical_sig:
+            if "conflict" in sig_lower or "/" in variant.clinical_sig:
                 evidence.conflicts.add("ClinVar conflicting interpretations")
 
             # === PATHOGENIC EVIDENCE ===
@@ -212,8 +223,12 @@ class ACMGClassifier:
             # PM4: Protein length changes
             if self.config.enable_pm4:
                 try:
-                    if 'inframe' in consequence or 'in-frame' in consequence or 'stop-lost' in consequence:
-                        if 'deletion' in consequence or 'insertion' in consequence:
+                    if (
+                        "inframe" in consequence
+                        or "in-frame" in consequence
+                        or "stop-lost" in consequence
+                    ):
+                        if "deletion" in consequence or "insertion" in consequence:
                             evidence.pm.add("PM4")
                             logger.debug("PM4: Protein length change")
                 except Exception as e:
@@ -222,9 +237,9 @@ class ACMGClassifier:
             # PP2: Missense in missense-rare genes
             if self.config.enable_pp2:
                 try:
-                    if 'missense' in consequence:
+                    if "missense" in consequence:
                         matching_genes = genes.intersection(MISSENSE_RARE_GENES)
-                        if matching_genes and 'pathogenic' in sig_lower:
+                        if matching_genes and "pathogenic" in sig_lower:
                             evidence.pp.add("PP2")
                             logger.debug(f"PP2: Missense in {matching_genes}")
                 except Exception as e:
@@ -239,7 +254,7 @@ class ACMGClassifier:
             # BA1: Common polymorphism
             if self.config.enable_ba1:
                 try:
-                    if 'common' in sig_lower and 'polymorphism' in sig_lower:
+                    if "common" in sig_lower and "polymorphism" in sig_lower:
                         evidence.ba.add("BA1")
                         logger.debug("BA1: Common polymorphism")
                 except Exception as e:
@@ -248,8 +263,11 @@ class ACMGClassifier:
             # BS1: High population frequency
             if self.config.enable_bs1:
                 try:
-                    if (('population' in sig_lower and 'frequency' in sig_lower and 'high' in sig_lower) or
-                        ('common' in sig_lower and 'pathogenic' not in sig_lower)):
+                    if (
+                        "population" in sig_lower
+                        and "frequency" in sig_lower
+                        and "high" in sig_lower
+                    ) or ("common" in sig_lower and "pathogenic" not in sig_lower):
                         evidence.bs.add("BS1")
                         logger.debug("BS1: High population frequency")
                 except Exception as e:
@@ -258,9 +276,9 @@ class ACMGClassifier:
             # BP1: Missense in LOF genes
             if self.config.enable_bp1:
                 try:
-                    if 'missense' in consequence:
+                    if "missense" in consequence:
                         matching_genes = genes.intersection(LOF_GENES)
-                        if matching_genes and 'benign' in sig_lower:
+                        if matching_genes and "benign" in sig_lower:
                             evidence.bp.add("BP1")
                             logger.debug(f"BP1: Missense in LOF gene {matching_genes}")
                 except Exception as e:
@@ -269,8 +287,8 @@ class ACMGClassifier:
             # BP3: In-frame indel in repetitive region
             if self.config.enable_bp3:
                 try:
-                    if 'inframe' in consequence or 'in-frame' in consequence:
-                        if 'repeat' in sig_lower or 'repetitive' in sig_lower:
+                    if "inframe" in consequence or "in-frame" in consequence:
+                        if "repeat" in sig_lower or "repetitive" in sig_lower:
                             evidence.bp.add("BP3")
                             logger.debug("BP3: In-frame indel in repeat")
                 except Exception as e:
@@ -281,7 +299,7 @@ class ACMGClassifier:
                 evidence.conflicts.add("BP7 DISABLED: requires SpliceAI scores")
 
             # Convert sets to lists (sets already deduplicated, no need for dict.fromkeys)
-            for attr in ['pvs', 'ps', 'pm', 'pp', 'ba', 'bs', 'bp']:
+            for attr in ["pvs", "ps", "pm", "pp", "ba", "bs", "bp"]:
                 setattr(evidence, attr, list(getattr(evidence, attr)))
 
             return evidence
@@ -297,16 +315,16 @@ class ACMGClassifier:
             weights = self.config.get_evidence_weights()
 
             path_score = (
-                len(evidence.pvs) * weights['PVS'] +
-                len(evidence.ps) * weights['PS'] +
-                len(evidence.pm) * weights['PM'] +
-                len(evidence.pp) * weights['PP']
+                len(evidence.pvs) * weights["PVS"]
+                + len(evidence.ps) * weights["PS"]
+                + len(evidence.pm) * weights["PM"]
+                + len(evidence.pp) * weights["PP"]
             )
 
             benign_score = (
-                len(evidence.ba) * weights['BA'] +
-                len(evidence.bs) * weights['BS'] +
-                len(evidence.bp) * weights['BP']
+                len(evidence.ba) * weights["BA"]
+                + len(evidence.bs) * weights["BS"]
+                + len(evidence.bp) * weights["BP"]
             )
 
             return float(path_score), float(benign_score)
@@ -342,12 +360,19 @@ class ACMGClassifier:
                 strong_benign = benign_score >= self.config.strong_evidence_threshold
 
                 if strong_path and strong_benign:
-                    return "Uncertain Significance", f"Strong conflict ({path_score}v{benign_score})"
+                    return (
+                        "Uncertain Significance",
+                        f"Strong conflict ({path_score}v{benign_score})",
+                    )
                 elif strong_path and benign_score < self.config.strong_evidence_threshold:
                     pass  # Continue to pathogenic rules
                 elif strong_benign and path_score < self.config.strong_evidence_threshold:
                     pass  # Continue to benign rules
-                elif self.config.conflict_balanced_min <= path_ratio <= self.config.conflict_balanced_max:
+                elif (
+                    self.config.conflict_balanced_min
+                    <= path_ratio
+                    <= self.config.conflict_balanced_max
+                ):
                     return "Uncertain Significance", f"Balanced ({path_score}v{benign_score})"
                 else:
                     return "Uncertain Significance", f"Conflict ({path_score}v{benign_score})"
@@ -451,7 +476,9 @@ class ACMGClassifier:
             if self.metrics:
                 self.metrics.record_success(duration, classification, evidence)
 
-            logger.info(f"Classified {variant} → {classification} ({confidence}) in {duration:.3f}s")
+            logger.info(
+                f"Classified {variant} → {classification} ({confidence}) in {duration:.3f}s"
+            )
 
             return classification, confidence, evidence, duration
 
@@ -467,32 +494,32 @@ class ACMGClassifier:
         """Health check endpoint for production monitoring."""
         try:
             health = {
-                'status': 'healthy',
-                'version': __version__,
-                'config': {
-                    'pvs1_enabled': self.config.enable_pvs1,
-                    'pm2_enabled': self.config.enable_pm2,
-                    'bp7_enabled': self.config.enable_bp7,
+                "status": "healthy",
+                "version": __version__,
+                "config": {
+                    "pvs1_enabled": self.config.enable_pvs1,
+                    "pm2_enabled": self.config.enable_pm2,
+                    "bp7_enabled": self.config.enable_bp7,
                 },
-                'dependencies': {
-                    'lof_genes': len(LOF_GENES),
-                    'missense_rare_genes': len(MISSENSE_RARE_GENES),
-                }
+                "dependencies": {
+                    "lof_genes": len(LOF_GENES),
+                    "missense_rare_genes": len(MISSENSE_RARE_GENES),
+                },
             }
 
             if self.metrics:
-                health['metrics'] = self.metrics.get_summary()
+                health["metrics"] = self.metrics.get_summary()
 
             return health
 
         except Exception as e:
-            return {'status': 'unhealthy', 'error': str(e)}
+            return {"status": "unhealthy", "error": str(e)}
 
 
 if __name__ == "__main__":
-    print("="*80)
+    print("=" * 80)
     print(f"ACMG Classifier {__version__} CORE - Use tests.py for testing")
-    print("="*80)
+    print("=" * 80)
 else:
     logger.info(f"ACMGClassifier {__version__} Production classifier loaded")
     logger.info(f" - {len(LOF_GENES)} LOF genes, {len(MISSENSE_RARE_GENES)} missense-rare genes")
