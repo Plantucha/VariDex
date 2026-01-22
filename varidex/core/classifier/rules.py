@@ -67,11 +67,11 @@ def validate_evidence_combination(
         warnings.append("Multiple BA codes detected - review manually")
 
     if len(evidence.ps) > 4:
-        warnings.append(f"Excessive PS codes ({len(evidence.ps)}) - may indicate error")
+        warnings.append("Excessive PS codes ({len(evidence.ps)}) - may indicate error")
 
     if evidence.has_conflict():
         path_score, benign_score = calculate_evidence_score(evidence, config)
-        warnings.append(f"Conflicting evidence: Path={path_score}, Benign={benign_score}")
+        warnings.append("Conflicting evidence: Path={path_score}, Benign={benign_score}")
 
     total_evidence = (
         len(evidence.pvs)
@@ -136,10 +136,10 @@ def combine_evidence(evidence: ACMGEvidenceSet, config: ACMGConfig) -> Tuple[str
             path_score >= config.strong_evidence_threshold
             and benign_score >= config.strong_evidence_threshold
         ):
-            return "Uncertain Significance", f"Strong conflict ({path_score}v{benign_score})"
+            return "Uncertain Significance", "Strong conflict ({path_score}v{benign_score})"
 
         if config.conflict_balanced_min <= path_ratio <= config.conflict_balanced_max:
-            return "Uncertain Significance", f"Balanced conflict ({path_score}v{benign_score})"
+            return "Uncertain Significance", "Balanced conflict ({path_score}v{benign_score})"
 
     # ===================================================================
     # PATHOGENIC RULES (8 combinations)

@@ -4,7 +4,6 @@ Target: 100% coverage of varidex/exceptions.py
 """
 
 import pytest
-from typing import Type, Any
 from varidex.exceptions import (
     VaridexError,
     ValidationError,
@@ -12,13 +11,9 @@ from varidex.exceptions import (
     ClassificationError,
     ReportError,
     FileProcessingError,
-    ACMGValidationError,
-    ACMGClassificationError,
-    ACMGConfigurationError,
     ErrorCode,
     validate_not_none,
     validate_not_empty,
-    validate_type,
 )
 
 pytestmark = pytest.mark.unit

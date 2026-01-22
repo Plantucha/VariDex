@@ -13,12 +13,11 @@ Version: 6.0.0 | Compatible: formatters.py v5.2+ | Lines: <500
 
 import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Union
 from datetime import datetime
 import logging
 import time
 
-from varidex.version import __version__
 from varidex.core.models import VariantData
 
 # Import exceptions with fallback
@@ -105,11 +104,11 @@ def _validate_variants(variants: List[VariantData]) -> None:
     if not variants:
         raise ValidationError("No classified variants provided")
     if not isinstance(variants, list):
-        raise ValidationError(f"Expected list, got {type(variants).__name__}")
+        raise ValidationError("Expected list, got {type(variants).__name__}")
     if not all(isinstance(v, VariantData) for v in variants):
         raise ValidationError("Invalid variant types in list")
     if len(variants) > MAX_VARIANTS_WARNING:
-        logger.warning(f"⚠️  Large dataset: {len(variants):,} variants")
+        logger.warning("⚠️  Large dataset: {len(variants):,} variants")
 
 
 def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
@@ -118,7 +117,7 @@ def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
         raise ValidationError("DataFrame is empty")
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValidationError(f"Missing required columns: {missing}")
+        raise ValidationError("Missing required columns: {missing}")
 
 
 # ========== CORE FUNCTIONS ==========
@@ -146,7 +145,7 @@ def create_results_dataframe(
     """
     _validate_variants(classified_variants)
     n_variants = len(classified_variants)
-    logger.info(f"Creating DataFrame from {n_variants:,} variants")
+    logger.info("Creating DataFrame from {n_variants:,} variants")
     start_time = time.time()
 
     # Progress tracking for large datasets
@@ -225,8 +224,8 @@ def create_results_dataframe(
     df = df.sort_values(by=["sort_priority", "star_rating"], ascending=[True, False])
     df = df.drop(columns=["sort_priority"])[DATAFRAME_COLUMNS]
 
-    elapsed = time.time() - start_time
-    logger.info(f"✓ Created: {len(df):,} rows × 27 cols ({elapsed:.2f}s)")
+    time.time() - start_time
+    logger.info("✓ Created: {len(df):,} rows × 27 cols ({elapsed:.2f}s)")
     return df
 
 
@@ -268,9 +267,9 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
             "benign",
             "conflicts",
         ]:
-            stats[f"{key}_pct"] = round(100 * stats[key] / total, 2)
+            stats["{key}_pct"] = round(100 * stats[key] / total, 2)
 
-    logger.info(f"Stats: {stats['pathogenic']} path, {stats['vus']} VUS")
+    logger.info("Stats: {stats['pathogenic']} path, {stats['vus']} VUS")
     return stats
 
 
@@ -313,7 +312,7 @@ def generate_all_reports(
         >>> print(reports['csv'])
         out/classified_variants_20260119_205600.csv
     """
-    logger.info(f"\n{'='*70}\nGENERATING REPORTS\n{'='*70}")
+    logger.info("\n{'='*70}\nGENERATING REPORTS\n{'='*70}")
     start_time = time.time()
 
     if not FORMATTERS_AVAILABLE:
@@ -323,81 +322,81 @@ def generate_all_reports(
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
+    datetime.now().strftime(TIMESTAMP_FORMAT)
 
     generated = {}
     errors = []
 
-    logger.info(f"Output: {output_dir.absolute()}")
-    logger.info(f"Variants: {len(results_df):,}\n")
+    logger.info("Output: {output_dir.absolute()}")
+    logger.info("Variants: {len(results_df):,}\n")
 
     # CSV Report
     if generate_csv:
-        csv_file = output_dir / f"classified_variants_{timestamp}.csv"
+        csv_file = output_dir / "classified_variants_{timestamp}.csv"
         try:
             result = generate_csv_report(results_df, csv_file)
             generated["csv"] = result
-            size_kb = result.stat().st_size / 1024
-            logger.info(f"✓ CSV: {result.name} ({size_kb:.1f} KB)")
+            result.stat().st_size / 1024
+            logger.info("✓ CSV: {result.name} ({size_kb:.1f} KB)")
         except Exception as e:
-            errors.append(f"CSV: {e}")
-            logger.error(f"✗ CSV failed: {e}")
+            errors.append("CSV: {e}")
+            logger.error("✗ CSV failed: {e}")
             if fail_on_any_error:
-                raise ReportError(f"CSV generation failed: {e}") from e
+                raise ReportError("CSV generation failed: {e}") from e
 
     # JSON Report
     if generate_json:
-        json_file = output_dir / f"classified_variants_{timestamp}.json"
+        json_file = output_dir / "classified_variants_{timestamp}.json"
         try:
             result = generate_json_report(results_df, json_file, full_data=json_full_data)
             generated["json"] = result
-            size_kb = result.stat().st_size / 1024
-            logger.info(f"✓ JSON: {result.name} ({size_kb:.1f} KB)")
+            result.stat().st_size / 1024
+            logger.info("✓ JSON: {result.name} ({size_kb:.1f} KB)")
         except Exception as e:
-            errors.append(f"JSON: {e}")
-            logger.error(f"✗ JSON failed: {e}")
+            errors.append("JSON: {e}")
+            logger.error("✗ JSON failed: {e}")
             if fail_on_any_error:
-                raise ReportError(f"JSON generation failed: {e}") from e
+                raise ReportError("JSON generation failed: {e}") from e
 
     # HTML Report
     if generate_html:
-        html_file = output_dir / f"classified_variants_{timestamp}.html"
+        html_file = output_dir / "classified_variants_{timestamp}.html"
         try:
             result = generate_html_report(results_df, html_file)
             generated["html"] = result
-            size_kb = result.stat().st_size / 1024
-            logger.info(f"✓ HTML: {result.name} ({size_kb:.1f} KB)")
+            result.stat().st_size / 1024
+            logger.info("✓ HTML: {result.name} ({size_kb:.1f} KB)")
         except Exception as e:
-            errors.append(f"HTML: {e}")
-            logger.error(f"✗ HTML failed: {e}")
+            errors.append("HTML: {e}")
+            logger.error("✗ HTML failed: {e}")
             if fail_on_any_error:
-                raise ReportError(f"HTML generation failed: {e}") from e
+                raise ReportError("HTML generation failed: {e}") from e
 
     # Conflicts Report
     if generate_conflicts:
-        conflicts_file = output_dir / f"conflicts_{timestamp}.csv"
+        conflicts_file = output_dir / "conflicts_{timestamp}.csv"
         try:
             result = generate_conflict_report(results_df, conflicts_file)
             if result:
                 generated["conflicts"] = result
-                size_kb = result.stat().st_size / 1024
-                logger.info(f"✓ Conflicts: {result.name} ({size_kb:.1f} KB)")
+                result.stat().st_size / 1024
+                logger.info("✓ Conflicts: {result.name} ({size_kb:.1f} KB)")
             else:
                 logger.info("✓ Conflicts: None found")
         except Exception as e:
-            errors.append(f"Conflicts: {e}")
-            logger.error(f"✗ Conflicts failed: {e}")
+            errors.append("Conflicts: {e}")
+            logger.error("✗ Conflicts failed: {e}")
             if fail_on_any_error:
-                raise ReportError(f"Conflicts failed: {e}") from e
+                raise ReportError("Conflicts failed: {e}") from e
 
     # Final validation
-    requested = sum([generate_csv, generate_json, generate_html, generate_conflicts])
+    sum([generate_csv, generate_json, generate_html, generate_conflicts])
     if not generated and errors:
-        raise ReportError(f"All {requested} report(s) failed: {'; '.join(errors)}")
+        raise ReportError("All {requested} report(s) failed: {'; '.join(errors)}")
 
-    elapsed = time.time() - start_time
-    logger.info(f"\n✅ Generated {len(generated)}/{requested} report(s) in {elapsed:.2f}s")
-    logger.info(f"{'='*70}\n")
+    time.time() - start_time
+    logger.info("\n✅ Generated {len(generated)}/{requested} report(s) in {elapsed:.2f}s")
+    logger.info("{'='*70}\n")
 
     return generated
 
@@ -466,7 +465,7 @@ def _self_test() -> bool:
     import inspect
 
     sig = inspect.signature(generate_all_reports)
-    required = ["results_df", "output_dir", "fail_on_any_error"]
+    required = ["results_d", "output_dir", "fail_on_any_error"]
     assert all(p in sig.parameters for p in required)
     print("✓ Test 6: Function signatures")
 

@@ -51,7 +51,7 @@ class ComprehensiveValidator:
             return True, None
         rsid_str = str(rsid).strip()
         if not re.match(r"^rs\d+$", rsid_str):
-            return False, f"Invalid rsID format: {rsid_str}"
+            return False, "Invalid rsID format: {rsid_str}"
         return True, None
 
     @staticmethod
@@ -61,7 +61,7 @@ class ComprehensiveValidator:
             return False, "Missing chromosome"
         chrom_str = str(chromosome).strip().upper().replace("CHR", "")
         if chrom_str not in ComprehensiveValidator.VALID_CHROMOSOMES:
-            return False, f"Invalid chromosome: {chromosome}"
+            return False, "Invalid chromosome: {chromosome}"
         return True, None
 
     @staticmethod
@@ -72,28 +72,28 @@ class ComprehensiveValidator:
         try:
             pos_int = int(position)
         except (ValueError, TypeError):
-            return False, f"Invalid position: {position}"
+            return False, "Invalid position: {position}"
         if pos_int < 1:
-            return False, f"Position must be >= 1"
+            return False, "Position must be >= 1"
         chrom_norm = str(chromosome).upper().replace("CHR", "")
         max_pos = ComprehensiveValidator.CHROMOSOME_BOUNDS.get(chrom_norm)
         if max_pos and pos_int > max_pos:
-            return False, f"Position {pos_int} exceeds chr{chrom_norm} length"
+            return False, "Position {pos_int} exceeds chr{chrom_norm} length"
         return True, None
 
     @staticmethod
     def validate_allele(allele: str, allele_type: str) -> Tuple[bool, Optional[str]]:
         """Validate allele sequence."""
         if not allele or pd.isna(allele):
-            return False, f"Missing {allele_type} allele"
+            return False, "Missing {allele_type} allele"
         allele_str = str(allele).strip().upper()
         if len(allele_str) == 0:
-            return False, f"Empty {allele_type} allele"
+            return False, "Empty {allele_type} allele"
         if allele_str in ["-", ".", "*"]:
             return True, None
         invalid_chars = set(allele_str) - ComprehensiveValidator.VALID_NUCLEOTIDES
         if invalid_chars:
-            return False, f"Invalid characters in {allele_type}: {invalid_chars}"
+            return False, "Invalid characters in {allele_type}: {invalid_chars}"
         return True, None
 
     @classmethod
@@ -103,7 +103,7 @@ class ComprehensiveValidator:
         required = ["chromosome", "position", "ref_allele", "alt_allele"]
         for field in required:
             if field not in variant_data or variant_data[field] is None:
-                errors.append(f"Missing: {field}")
+                errors.append("Missing: {field}")
         if errors:
             return False, errors
 
@@ -151,5 +151,5 @@ class ComprehensiveValidator:
 
         valid_df = df.loc[valid_indices].copy()
         invalid_df = pd.DataFrame(invalid_records) if invalid_records else pd.DataFrame()
-        logger.info(f"Validation: {len(valid_df)} valid, {len(invalid_df)} invalid")
+        logger.info("Validation: {len(valid_df)} valid, {len(invalid_df)} invalid")
         return valid_df, invalid_df

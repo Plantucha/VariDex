@@ -8,6 +8,9 @@ VERSION: 6.0.0 | AUTHOR: VariDex Team
 
 import os
 import secrets
+import logging
+logger = logging.getLogger(__name__)
+
 import html
 from datetime import datetime
 from typing import Dict, Optional
@@ -96,7 +99,7 @@ def generate_html_template(
     """
     stats = _validate_stats(stats)
     nonce = _generate_nonce()
-    safe_css = _validate_css_path(css_file)
+    _validate_css_path(css_file)
     safe_custom_css = _validate_custom_code(custom_css, "CSS")
     safe_custom_js = _validate_custom_code(custom_js, "JS")
     safe_fname = html.escape(output_filename)
@@ -105,28 +108,29 @@ def generate_html_template(
         dt = datetime.now()
         current_time = dt.strftime("%Y-%m-%d %H:%M:%S")
         current_date = dt.strftime("%Y-%m-%d")
-    except:
-        current_time = current_date = "N/A"
+    except Exception as e:
+        logger.exception(e)
+        raisecurrent_time = current_date = "N/A"
 
     css_block = f'<style nonce="{nonce}">{safe_custom_css}</style>' if safe_custom_css else ""
     js_block = f'<script nonce="{nonce}">{safe_custom_js}</script>' if safe_custom_js else ""
 
-    stats_dash = build_stats_dashboard(stats, nonce)
-    legend = build_classification_legend(stats, nonce)
+    build_stats_dashboard(stats, nonce)
+    build_classification_legend(stats, nonce)
     warning = build_truncation_warning(
         is_truncated, html_max_variants, total_significant, safe_fname
     )
 
-    return f"""<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Genetic variant analysis with ACMG classifications">
     <meta name="author" content="VariDex v{__version__}">
-    <meta http-equiv="Content-Security-Policy" 
+    <meta http-equiv="Content-Security-Policy"
           content="default-src 'self'; style-src 'self' 'nonce-{nonce}'; script-src 'self' 'nonce-{nonce}'; img-src 'self' data: https:; connect-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none';">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Content-Type-Options" content="nosnif">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta name="referrer" content="no-referrer">
     <title>Genetic Analysis - {current_date}</title>
@@ -138,15 +142,15 @@ def generate_html_template(
         <header>
             <h1>🧬 Genetic Analysis Report</h1>
             <div class="subtitle">
-                <strong>Generated:</strong> {current_time} | 
+                <strong>Generated:</strong> {current_time} |
                 <strong>Pipeline:</strong> VariDex v{__version__} |
                 <strong>Total:</strong> {stats['total']:,}
             </div>
         </header>
         <div class="disclaimer" role="alert">
             <h3>⚠️ IMPORTANT MEDICAL DISCLAIMER</h3>
-            <p>This report is for <strong>RESEARCH and EDUCATIONAL</strong> purposes only. 
-               It is <strong>NOT a clinical diagnosis</strong>. All pathogenic findings 
+            <p>This report is for <strong>RESEARCH and EDUCATIONAL</strong> purposes only.
+               It is <strong>NOT a clinical diagnosis</strong>. All pathogenic findings
                <strong>must be confirmed</strong> by a CLIA-certified laboratory.</p>
         </div>
         {warning}
@@ -156,7 +160,7 @@ def generate_html_template(
             <h2 id="variants-heading">Clinically Significant Variants</h2>
             <div class="filter-box" role="search">
                 <label for="searchBox"><strong>🔍 Filter:</strong></label>
-                <input type="text" id="searchBox" placeholder="Type to filter..." 
+                <input type="text" id="searchBox" placeholder="Type to filter..."
                        onkeyup="filterTable()" aria-label="Filter variants" maxlength="100">
             </div>
             <div class="table-container">
@@ -214,21 +218,22 @@ def generate_minimal_template(stats: Dict[str, int], table_rows: str = "") -> st
         dt = datetime.now()
         current_time = dt.strftime("%Y-%m-%d %H:%M:%S")
         current_date = dt.strftime("%Y-%m-%d")
-    except:
-        current_time = current_date = "N/A"
+    except Exception as e:
+        logger.exception(e)
+        raisecurrent_time = current_date = "N/A"
 
-    pc = stats["pathogenic"] + stats["likely_pathogenic"]
+    stats["pathogenic"] + stats["likely_pathogenic"]
 
-    return f"""<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Content-Type-Options" content="nosnif">
     <title>Genetic Report - {current_date}</title>
     <style>
         body {{font-family:Arial,sans-serif; margin:20px; background:#f5f5f5;}}
-        .container {{max-width:1200px; margin:0 auto; background:white; padding:30px; 
+        .container {{max-width:1200px; margin:0 auto; background:white; padding:30px;
                     border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}}
         h1 {{color:#333; border-bottom:3px solid #4CAF50; padding-bottom:10px;}}
         table {{width:100%; border-collapse:collapse; margin:20px 0;}}
@@ -273,7 +278,7 @@ if __name__ == "__main__":
             html_max_variants=100,
             output_filename="test",
         )
-        print(f"Generated: {len(html):,} chars")
+        print("Generated: {len(html):,} chars")
         assert "nonce-" in html and "unsafe-inline" not in html
         print("Security: PASS ✅")
     except ImportError:

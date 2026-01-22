@@ -54,14 +54,12 @@ except ImportError as e:
     logger.warning(f"Import manager unavailable: {e}")
     logger.info("✓ Falling back to direct imports")
 
-    from file_1_config import *
     from file_2_models import PipelineState
     from file_5_loader import (
         load_clinvar_file, load_23andme_file, load_vcf_file,
         detect_clinvar_file_type, match_variants_hybrid
     )
     from file_6a_report_generator import create_results_dataframe, generate_all_reports
-    from file_7b_helpers import DataValidator, classify_variants_production
 
     config = sys.modules[__name__]
 
@@ -136,7 +134,6 @@ def get_safeguard_config(yaml_config: Dict) -> Dict:
 
 class FileTypeDetectionError(Exception):
     """Raised when file type is ambiguous."""
-    pass
 
 def get_config_value(name: str, default=None):
     """Get config value safely."""

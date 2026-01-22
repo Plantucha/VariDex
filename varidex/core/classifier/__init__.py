@@ -23,10 +23,7 @@ __version__ = get_version("core.classifier")
 
 # Import core components
 try:
-    from varidex.core.classifier.engine import ACMGClassifier
-    from varidex.core.classifier.config import ACMGConfig, get_preset
-    from varidex.core.classifier.metrics import ACMGMetrics
-    from varidex.core.classifier.rules import combine_evidence, validate_evidence_combination
+    pass
 
     __all__ = [
         "ACMGClassifier",
@@ -36,9 +33,9 @@ try:
         "combine_evidence",
         "validate_evidence_combination",
     ]
-except ImportError as e:
+except ImportError:
     # Graceful degradation if dependencies missing
     import warnings
 
-    warnings.warn(f"Could not import classifier components: {e}")
+    warnings.warn("Could not import classifier components: {e}")
     __all__ = []

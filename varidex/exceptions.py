@@ -91,20 +91,20 @@ ACMGConfigurationError = ValidationError
 def validate_not_none(value: Any, name: str) -> None:
     """Raise ValidationError if value is None."""
     if value is None:
-        raise ValidationError(f"{name} cannot be None")
+        raise ValidationError("{name} cannot be None")
 
 
 def validate_not_empty(value: Any, name: str) -> None:
     """Raise ValidationError if value is empty."""
     if not value:
-        raise ValidationError(f"{name} cannot be empty")
+        raise ValidationError("{name} cannot be empty")
 
 
 def validate_type(value: Any, expected_type: type, name: str) -> None:
     """Raise ValidationError if value is not of expected type."""
     if not isinstance(value, expected_type):
         raise ValidationError(
-            f"{name} must be {expected_type.__name__}, got {type(value).__name__}"
+            "{name} must be {expected_type.__name__}, got {type(value).__name__}"
         )
 
 
@@ -196,11 +196,11 @@ if __name__ == "__main__":
     passed += 1
 
     for name in __all__:
-        assert name in globals(), f"{name} not defined"
+        assert name in globals(), "{name} not defined"
     print("✓ Test 14: All exports defined")
     passed += 1
 
     print("=" * 70)
-    print(f"Self-test: {passed}/{total} passed")
+    print("Self-test: {passed}/{total} passed")
     print("✅ ALL TESTS PASSED" if passed == total else "❌ SOME TESTS FAILED")
     print("=" * 70)

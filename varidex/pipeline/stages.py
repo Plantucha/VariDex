@@ -76,7 +76,7 @@ def validate_stage_dependencies(stage_id: int, completed_stages: Set[int]) -> Tu
     required = set(STAGE_DEPENDENCIES.get(stage_id, []))
     missing = required - completed_stages
     if missing:
-        return False, f"Stage {stage_id} missing dependencies: {sorted(missing)}"
+        return False, "Stage {stage_id} missing dependencies: {sorted(missing)}"
     return True, ""
 
 
@@ -134,7 +134,7 @@ class StageProfiler:
         with self._lock:  # OPTIMIZED: thread-safe
             self.metrics.append(metric)
         logger.info(
-            f"⏱ {metric.stage_name}: {metric.duration_sec}s, {metric.memory_mb}MB, {metric.output_rows} rows"
+            "⏱ {metric.stage_name}: {metric.duration_sec}s, {metric.memory_mb}MB, {metric.output_rows} rows"
         )
 
     def export_metrics(self, output_path: Path):
@@ -142,7 +142,7 @@ class StageProfiler:
             metrics_data = [asdict(m) for m in self.metrics]
         with open(output_path, "w") as f:
             json.dump(metrics_data, f, indent=2)
-        logger.info(f"📊 Metrics exported to {output_path}")
+        logger.info("📊 Metrics exported to {output_path}")
 
 
 class CheckpointManager:
@@ -162,7 +162,7 @@ class CheckpointManager:
         if not self.enabled:
             return df
 
-        file_path = self.checkpoint_dir / f"stage_{stage_id}_{stage_name}.parquet"
+        file_path = self.checkpoint_dir / "stage_{stage_id}_{stage_name}.parquet"
         df.to_parquet(file_path, index=False, compression="zstd", compression_level=3)  # OPTIMIZED
 
         checkpoint = StageCheckpoint(
@@ -172,13 +172,13 @@ class CheckpointManager:
             file_path=file_path,  # OPTIMIZED: no hash
         )
         self.checkpoints[stage_id] = checkpoint
-        logger.debug(f"💾 Checkpoint saved: Stage {stage_id} ({len(df):,} rows)")
+        logger.debug("💾 Checkpoint saved: Stage {stage_id} ({len(df):,} rows)")
 
         if self.free_memory:  # OPTIMIZED: memory management
             df_copy = df.copy()
             del df
             gc.collect()
-            logger.debug(f"♻️ Memory freed for stage {stage_id}")
+            logger.debug("♻️ Memory freed for stage {stage_id}")
             return df_copy
         return df
 
@@ -188,7 +188,7 @@ class CheckpointManager:
         checkpoint = self.checkpoints[stage_id]
         if checkpoint.file_path and checkpoint.file_path.exists():
             df = pd.read_parquet(checkpoint.file_path)
-            logger.info(f"♻ Resumed from Stage {stage_id} checkpoint ({len(df):,} rows)")
+            logger.info("♻ Resumed from Stage {stage_id} checkpoint ({len(df):,} rows)")
             return df
         return None
 
@@ -217,26 +217,26 @@ class StageExecutor:
         if stage_id == 2:
             clinvar_file = args[0] if args else kwargs.get("clinvar_file")
             if clinvar_file and not clinvar_file.exists():
-                raise FileNotFoundError(f"ClinVar file not found: {clinvar_file}")
+                raise FileNotFoundError("ClinVar file not found: {clinvar_file}")
         elif stage_id == 3:
             user_file = args[0] if args else kwargs.get("user_file")
             if user_file and not user_file.exists():
-                raise FileNotFoundError(f"User file not found: {user_file}")
-        logger.info(f"✓ DRY-RUN validated inputs for Stage {stage_id}")
+                raise FileNotFoundError("User file not found: {user_file}")
+        logger.info("✓ DRY-RUN validated inputs for Stage {stage_id}")
 
     def execute(self, stage_id: int, stage_name: str, stage_func, *args, **kwargs):
         if stage_id in self.skip_stages:
-            logger.warning(f"⏭ Stage {stage_id} SKIPPED")
+            logger.warning("⏭ Stage {stage_id} SKIPPED")
             return None
 
         valid, error = validate_stage_dependencies(stage_id, self.completed_stages)
         if not valid:
-            logger.error(f"❌ {error}")
+            logger.error("❌ {error}")
             raise ValueError(error)
 
         if self.dry_run:
             self._validate_dry_run_inputs(stage_id, *args, **kwargs)
-            logger.info(f"🔍 DRY-RUN Stage {stage_id}: {stage_name}")
+            logger.info("🔍 DRY-RUN Stage {stage_id}: {stage_name}")
             return None
 
         checkpoint_data = self.checkpoint_manager.load_checkpoint(stage_id)
@@ -249,7 +249,7 @@ class StageExecutor:
         )
 
         try:
-            logger.info(f"▶ Stage {stage_id}: {stage_name}")
+            logger.info("▶ Stage {stage_id}: {stage_name}")
             result = stage_func(*args, **kwargs)
 
             output_rows = len(result) if isinstance(result, pd.DataFrame) else 0
@@ -262,7 +262,7 @@ class StageExecutor:
             return result
         except Exception as e:
             self.profiler.end_stage(ctx, status="failed", error=str(e))
-            logger.error(f"❌ Stage {stage_id} failed: {e}")
+            logger.error("❌ Stage {stage_id} failed: {e}")
             raise
 
 
@@ -271,7 +271,7 @@ def execute_stage2_load_clinvar(
 ) -> pd.DataFrame:
     """STAGE 2: Load ClinVar - validation removed (handled by StageExecutor)."""
     clinvar_df = loader.load_clinvar_file(clinvar_file, checkpoint_dir=checkpoint_dir)
-    logger.info(f"✓ Loaded {len(clinvar_df):,} ClinVar variants")
+    logger.info("✓ Loaded {len(clinvar_df):,} ClinVar variants")
     return clinvar_df
 
 
@@ -279,7 +279,7 @@ def execute_stage3_load_user_data(user_file: Path, user_type: str, loader: Any) 
     """STAGE 3: Load user genome data."""
     if user_type == "23andme":
         user_df = loader.load_23andme_file(user_file)
-    elif user_type == "vcf":
+    elif user_type == "vc":
         if hasattr(loader, "load_vcf_file") and loader.load_vcf_file:
             user_df = loader.load_vcf_file(user_file)
         else:
@@ -291,14 +291,14 @@ def execute_stage3_load_user_data(user_file: Path, user_type: str, loader: Any) 
                         "#CHROM": "chromosome",
                         "POS": "position",
                         "ID": "rsid",
-                        "REF": "ref",
+                        "REF": "re",
                         "ALT": "alt",
                     },
                     inplace=True,
                 )
     else:
         user_df = pd.read_csv(user_file, sep="\t", low_memory=False)
-    logger.info(f"✓ Loaded {len(user_df):,} user variants")
+    logger.info("✓ Loaded {len(user_df):,} user variants")
     return user_df
 
 
@@ -316,7 +316,7 @@ def execute_stage4_hybrid_matching(
         pbar.update(len(matched_df))
     if len(matched_df) == 0:
         raise ValueError("No matches found! Check file formats and genomic coordinates")
-    logger.info(f"✓ Matched {len(matched_df):,} variants")
+    logger.info("✓ Matched {len(matched_df):,} variants")
     return matched_df
 
 
@@ -340,7 +340,7 @@ def execute_stage5_acmg_classification(
     from varidex.utils.helpers import classify_variants_production
 
     if parallel and len(matched_df) > batch_size:
-        logger.info(f"🔀 Parallel ACMG classification ({len(matched_df):,} variants)")
+        logger.info("🔀 Parallel ACMG classification ({len(matched_df):,} variants)")
         batches = [
             matched_df.iloc[i : i + batch_size] for i in range(0, len(matched_df), batch_size)
         ]
@@ -360,7 +360,7 @@ def execute_stage5_acmg_classification(
                     for key, value in batch_stats.items():
                         combined_stats[key] = combined_stats.get(key, 0) + value
                     pbar.update(1)
-        logger.info(f"✓ Classified {len(classified_variants):,} variants (parallel)")
+        logger.info("✓ Classified {len(classified_variants):,} variants (parallel)")
         return classified_variants, combined_stats
     else:
         with tqdm(total=len(matched_df), desc="Classifying variants", unit="var") as pbar:
@@ -370,14 +370,14 @@ def execute_stage5_acmg_classification(
             pbar.update(len(classified_variants))
         if not classified_variants:
             raise ValueError("Classification failed: no variants classified")
-        logger.info(f"✓ Classified {len(classified_variants):,} variants")
+        logger.info("✓ Classified {len(classified_variants):,} variants")
         return classified_variants, stats
 
 
 def execute_stage6_create_results(classified_variants: List, reports: Any) -> pd.DataFrame:
     """STAGE 6: Create results DataFrame."""
     results_df = reports.create_results_dataframe(classified_variants)
-    logger.info(f"✓ Created results DataFrame: {len(results_df):,} rows")
+    logger.info("✓ Created results DataFrame: {len(results_df):,} rows")
     return results_df
 
 
@@ -390,7 +390,7 @@ def execute_stage7_generate_reports(
     with tqdm(total=3, desc="Generating reports", unit="file") as pbar:
         report_files = reports.generate_all_reports(results_df, stats, output_dir=output_dir)
         pbar.update(3)
-    logger.info(f"✓ Reports generated in: {output_dir.absolute()}/")
+    logger.info("✓ Reports generated in: {output_dir.absolute()}/")
     return report_files
 
 
@@ -431,7 +431,7 @@ if __name__ == "__main__":
     ]
     for stage_id, stage_func in stages:
         assert callable(stage_func)
-        print(f"✓ Test {stage_id}: {stage_func.__name__}")
+        print("✓ Test {stage_id}: {stage_func.__name__}")
 
     for stage_id, deps in STAGE_DEPENDENCIES.items():
         assert isinstance(deps, list)

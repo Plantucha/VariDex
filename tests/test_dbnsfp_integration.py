@@ -4,15 +4,12 @@ Tests PP3 and BP4 evidence codes with mocked prediction responses.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 from varidex.integrations.dbnsfp_client import DbNSFPClient, PredictionScore
 from varidex.core.services.computational_prediction import (
     ComputationalPredictionService,
-    PredictionThresholds,
     ComputationalEvidence,
-    PredictionStrength,
 )
 from varidex.core.classifier.engine_v8 import ACMGClassifierV8
 from varidex.core.models import VariantData

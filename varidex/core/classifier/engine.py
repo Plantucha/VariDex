@@ -19,7 +19,7 @@ Optimizations v6.3.0:
 """
 
 from typing import Tuple, List, Dict, Optional, Set, Any
-from functools import lru_cache, wraps
+from functools import lru_cache
 import pandas as pd
 import logging
 import time
@@ -29,7 +29,6 @@ from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES, CLINVAR_STAR_RATINGS
 from varidex.core.classifier.text_utils import normalize_text, split_delimited_value
 from varidex.core.classifier.config import ACMGConfig, ACMGMetrics
-from varidex.exceptions import ACMGValidationError, ACMGClassificationError
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +75,9 @@ class ACMGClassifier:
             )
 
         logger.info(
-            f"ACMGClassifier {__version__} Initialized: "
-            f"PVS1={self.config.enable_pvs1}, PM2={self.config.enable_pm2}, "
-            f"BP7={self.config.enable_bp7}"
+            "ACMGClassifier {__version__} Initialized: "
+            "PVS1={self.config.enable_pvs1}, PM2={self.config.enable_pm2}, "
+            "BP7={self.config.enable_bp7}"
         )
 
     @staticmethod
@@ -100,8 +99,8 @@ class ACMGClassifier:
 
             return 0
 
-        except Exception as e:
-            logger.warning(f"Failed to get star rating for '{review_status}': {e}")
+        except Exception:
+            logger.warning("Failed to get star rating for '{review_status}': {e}")
             return 0
 
     @staticmethod
@@ -123,19 +122,19 @@ class ACMGClassifier:
 
             for field, description in required_fields.items():
                 if not hasattr(variant, field):
-                    errors.append(f"Missing {field}: {description}")
+                    errors.append("Missing {field}: {description}")
                 elif pd.isna(getattr(variant, field)) or not getattr(variant, field):
-                    errors.append(f"Empty {field}: {description}")
+                    errors.append("Empty {field}: {description}")
 
             if hasattr(variant, "star_rating"):
                 if variant.star_rating < 0 or variant.star_rating > 4:
-                    errors.append(f"Star rating out of bounds: {variant.star_rating}")
+                    errors.append("Star rating out of bounds: {variant.star_rating}")
 
             return len(errors) == 0, errors
 
-        except Exception as e:
-            logger.error(f"Validation exception: {e}")
-            errors.append(f"Validation exception: {str(e)}")
+        except Exception:
+            logger.error("Validation exception: {e}")
+            errors.append("Validation exception: {str(e)}")
             return False, errors
 
     @staticmethod
@@ -147,8 +146,8 @@ class ACMGClassifier:
 
             return set(split_delimited_value(str(gene_field)))
 
-        except Exception as e:
-            logger.warning(f"Gene extraction failed for '{gene_field}': {e}")
+        except Exception:
+            logger.warning("Gene extraction failed for '{gene_field}': {e}")
             return set()
 
     @staticmethod
@@ -160,8 +159,8 @@ class ACMGClassifier:
 
             return any(ind in cons_lower or ind in sig_lower for ind in LOF_INDICATORS)
 
-        except Exception as e:
-            logger.warning(f"LOF check failed: {e}")
+        except Exception:
+            logger.warning("LOF check failed: {e}")
             return False
 
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
@@ -189,8 +188,8 @@ class ACMGClassifier:
                 if self.metrics:
                     self.metrics.record_validation_error()
                 for error in errors:
-                    evidence.conflicts.add(f"Validation error: {error}")
-                logger.warning(f"Validation failed: {errors}")
+                    evidence.conflicts.add("Validation error: {error}")
+                logger.warning("Validation failed: {errors}")
                 return evidence
 
             # Extract fields
@@ -216,9 +215,9 @@ class ACMGClassifier:
                         matching_genes = genes.intersection(LOF_GENES)
                         if matching_genes:
                             evidence.pvs.add("PVS1")
-                            logger.debug(f"PVS1: LOF in {matching_genes}")
-                except Exception as e:
-                    logger.error(f"PVS1 assignment failed: {e}")
+                            logger.debug("PVS1: LOF in {matching_genes}")
+                except Exception:
+                    logger.error("PVS1 assignment failed: {e}")
 
             # PM4: Protein length changes
             if self.config.enable_pm4:
@@ -231,8 +230,8 @@ class ACMGClassifier:
                         if "deletion" in consequence or "insertion" in consequence:
                             evidence.pm.add("PM4")
                             logger.debug("PM4: Protein length change")
-                except Exception as e:
-                    logger.error(f"PM4 assignment failed: {e}")
+                except Exception:
+                    logger.error("PM4 assignment failed: {e}")
 
             # PP2: Missense in missense-rare genes
             if self.config.enable_pp2:
@@ -241,9 +240,9 @@ class ACMGClassifier:
                         matching_genes = genes.intersection(MISSENSE_RARE_GENES)
                         if matching_genes and "pathogenic" in sig_lower:
                             evidence.pp.add("PP2")
-                            logger.debug(f"PP2: Missense in {matching_genes}")
-                except Exception as e:
-                    logger.error(f"PP2 assignment failed: {e}")
+                            logger.debug("PP2: Missense in {matching_genes}")
+                except Exception:
+                    logger.error("PP2 assignment failed: {e}")
 
             # PM2 DISABLED - add to conflicts
             if not self.config.enable_pm2:
@@ -257,8 +256,8 @@ class ACMGClassifier:
                     if "common" in sig_lower and "polymorphism" in sig_lower:
                         evidence.ba.add("BA1")
                         logger.debug("BA1: Common polymorphism")
-                except Exception as e:
-                    logger.error(f"BA1 assignment failed: {e}")
+                except Exception:
+                    logger.error("BA1 assignment failed: {e}")
 
             # BS1: High population frequency
             if self.config.enable_bs1:
@@ -270,8 +269,8 @@ class ACMGClassifier:
                     ) or ("common" in sig_lower and "pathogenic" not in sig_lower):
                         evidence.bs.add("BS1")
                         logger.debug("BS1: High population frequency")
-                except Exception as e:
-                    logger.error(f"BS1 assignment failed: {e}")
+                except Exception:
+                    logger.error("BS1 assignment failed: {e}")
 
             # BP1: Missense in LOF genes
             if self.config.enable_bp1:
@@ -280,9 +279,9 @@ class ACMGClassifier:
                         matching_genes = genes.intersection(LOF_GENES)
                         if matching_genes and "benign" in sig_lower:
                             evidence.bp.add("BP1")
-                            logger.debug(f"BP1: Missense in LOF gene {matching_genes}")
-                except Exception as e:
-                    logger.error(f"BP1 assignment failed: {e}")
+                            logger.debug("BP1: Missense in LOF gene {matching_genes}")
+                except Exception:
+                    logger.error("BP1 assignment failed: {e}")
 
             # BP3: In-frame indel in repetitive region
             if self.config.enable_bp3:
@@ -291,8 +290,8 @@ class ACMGClassifier:
                         if "repeat" in sig_lower or "repetitive" in sig_lower:
                             evidence.bp.add("BP3")
                             logger.debug("BP3: In-frame indel in repeat")
-                except Exception as e:
-                    logger.error(f"BP3 assignment failed: {e}")
+                except Exception:
+                    logger.error("BP3 assignment failed: {e}")
 
             # BP7 DISABLED - add to conflicts
             if not self.config.enable_bp7:
@@ -304,9 +303,9 @@ class ACMGClassifier:
 
             return evidence
 
-        except Exception as e:
-            logger.error(f"Evidence assignment failed: {e}", exc_info=True)
-            evidence.conflicts.add(f"Assignment error: {str(e)}")
+        except Exception:
+            logger.error("Evidence assignment failed: {e}", exc_info=True)
+            evidence.conflicts.add("Assignment error: {str(e)}")
             return evidence
 
     def calculate_evidence_score(self, evidence: ACMGEvidenceSet) -> Tuple[float, float]:
@@ -329,8 +328,8 @@ class ACMGClassifier:
 
             return float(path_score), float(benign_score)
 
-        except Exception as e:
-            logger.error(f"Score calculation failed: {e}")
+        except Exception:
+            logger.error("Score calculation failed: {e}")
             return 0.0, 0.0
 
     def combine_evidence(self, evidence: ACMGEvidenceSet) -> Tuple[str, str]:
@@ -362,7 +361,7 @@ class ACMGClassifier:
                 if strong_path and strong_benign:
                     return (
                         "Uncertain Significance",
-                        f"Strong conflict ({path_score}v{benign_score})",
+                        "Strong conflict ({path_score}v{benign_score})",
                     )
                 elif strong_path and benign_score < self.config.strong_evidence_threshold:
                     pass  # Continue to pathogenic rules
@@ -373,9 +372,9 @@ class ACMGClassifier:
                     <= path_ratio
                     <= self.config.conflict_balanced_max
                 ):
-                    return "Uncertain Significance", f"Balanced ({path_score}v{benign_score})"
+                    return "Uncertain Significance", "Balanced ({path_score}v{benign_score})"
                 else:
-                    return "Uncertain Significance", f"Conflict ({path_score}v{benign_score})"
+                    return "Uncertain Significance", "Conflict ({path_score}v{benign_score})"
 
             # === PATHOGENIC RULES ===
 
@@ -455,9 +454,9 @@ class ACMGClassifier:
 
             return "Uncertain Significance", "No Evidence"
 
-        except Exception as e:
-            logger.error(f"Classification failed: {e}", exc_info=True)
-            return "Uncertain Significance", f"Error: {str(e)}"
+        except Exception:
+            logger.error("Classification failed: {e}", exc_info=True)
+            return "Uncertain Significance", "Error: {str(e)}"
 
     def classify_variant(self, variant: VariantData) -> Tuple[str, str, ACMGEvidenceSet, float]:
         """Complete classification pipeline with metrics."""
@@ -477,18 +476,18 @@ class ACMGClassifier:
                 self.metrics.record_success(duration, classification, evidence)
 
             logger.info(
-                f"Classified {variant} → {classification} ({confidence}) in {duration:.3f}s"
+                "Classified {variant} → {classification} ({confidence}) in {duration:.3f}s"
             )
 
             return classification, confidence, evidence, duration
 
-        except Exception as e:
+        except Exception:
             duration = time.time() - start_time
             if self.metrics:
                 self.metrics.record_failure()
 
-            logger.error(f"Classification pipeline failed: {e}", exc_info=True)
-            return "Uncertain Significance", f"Error: {str(e)}", ACMGEvidenceSet(), duration
+            logger.error("Classification pipeline failed: {e}", exc_info=True)
+            return "Uncertain Significance", "Error: {str(e)}", ACMGEvidenceSet(), duration
 
     def health_check(self) -> Dict[str, Any]:
         """Health check endpoint for production monitoring."""
@@ -518,10 +517,10 @@ class ACMGClassifier:
 
 if __name__ == "__main__":
     print("=" * 80)
-    print(f"ACMG Classifier {__version__} CORE - Use tests.py for testing")
+    print("ACMG Classifier {__version__} CORE - Use tests.py for testing")
     print("=" * 80)
 else:
-    logger.info(f"ACMGClassifier {__version__} Production classifier loaded")
-    logger.info(f" - {len(LOF_GENES)} LOF genes, {len(MISSENSE_RARE_GENES)} missense-rare genes")
+    logger.info("ACMGClassifier {__version__} Production classifier loaded")
+    logger.info(" - {len(LOF_GENES)} LOF genes, {len(MISSENSE_RARE_GENES)} missense-rare genes")
     logger.info(" - Enterprise features: Error handling, Metrics, Config management")
     logger.info(" - DISABLED: PM2 (gnomAD), BP7 (SpliceAI) - hallucination fixes maintained")

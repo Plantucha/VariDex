@@ -26,7 +26,6 @@ from typing import Tuple, Optional, Dict, Any
 import logging
 import time
 
-from varidex.version import __version__
 from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.classifier.engine import ACMGClassifier
 from varidex.core.classifier.config import ACMGConfig
@@ -80,14 +79,14 @@ class ACMGClassifierV7(ACMGClassifier):
                 self.frequency_service = PopulationFrequencyService(
                     gnomad_client=gnomad_client, thresholds=frequency_thresholds, enable_gnomad=True
                 )
-                logger.info(f"ACMGClassifierV7 {self.VERSION} initialized with gnomAD")
-            except Exception as e:
-                logger.error(f"Failed to initialize gnomAD service: {e}")
+                logger.info("ACMGClassifierV7 {self.VERSION} initialized with gnomAD")
+            except Exception:
+                logger.error("Failed to initialize gnomAD service: {e}")
                 logger.warning("Continuing without gnomAD integration")
                 self.enable_gnomad = False
                 self.frequency_service = None
         else:
-            logger.info(f"ACMGClassifierV7 {self.VERSION} initialized without gnomAD")
+            logger.info("ACMGClassifierV7 {self.VERSION} initialized without gnomAD")
 
     def _extract_variant_coordinates(self, variant: VariantData) -> Optional[Dict[str, Any]]:
         """Extract coordinates from variant for gnomAD query.
@@ -120,9 +119,9 @@ class ACMGClassifierV7(ACMGClassifier):
 
             # Reference allele
             if hasattr(variant, "ref_allele") and variant.ref_allele:
-                coords["ref"] = str(variant.ref_allele)
-            elif hasattr(variant, "ref") and variant.ref:
-                coords["ref"] = str(variant.ref)
+                coords["re"] = str(variant.ref_allele)
+            elif hasattr(variant, "re") and variant.ref:
+                coords["re"] = str(variant.ref)
             else:
                 return None
 
@@ -140,8 +139,8 @@ class ACMGClassifierV7(ACMGClassifier):
 
             return coords
 
-        except Exception as e:
-            logger.warning(f"Failed to extract variant coordinates: {e}")
+        except Exception:
+            logger.warning("Failed to extract variant coordinates: {e}")
             return None
 
     def _infer_inheritance_mode(self, variant: VariantData) -> InheritanceMode:
@@ -173,8 +172,8 @@ class ACMGClassifierV7(ACMGClassifier):
             # Default to unknown
             return InheritanceMode.UNKNOWN
 
-        except Exception as e:
-            logger.debug(f"Failed to infer inheritance mode: {e}")
+        except Exception:
+            logger.debug("Failed to infer inheritance mode: {e}")
             return InheritanceMode.UNKNOWN
 
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
@@ -209,7 +208,7 @@ class ACMGClassifierV7(ACMGClassifier):
                 freq_evidence = self.frequency_service.analyze_frequency(
                     chromosome=coords["chromosome"],
                     position=coords["position"],
-                    ref=coords["ref"],
+                    ref=coords["re"],
                     alt=coords["alt"],
                     inheritance=inheritance,
                     gene=coords.get("gene"),
@@ -218,26 +217,26 @@ class ACMGClassifierV7(ACMGClassifier):
                 # Add evidence codes
                 if freq_evidence.pm2:
                     evidence.pm.add("PM2")
-                    logger.info(f"PM2: {freq_evidence.reasoning}")
+                    logger.info("PM2: {freq_evidence.reasoning}")
 
                 if freq_evidence.ba1:
                     evidence.ba.add("BA1")
-                    logger.info(f"BA1: {freq_evidence.reasoning}")
+                    logger.info("BA1: {freq_evidence.reasoning}")
 
                 if freq_evidence.bs1:
                     evidence.bs.add("BS1")
-                    logger.info(f"BS1: {freq_evidence.reasoning}")
+                    logger.info("BS1: {freq_evidence.reasoning}")
 
                 # Store frequency info for reference
                 if hasattr(evidence, "metadata"):
-                    evidence.metadata["gnomad_af"] = freq_evidence.max_af
+                    evidence.metadata["gnomad_a"] = freq_evidence.max_af
                     evidence.metadata["gnomad_population"] = freq_evidence.max_af_population
 
-                logger.debug(f"Frequency analysis: {freq_evidence.summary()}")
+                logger.debug("Frequency analysis: {freq_evidence.summary()}")
 
-            except Exception as e:
-                logger.error(f"gnomAD frequency analysis failed: {e}")
-                evidence.conflicts.add(f"gnomAD error: {str(e)}")
+            except Exception:
+                logger.error("gnomAD frequency analysis failed: {e}")
+                evidence.conflicts.add("gnomAD error: {str(e)}")
 
         # Convert sets to lists (inherited from parent)
         for attr in ["pvs", "ps", "pm", "pp", "ba", "bs", "bp"]:
@@ -270,19 +269,19 @@ class ACMGClassifierV7(ACMGClassifier):
                 self.metrics.record_success(duration, classification, evidence)
 
             logger.info(
-                f"Classified {variant} → {classification} ({confidence}) "
-                f"in {duration:.3f}s [gnomAD: {self.enable_gnomad}]"
+                "Classified {variant} → {classification} ({confidence}) "
+                "in {duration:.3f}s [gnomAD: {self.enable_gnomad}]"
             )
 
             return classification, confidence, evidence, duration
 
-        except Exception as e:
+        except Exception:
             duration = time.time() - start_time
             if self.metrics:
                 self.metrics.record_failure()
 
-            logger.error(f"Classification pipeline failed: {e}", exc_info=True)
-            return "Uncertain Significance", f"Error: {str(e)}", ACMGEvidenceSet(), duration
+            logger.error("Classification pipeline failed: {e}", exc_info=True)
+            return "Uncertain Significance", "Error: {str(e)}", ACMGEvidenceSet(), duration
 
     def health_check(self) -> Dict[str, Any]:
         """Health check with gnomAD service status.
@@ -325,17 +324,17 @@ class ACMGClassifierV7(ACMGClassifier):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print(f"ACMG Classifier V7 {ACMGClassifierV7.VERSION} - gnomAD Integration")
+    print("ACMG Classifier V7 {ACMGClassifierV7.VERSION} - gnomAD Integration")
     print("=" * 80)
     print("\nEnabled Evidence Codes:")
     classifier = ACMGClassifierV7(enable_gnomad=False)
     codes = classifier.get_enabled_codes()
-    print(f"  Pathogenic: {', '.join(codes['pathogenic'])}")
-    print(f"  Benign: {', '.join(codes['benign'])}")
+    print("  Pathogenic: {', '.join(codes['pathogenic'])}")
+    print("  Benign: {', '.join(codes['benign'])}")
     print("\nWith gnomAD: +PM2, +BA1, +BS1 (10 total codes)")
     print("Without gnomAD: 7 codes (falls back to v6 behavior)")
     print("=" * 80)
 else:
-    logger.info(f"ACMGClassifierV7 {ACMGClassifierV7.VERSION} loaded")
+    logger.info("ACMGClassifierV7 {ACMGClassifierV7.VERSION} loaded")
     logger.info("  Enhanced with gnomAD population frequency (PM2, BA1, BS1)")
     logger.info("  Backward compatible with v6, graceful degradation if gnomAD unavailable")

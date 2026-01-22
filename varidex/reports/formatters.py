@@ -21,7 +21,6 @@ import html
 import re
 from pathlib import Path
 from typing import Dict, Optional
-from datetime import datetime
 
 import pandas as pd
 
@@ -60,9 +59,9 @@ def format_file_size(size_bytes: int) -> str:
     """Format file size for display (e.g., 2.5 MB)."""
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
+            return "{size_bytes:.1f} {unit}"
         size_bytes /= 1024
-    return f"{size_bytes:.1f} TB"
+    return "{size_bytes:.1f} TB"
 
 
 # ==================== CSV GENERATION ====================
@@ -72,7 +71,7 @@ def generate_csv_report(
     df: pd.DataFrame, output_dir: Path, timestamp: str, excel_compatible: bool = True
 ) -> Path:
     """Generate CSV report with Excel compatibility and formula injection protection."""
-    output_path = output_dir / f"classified_variants_{timestamp}.csv"
+    output_path = output_dir / "classified_variants_{timestamp}.csv"
 
     if "gene" in df.columns:
         df = df.copy()
@@ -87,8 +86,8 @@ def generate_csv_report(
     with open(output_path, "w", encoding="utf-8-sig") as f:
         df.to_csv(f, index=False, quoting=csv.QUOTE_NONNUMERIC)
 
-    size = format_file_size(output_path.stat().st_size)
-    logger.info(f"CSV report generated: {output_path.name} ({size})")
+    format_file_size(output_path.stat().st_size)
+    logger.info("CSV report generated: {output_path.name} ({size})")
     return output_path
 
 
@@ -103,10 +102,10 @@ def generate_json_report(
     max_variants: int = MAX_JSON_VARIANTS,
 ) -> Path:
     """Generate JSON report with size management and automatic stratification."""
-    output_path = output_dir / f"classified_variants_{timestamp}.json"
+    output_path = output_dir / "classified_variants_{timestamp}.json"
 
     if len(df) > max_variants:
-        logger.info(f"Large dataset ({len(df):,} variants), creating stratified JSONs")
+        logger.info("Large dataset ({len(df):,} variants), creating stratified JSONs")
         return _generate_stratified_json(df, stats, output_dir, timestamp)
 
     data = {
@@ -122,8 +121,8 @@ def generate_json_report(
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2)
 
-    size = format_file_size(output_path.stat().st_size)
-    logger.info(f"JSON report generated: {output_path.name} ({size})")
+    format_file_size(output_path.stat().st_size)
+    logger.info("JSON report generated: {output_path.name} ({size})")
     return output_path
 
 
@@ -139,7 +138,7 @@ def _generate_stratified_json(
 
     for name, subset in stratified.items():
         if len(subset) > 0:
-            subset_path = output_dir / f"{name}_{timestamp}.json"
+            subset_path = output_dir / "{name}_{timestamp}.json"
             data = {
                 "metadata": {
                     "generated_at": timestamp,
@@ -150,9 +149,9 @@ def _generate_stratified_json(
             }
             with open(subset_path, "w") as f:
                 json.dump(data, f, indent=2)
-            logger.info(f"  • {name}.json: {len(subset):,} variants")
+            logger.info("  • {name}.json: {len(subset):,} variants")
 
-    summary_path = output_dir / f"summary_{timestamp}.json"
+    summary_path = output_dir / "summary_{timestamp}.json"
     summary_data = {
         "metadata": {
             "generated_at": timestamp,
@@ -162,16 +161,16 @@ def _generate_stratified_json(
         },
         "statistics": stats,
         "files": {
-            "pathogenic": f"pathogenic_{timestamp}.json",
-            "benign": f"benign_{timestamp}.json",
-            "vus": f"vus_{timestamp}.json",
+            "pathogenic": "pathogenic_{timestamp}.json",
+            "benign": "benign_{timestamp}.json",
+            "vus": "vus_{timestamp}.json",
         },
     }
 
     with open(summary_path, "w") as f:
         json.dump(summary_data, f, indent=2)
 
-    logger.info(f"✓ Stratified JSON complete: {summary_path.name}")
+    logger.info("✓ Stratified JSON complete: {summary_path.name}")
     return summary_path
 
 
@@ -188,7 +187,7 @@ def generate_html_report(
     """Generate interactive HTML report with XSS protection."""
     from varidex.reports.templates.builder import generate_html_template
 
-    output_path = output_dir / f"classified_variants_{timestamp}.html"
+    output_path = output_dir / "classified_variants_{timestamp}.html"
     max_html_variants = 1000
 
     table_rows = []
@@ -203,7 +202,7 @@ def generate_html_report(
         }
 
         table_rows.append(
-            f"""
+            """
             <tr>
                 <td>{escaped_row['icon']}</td>
                 <td>{escaped_row['rsid']}</td>
@@ -230,8 +229,8 @@ def generate_html_report(
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    size = format_file_size(output_path.stat().st_size)
-    logger.info(f"HTML report generated: {output_path.name} ({size})")
+    format_file_size(output_path.stat().st_size)
+    logger.info("HTML report generated: {output_path.name} ({size})")
     return output_path
 
 
@@ -244,15 +243,15 @@ def generate_conflict_report(df: pd.DataFrame, output_dir: Path, timestamp: str)
         logger.warning("Cannot generate conflict report: DataFrame is empty")
         return None
 
-    output_path = output_dir / f"conflicts_{timestamp}.txt"
+    output_path = output_dir / "conflicts_{timestamp}.txt"
     conflicts = df[df["has_conflicts"] == True]
 
     with open(output_path, "w") as f:
         f.write("CONFLICTING INTERPRETATIONS REPORT\n")
         f.write("=" * 70 + "\n\n")
-        f.write(f"Total variants: {len(df):,}\n")
-        f.write(f"Conflicts detected: {len(conflicts):,}\n")
-        f.write(f"Conflict rate: {len(conflicts)/len(df)*100:.1f}%\n\n")
+        f.write("Total variants: {len(df):,}\n")
+        f.write("Conflicts detected: {len(conflicts):,}\n")
+        f.write("Conflict rate: {len(conflicts)/len(df)*100:.1f}%\n\n")
 
         if len(conflicts) > 0:
             f.write("=" * 70 + "\n")
@@ -260,12 +259,12 @@ def generate_conflict_report(df: pd.DataFrame, output_dir: Path, timestamp: str)
             f.write("=" * 70 + "\n\n")
 
             for idx, row in conflicts.iterrows():
-                f.write(f"rsID: {row.get('rsid', 'N/A')}\n")
-                f.write(f"Gene: {row.get('gene', 'N/A')}\n")
-                f.write(f"Classification: {row.get('acmg_classification', 'N/A')}\n")
-                f.write(f"Pathogenic: {row.get('all_pathogenic_evidence', 'None')}\n")
-                f.write(f"Benign: {row.get('all_benign_evidence', 'None')}\n")
+                f.write("rsID: {row.get('rsid', 'N/A')}\n")
+                f.write("Gene: {row.get('gene', 'N/A')}\n")
+                f.write("Classification: {row.get('acmg_classification', 'N/A')}\n")
+                f.write("Pathogenic: {row.get('all_pathogenic_evidence', 'None')}\n")
+                f.write("Benign: {row.get('all_benign_evidence', 'None')}\n")
                 f.write("-" * 70 + "\n")
 
-    logger.info(f"Conflict report generated: {output_path.name}")
+    logger.info("Conflict report generated: {output_path.name}")
     return output_path

@@ -28,7 +28,6 @@ from typing import Tuple, Optional, Dict, Any
 import logging
 import time
 
-from varidex.version import __version__
 from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.classifier.engine_v7 import ACMGClassifierV7
 from varidex.core.classifier.config import ACMGConfig
@@ -94,16 +93,16 @@ class ACMGClassifierV8(ACMGClassifierV7):
                     enable_predictions=True,
                 )
                 logger.info(
-                    f"ACMGClassifierV8 {self.VERSION} initialized with computational predictions"
+                    "ACMGClassifierV8 {self.VERSION} initialized with computational predictions"
                 )
-            except Exception as e:
-                logger.error(f"Failed to initialize prediction service: {e}")
+            except Exception:
+                logger.error("Failed to initialize prediction service: {e}")
                 logger.warning("Continuing without computational predictions")
                 self.enable_predictions = False
                 self.prediction_service = None
         else:
             logger.info(
-                f"ACMGClassifierV8 {self.VERSION} initialized without computational predictions"
+                "ACMGClassifierV8 {self.VERSION} initialized without computational predictions"
             )
 
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
@@ -137,7 +136,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 pred_evidence = self.prediction_service.analyze_predictions(
                     chromosome=coords["chromosome"],
                     position=coords["position"],
-                    ref=coords["ref"],
+                    ref=coords["re"],
                     alt=coords["alt"],
                     gene=coords.get("gene"),
                 )
@@ -145,11 +144,11 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 # Add evidence codes
                 if pred_evidence.pp3:
                     evidence.pp.add("PP3")
-                    logger.info(f"PP3: {pred_evidence.reasoning}")
+                    logger.info("PP3: {pred_evidence.reasoning}")
 
                 if pred_evidence.bp4:
                     evidence.bp.add("BP4")
-                    logger.info(f"BP4: {pred_evidence.reasoning}")
+                    logger.info("BP4: {pred_evidence.reasoning}")
 
                 # Store prediction info for reference
                 if hasattr(evidence, "metadata"):
@@ -164,11 +163,11 @@ class ACMGClassifierV8(ACMGClassifierV7):
                         },
                     }
 
-                logger.debug(f"Prediction analysis: {pred_evidence.summary()}")
+                logger.debug("Prediction analysis: {pred_evidence.summary()}")
 
-            except Exception as e:
-                logger.error(f"Computational prediction analysis failed: {e}")
-                evidence.conflicts.add(f"Prediction error: {str(e)}")
+            except Exception:
+                logger.error("Computational prediction analysis failed: {e}")
+                evidence.conflicts.add("Prediction error: {str(e)}")
 
         # Convert sets to lists (inherited from parent)
         for attr in ["pvs", "ps", "pm", "pp", "ba", "bs", "bp"]:
@@ -201,19 +200,19 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 self.metrics.record_success(duration, classification, evidence)
 
             logger.info(
-                f"Classified {variant} → {classification} ({confidence}) "
-                f"in {duration:.3f}s [gnomAD: {self.enable_gnomad}, predictions: {self.enable_predictions}]"
+                "Classified {variant} → {classification} ({confidence}) "
+                "in {duration:.3f}s [gnomAD: {self.enable_gnomad}, predictions: {self.enable_predictions}]"
             )
 
             return classification, confidence, evidence, duration
 
-        except Exception as e:
+        except Exception:
             duration = time.time() - start_time
             if self.metrics:
                 self.metrics.record_failure()
 
-            logger.error(f"Classification pipeline failed: {e}", exc_info=True)
-            return "Uncertain Significance", f"Error: {str(e)}", ACMGEvidenceSet(), duration
+            logger.error("Classification pipeline failed: {e}", exc_info=True)
+            return "Uncertain Significance", "Error: {str(e)}", ACMGEvidenceSet(), duration
 
     def health_check(self) -> Dict[str, Any]:
         """Health check with gnomAD and prediction service status.
@@ -306,25 +305,25 @@ class ACMGClassifierV8(ACMGClassifierV7):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print(f"ACMG Classifier V8 {ACMGClassifierV8.VERSION} - Full Integration")
+    print("ACMG Classifier V8 {ACMGClassifierV8.VERSION} - Full Integration")
     print("=" * 80)
     print("\nEnabled Evidence Codes:")
 
     # Show without features
     classifier_basic = ACMGClassifierV8(enable_gnomad=False, enable_predictions=False)
     codes_basic = classifier_basic.get_enabled_codes()
-    print(f"\nBasic (no external data):")
-    print(f"  Pathogenic: {', '.join(codes_basic['pathogenic'])}")
-    print(f"  Benign: {', '.join(codes_basic['benign'])}")
-    print(f"  Total: {len(codes_basic['pathogenic']) + len(codes_basic['benign'])} codes")
+    print("\nBasic (no external data):")
+    print("  Pathogenic: {', '.join(codes_basic['pathogenic'])}")
+    print("  Benign: {', '.join(codes_basic['benign'])}")
+    print("  Total: {len(codes_basic['pathogenic']) + len(codes_basic['benign'])} codes")
 
     # Show with gnomAD
-    print(f"\nWith gnomAD (+PM2, +BA1, +BS1):")
-    print(f"  Total: 10 codes")
+    print("\nWith gnomAD (+PM2, +BA1, +BS1):")
+    print("  Total: 10 codes")
 
     # Show with all features
-    print(f"\nWith gnomAD + Predictions (+PP3, +BP4):")
-    print(f"  Total: 12 codes (43% ACMG coverage)")
+    print("\nWith gnomAD + Predictions (+PP3, +BP4):")
+    print("  Total: 12 codes (43% ACMG coverage)")
 
     print("\nNew in V8:")
     print("  • PP3: Computational evidence supporting pathogenic")
@@ -341,7 +340,7 @@ if __name__ == "__main__":
 
     print("=" * 80)
 else:
-    logger.info(f"ACMGClassifierV8 {ACMGClassifierV8.VERSION} loaded")
+    logger.info("ACMGClassifierV8 {ACMGClassifierV8.VERSION} loaded")
     logger.info("  Enhanced with computational predictions (PP3, BP4)")
     logger.info("  Includes gnomAD integration (PM2, BA1, BS1)")
     logger.info("  Backward compatible with v7 and v6, graceful degradation")

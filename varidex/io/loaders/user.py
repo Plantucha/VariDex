@@ -26,14 +26,14 @@ except ImportError:
 from varidex.exceptions import DataLoadError, ValidationError
 
 logger = logging.getLogger(__name__)
-USER_FILE_FORMATS = ["23andme", "vcf", "tsv"]
+USER_FILE_FORMATS = ["23andme", "vc", "tsv"]
 
 
 def validate_file_safety(filepath: Path) -> bool:
     """Validate file exists and is readable."""
     filepath = Path(filepath)
     if not filepath.exists():
-        raise FileNotFoundError(f"File not found: {filepath}")
+        raise FileNotFoundError("File not found: {filepath}")
     if filepath.stat().st_size == 0:
         raise ValidationError("File is empty", context={"file": str(filepath)})
     return True
@@ -111,7 +111,7 @@ def detect_user_file_type(filepath: Path) -> str:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             lines = [f.readline() for _ in range(10)]
         if any(l.startswith("##fileformat=VCF") or l.startswith("#CHROM") for l in lines):
-            return "vcf"
+            return "vc"
         if any("23andMe" in l for l in lines):
             return "23andme"
         return "tsv"
@@ -124,7 +124,7 @@ def detect_user_file_type(filepath: Path) -> str:
 def load_23andme_file(filepath: Path) -> pd.DataFrame:
     """Load 23andMe raw data file - preserves rs*, i*, d* variants."""
     filepath = Path(filepath)
-    logger.info(f"Loading 23andMe: {Path(filepath).name}")
+    logger.info("Loading 23andMe: {Path(filepath).name}")
     validate_file_safety(filepath)
 
     try:
@@ -148,8 +148,8 @@ def load_23andme_file(filepath: Path) -> pd.DataFrame:
                 "No valid variants after quality check", context={"file": str(filepath)}
             )
 
-        logger.info(f"Loaded {len(df):,} variants from {stats['input_rows']:,} rows")
-        logger.info(f"Variant types: {stats['type_distribution']}")
+        logger.info("Loaded {len(df):,} variants from {stats['input_rows']:,} rows")
+        logger.info("Variant types: {stats['type_distribution']}")
 
         return df
 
@@ -164,7 +164,7 @@ def load_23andme_file(filepath: Path) -> pd.DataFrame:
 def load_user_vcf(filepath: Path) -> pd.DataFrame:
     """Load personal VCF file - consistent validation with 23andMe."""
     filepath = Path(filepath)
-    logger.info(f"Loading VCF: {Path(filepath).name}")
+    logger.info("Loading VCF: {Path(filepath).name}")
     validate_file_safety(filepath)
 
     try:
@@ -186,8 +186,8 @@ def load_user_vcf(filepath: Path) -> pd.DataFrame:
         df = validate_chromosome_consistency(df)
         df, stats = validate_variant_data_quality(df)
 
-        logger.info(f"Loaded {len(df):,} variants from {stats['input_rows']:,} rows")
-        logger.info(f"Variant types: {stats['type_distribution']}")
+        logger.info("Loaded {len(df):,} variants from {stats['input_rows']:,} rows")
+        logger.info("Variant types: {stats['type_distribution']}")
 
         return df[["rsid", "chromosome", "position", "genotype", "variant_id_type"]]
 
@@ -200,7 +200,7 @@ def load_user_vcf(filepath: Path) -> pd.DataFrame:
 def load_user_tsv(filepath: Path) -> pd.DataFrame:
     """Load generic TSV with auto-column detection and consistent validation."""
     filepath = Path(filepath)
-    logger.info(f"Loading TSV: {Path(filepath).name}")
+    logger.info("Loading TSV: {Path(filepath).name}")
     validate_file_safety(filepath)
 
     try:
@@ -224,15 +224,15 @@ def load_user_tsv(filepath: Path) -> pd.DataFrame:
         miss = [c for c in req if c not in df.columns]
         if miss:
             raise ValidationError(
-                f"Missing required columns: {miss}",
+                "Missing required columns: {miss}",
                 context={"file": str(filepath), "available": list(df.columns)},
             )
 
         df = validate_chromosome_consistency(df)
         df, stats = validate_variant_data_quality(df)
 
-        logger.info(f"Loaded {len(df):,} variants from {stats['input_rows']:,} rows")
-        logger.info(f"Variant types: {stats['type_distribution']}")
+        logger.info("Loaded {len(df):,} variants from {stats['input_rows']:,} rows")
+        logger.info("Variant types: {stats['type_distribution']}")
 
         return df[["rsid", "chromosome", "position", "genotype", "variant_id_type"]]
 
@@ -261,9 +261,9 @@ def load_user_file(filepath: Path, file_format: Optional[str] = None) -> pd.Data
     if file_format is None:
         file_format = detect_user_file_type(filepath)
 
-    loaders = {"23andme": load_23andme_file, "vcf": load_user_vcf, "tsv": load_user_tsv}
+    loaders = {"23andme": load_23andme_file, "vc": load_user_vcf, "tsv": load_user_tsv}
 
     if file_format not in loaders:
-        raise ValueError(f"Unknown format: {file_format}. Must be {USER_FILE_FORMATS}")
+        raise ValueError("Unknown format: {file_format}. Must be {USER_FILE_FORMATS}")
 
     return loaders[file_format](filepath)

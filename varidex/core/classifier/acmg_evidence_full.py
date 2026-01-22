@@ -41,7 +41,7 @@ Reference: Richards et al. 2015, PMID 25741868
 Version: 1.2.0 (critical bugfix - PS3/BS3 enum support)
 """
 
-from typing import Dict, Optional, Set, Any, Union
+from typing import Dict, Optional, Set, Union
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -162,12 +162,12 @@ class ACMGEvidenceEngine:
         # Input validation
         if not isinstance(lof_genes, set):
             raise TypeError(
-                f"lof_genes must be set, got {type(lof_genes).__name__}. "
+                "lof_genes must be set, got {type(lof_genes).__name__}. "
                 "Use set(LOF_GENES) if converting from other types."
             )
         if not isinstance(missense_rare_genes, set):
             raise TypeError(
-                f"missense_rare_genes must be set, got {type(missense_rare_genes).__name__}"
+                "missense_rare_genes must be set, got {type(missense_rare_genes).__name__}"
             )
 
         if not lof_genes:
@@ -180,8 +180,8 @@ class ACMGEvidenceEngine:
         self.thresholds = thresholds if thresholds else PredictorThresholds()
 
         logger.info(
-            f"ACMGEvidenceEngine v1.2.0 initialized: {len(lof_genes)} LOF genes, "
-            f"{len(missense_rare_genes)} missense-rare genes"
+            "ACMGEvidenceEngine v1.2.0 initialized: {len(lof_genes)} LOF genes, "
+            "{len(missense_rare_genes)} missense-rare genes"
         )
 
     # ========== PATHOGENIC EVIDENCE ==========
@@ -205,11 +205,11 @@ class ACMGEvidenceEngine:
 
         if is_lof and is_lof_gene:
             return EvidenceResult(
-                "PVS1", True, f"LOF variant in LOF-intolerant gene {gene}", 1.0, True
+                "PVS1", True, "LOF variant in LOF-intolerant gene {gene}", 1.0, True
             )
 
         return EvidenceResult(
-            "PVS1", False, f"Not LOF in LOF gene (gene={gene}, type={variant_type})", 0.0, True
+            "PVS1", False, "Not LOF in LOF gene (gene={gene}, type={variant_type})", 0.0, True
         )
 
     def ps1(self, gene: str, aa_change: Optional[str], data: DataRequirements) -> EvidenceResult:
@@ -225,7 +225,7 @@ class ACMGEvidenceEngine:
 
         if data.clinvar_pathogenic_same_aa:
             return EvidenceResult(
-                "PS1", True, f"Same AA change as known pathogenic in {gene}", 0.9, True
+                "PS1", True, "Same AA change as known pathogenic in {gene}", 0.9, True
             )
 
         return EvidenceResult("PS1", False, "Different AA change (checked, no match)", 0.0, True)
@@ -256,7 +256,7 @@ class ACMGEvidenceEngine:
                 "PS3", True, "Functional studies confirm deleterious effect", 0.95, True
             )
 
-        return EvidenceResult("PS3", False, f"Functional study: {result}", 0.0, True)
+        return EvidenceResult("PS3", False, "Functional study: {result}", 0.0, True)
 
     def ps4(self, data: DataRequirements) -> EvidenceResult:
         """PS4: Prevalence in affected significantly > controls."""
@@ -269,8 +269,8 @@ class ACMGEvidenceEngine:
             return EvidenceResult("PM1", False, "Functional domain data not available", 0.0, False)
 
         if data.in_functional_domain:
-            domain = data.domain_name or "functional domain"
-            return EvidenceResult("PM1", True, f"Located in {domain}", 0.8, True)
+            data.domain_name or "functional domain"
+            return EvidenceResult("PM1", True, "Located in {domain}", 0.8, True)
 
         return EvidenceResult("PM1", False, "Not in functional domain", 0.0, True)
 
@@ -285,10 +285,10 @@ class ACMGEvidenceEngine:
 
         if af is not None and af < self.thresholds.pm2_af:
             return EvidenceResult(
-                "PM2", True, f"Absent/rare in population (AF={af:.6f})", 0.85, True
+                "PM2", True, "Absent/rare in population (AF={af:.6f})", 0.85, True
             )
 
-        return EvidenceResult("PM2", False, f"Present in population (AF={af})", 0.0, True)
+        return EvidenceResult("PM2", False, "Present in population (AF={af})", 0.0, True)
 
     def pm3(self, data: DataRequirements) -> EvidenceResult:
         """PM3: Detected in trans with pathogenic (recessive)."""
@@ -345,10 +345,10 @@ class ACMGEvidenceEngine:
         is_constrained = gene in self.missense_rare_genes
 
         if is_missense and is_constrained:
-            return EvidenceResult("PP2", True, f"Missense in constrained gene {gene}", 0.7, True)
+            return EvidenceResult("PP2", True, "Missense in constrained gene {gene}", 0.7, True)
 
         return EvidenceResult(
-            "PP2", False, f"Not missense in constrained gene (gene={gene})", 0.0, True
+            "PP2", False, "Not missense in constrained gene (gene={gene})", 0.0, True
         )
 
     def pp3(self, data: DataRequirements) -> EvidenceResult:
@@ -387,15 +387,15 @@ class ACMGEvidenceEngine:
 
         # Require 2+ deleterious predictions
         if deleterious_count >= 2:
-            details = ", ".join(f"{name}={val:.3f}" for name, _, val in scores)
+            details = ", ".join("{name}={val:.3f}" for name, _, val in scores)
             return EvidenceResult(
-                "PP3", True, f"Multiple tools predict deleterious ({details})", 0.65, True
+                "PP3", True, "Multiple tools predict deleterious ({details})", 0.65, True
             )
 
         return EvidenceResult(
             "PP3",
             False,
-            f"Insufficient computational support ({deleterious_count}/{len(scores)} tools)",
+            "Insufficient computational support ({deleterious_count}/{len(scores)} tools)",
             0.0,
             True,
         )
@@ -421,7 +421,7 @@ class ACMGEvidenceEngine:
         path_terms = {"pathogenic", "likely_pathogenic"}
 
         if any(term in clinvar_sig.lower() for term in path_terms):
-            return EvidenceResult("PP5", True, f"ClinVar reports: {clinvar_sig}", 0.8, True)
+            return EvidenceResult("PP5", True, "ClinVar reports: {clinvar_sig}", 0.8, True)
 
         return EvidenceResult("PP5", False, "No pathogenic reports", 0.0, True)
 
@@ -434,11 +434,11 @@ class ACMGEvidenceEngine:
 
         if data.gnomad_af > self.thresholds.ba1_af:
             return EvidenceResult(
-                "BA1", True, f"Common polymorphism (AF={data.gnomad_af:.4f})", 1.0, True
+                "BA1", True, "Common polymorphism (AF={data.gnomad_af:.4f})", 1.0, True
             )
 
         return EvidenceResult(
-            "BA1", False, f"Frequency below BA1 threshold (AF={data.gnomad_af:.6f})", 0.0, True
+            "BA1", False, "Frequency below BA1 threshold (AF={data.gnomad_af:.6f})", 0.0, True
         )
 
     def bs1(self, data: DataRequirements) -> EvidenceResult:
@@ -448,11 +448,11 @@ class ACMGEvidenceEngine:
 
         if data.gnomad_af > self.thresholds.bs1_af:
             return EvidenceResult(
-                "BS1", True, f"Higher than expected frequency (AF={data.gnomad_af:.4f})", 0.9, True
+                "BS1", True, "Higher than expected frequency (AF={data.gnomad_af:.4f})", 0.9, True
             )
 
         return EvidenceResult(
-            "BS1", False, f"Frequency acceptable (AF={data.gnomad_af:.6f})", 0.0, True
+            "BS1", False, "Frequency acceptable (AF={data.gnomad_af:.6f})", 0.0, True
         )
 
     def bs2(self, data: DataRequirements) -> EvidenceResult:
@@ -476,7 +476,7 @@ class ACMGEvidenceEngine:
         if result == FunctionalStudyResult.BENIGN.value:
             return EvidenceResult("BS3", True, "Functional studies show benign effect", 0.95, True)
 
-        return EvidenceResult("BS3", False, f"Functional study: {result}", 0.0, True)
+        return EvidenceResult("BS3", False, "Functional study: {result}", 0.0, True)
 
     def bs4(self, data: DataRequirements) -> EvidenceResult:
         """BS4: Lack of segregation in affected families."""
@@ -491,9 +491,9 @@ class ACMGEvidenceEngine:
         is_lof_gene = gene in self.lof_genes
 
         if is_missense and is_lof_gene:
-            return EvidenceResult("BP1", True, f"Missense in LOF gene {gene}", 0.65, True)
+            return EvidenceResult("BP1", True, "Missense in LOF gene {gene}", 0.65, True)
 
-        return EvidenceResult("BP1", False, f"Not missense in LOF gene (gene={gene})", 0.0, True)
+        return EvidenceResult("BP1", False, "Not missense in LOF gene (gene={gene})", 0.0, True)
 
     def bp2(self, data: DataRequirements) -> EvidenceResult:
         """BP2: In trans with pathogenic (dominant gene)."""
@@ -544,7 +544,7 @@ class ACMGEvidenceEngine:
         return EvidenceResult(
             "BP4",
             False,
-            f"Insufficient benign predictions ({benign_count}/{len(scores)} tools)",
+            "Insufficient benign predictions ({benign_count}/{len(scores)} tools)",
             0.0,
             True,
         )
@@ -595,7 +595,7 @@ class ACMGEvidenceEngine:
             return EvidenceResult(
                 "BP7",
                 True,
-                f"Synonymous with low splice impact (SpliceAI={data.spliceai_score:.3f})",
+                "Synonymous with low splice impact (SpliceAI={data.spliceai_score:.3f})",
                 0.7,
                 True,
             )
@@ -603,7 +603,7 @@ class ACMGEvidenceEngine:
         return EvidenceResult(
             "BP7",
             False,
-            f"Synonymous but high splice score (SpliceAI={data.spliceai_score:.3f})",
+            "Synonymous but high splice score (SpliceAI={data.spliceai_score:.3f})",
             0.0,
             True,
         )

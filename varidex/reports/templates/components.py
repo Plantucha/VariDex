@@ -34,16 +34,16 @@ def generate_summary_cards(stats: Dict[str, int]) -> str:
     Returns:
         HTML string for summary cards and classification grid
     """
-    total = stats.get("total", 0)
+    stats.get("total", 0)
     pathogenic = stats.get("pathogenic", 0)
     likely_pathogenic = stats.get("likely_pathogenic", 0)
-    vus = stats.get("vus", 0)
-    likely_benign = stats.get("likely_benign", 0)
-    benign = stats.get("benign", 0)
-    conflicts = stats.get("conflicts", 0)
-    pathogenic_combined = pathogenic + likely_pathogenic
+    stats.get("vus", 0)
+    stats.get("likely_benign", 0)
+    stats.get("benign", 0)
+    stats.get("conflicts", 0)
+    pathogenic + likely_pathogenic
 
-    return f"""
+    return """
     <section aria-labelledby="stats-heading">
         <h2 id="stats-heading">Summary Statistics</h2>
         <div class="stats">
@@ -83,20 +83,20 @@ def generate_variant_table(
     """
     truncation_warning = ""
     if is_truncated:
-        truncation_warning = f"""
+        truncation_warning = """
         <div class="warning" role="alert" aria-live="polite">
-            <strong>⚠️ TABLE TRUNCATED:</strong> Showing top {max_displayed:,} of 
+            <strong>⚠️ TABLE TRUNCATED:</strong> Showing top {max_displayed:,} of
             <strong>{total_variants:,}</strong> clinically significant variants.
             <br><br>📄 See CSV file for complete dataset.
         </div>"""
 
-    return f"""
+    return """
     <section aria-labelledby="variants-heading">
         <h2 id="variants-heading">Clinically Significant Variants</h2>
         {truncation_warning}
         <div class="filter-box" role="search">
             <label for="searchBox"><strong>🔍 Filter Table:</strong></label>
-            <input type="text" id="searchBox" placeholder="Type to filter..." 
+            <input type="text" id="searchBox" placeholder="Type to filter..."
                    onkeyup="filterTable()" aria-label="Filter variants" maxlength="100">
         </div>
         <div class="table-container">
@@ -155,7 +155,7 @@ def generate_legend() -> str:
                 <span class="legend-desc">Strong evidence of no disease association</span>
             </div>
             <div class="legend-reference">
-                <strong>Reference:</strong> Richards et al. 2015, PMID 25741868 
+                <strong>Reference:</strong> Richards et al. 2015, PMID 25741868
                 (ACMG/AMP Standards and Guidelines)
             </div>
         </div>
@@ -180,10 +180,10 @@ def generate_footer(
         except Exception:
             timestamp = "N/A"
 
-    safe_filename = html.escape(output_filename)
-    safe_timestamp = html.escape(timestamp)
+    html.escape(output_filename)
+    html.escape(timestamp)
 
-    return f"""
+    return """
     <footer class="footer" role="contentinfo">
         <div class="footer-content">
             <div class="footer-info">
@@ -196,9 +196,9 @@ def generate_footer(
             <div class="footer-disclaimer">
                 <h3>⚠️ IMPORTANT MEDICAL DISCLAIMER</h3>
                 <p class="disclaimer">
-                    This report is for <strong>RESEARCH and EDUCATIONAL</strong> purposes only. 
-                    It is <strong>NOT a clinical diagnosis</strong>. All pathogenic findings 
-                    <strong>must be confirmed</strong> by a CLIA-certified clinical laboratory 
+                    This report is for <strong>RESEARCH and EDUCATIONAL</strong> purposes only.
+                    It is <strong>NOT a clinical diagnosis</strong>. All pathogenic findings
+                    <strong>must be confirmed</strong> by a CLIA-certified clinical laboratory
                     before any medical decisions are made.
                 </p>
             </div>
@@ -228,16 +228,16 @@ def escape_table_row(row_data: Dict) -> str:
         >>> row = {'rsid': 'rs123', 'gene': 'BRCA1', 'stars': 4, ...}
         >>> html = escape_table_row(row)
     """
-    icon = html.escape(str(row_data.get("icon", "")))
-    rsid = html.escape(str(row_data.get("rsid", "")))
-    gene = html.escape(str(row_data.get("gene", "")))
-    genotype = html.escape(str(row_data.get("genotype", "")))
-    zygosity = html.escape(str(row_data.get("zygosity", "")))
-    classification = html.escape(str(row_data.get("classification", "")))
-    evidence = html.escape(str(row_data.get("evidence", "")))
-    stars = "⭐" * int(row_data.get("stars", 0))
+    html.escape(str(row_data.get("icon", "")))
+    html.escape(str(row_data.get("rsid", "")))
+    html.escape(str(row_data.get("gene", "")))
+    html.escape(str(row_data.get("genotype", "")))
+    html.escape(str(row_data.get("zygosity", "")))
+    html.escape(str(row_data.get("classification", "")))
+    html.escape(str(row_data.get("evidence", "")))
+    "⭐" * int(row_data.get("stars", 0))
 
-    return f"""    <tr>
+    return """    <tr>
         <td>{icon}</td><td>{rsid}</td><td>{gene}</td><td>{genotype}</td>
         <td>{zygosity}</td><td>{classification}</td><td>{stars}</td><td>{evidence}</td>
     </tr>"""
@@ -302,5 +302,5 @@ if __name__ == "__main__":
     assert "<script>" not in footer_evil
     print("✓ Test 8: XSS protection (footer)")
     print("=" * 70)
-    print(f"All tests passed! Components ready for v{__version__}")
+    print("All tests passed! Components ready for v{__version__}")
     print("=" * 70)

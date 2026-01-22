@@ -51,11 +51,10 @@ try:
     PipelineState = models.PipelineState
     logger.info("✓ Centralized imports loaded")
     _IMPORT_MODE = "centralized"
-except ImportError as e:
-    logger.warning(f"Import manager unavailable: {e}")
+except ImportError:
+    logger.warning("Import manager unavailable: {e}")
     logger.info("✓ Falling back to direct imports")
 
-    from varidex.core.config import *
     from varidex.core.models import PipelineState
     from varidex.io.loaders import (
         load_clinvar_file,
@@ -65,7 +64,6 @@ except ImportError as e:
         match_variants_hybrid,
     )
     from varidex.reports.generator import create_results_dataframe, generate_all_reports
-    from varidex.utils.helpers import DataValidator, classify_variants_production
 
     config = sys.modules[__name__]
 
@@ -108,13 +106,13 @@ def load_yaml_config(config_path: Path = Path(".varidex.yaml")) -> Dict:
 
         with open(config_path, "r") as f:
             cfg = yaml.safe_load(f)
-        logger.info(f"✓ Loaded config: {config_path}")
+        logger.info("✓ Loaded config: {config_path}")
         return cfg or {}
     except ImportError:
         logger.warning("PyYAML not installed")
         return {}
-    except Exception as e:
-        logger.warning(f"Config load failed: {e}")
+    except Exception:
+        logger.warning("Config load failed: {e}")
         return {}
 
 
@@ -146,7 +144,6 @@ def get_safeguard_config(yaml_config: Dict) -> Dict:
 class FileTypeDetectionError(Exception):
     """Raised when file type is ambiguous."""
 
-    pass
 
 
 def get_config_value(name: str, default=None):
@@ -159,7 +156,7 @@ def get_config_value(name: str, default=None):
 
 def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
     """Auto-detect format: vcf|23andme|position_tsv."""
-    logger.info(f"  Detecting: {file_path.name}")
+    logger.info("  Detecting: {file_path.name}")
     try:
         if str(file_path).endswith(".gz"):
             import gzip
@@ -170,9 +167,9 @@ def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
             with open(file_path, "r") as f:
                 first_line = f.readline().lower()
 
-        if first_line.startswith("##fileformat=vcf") or first_line.startswith("#chrom"):
+        if first_line.startswith("##fileformat=vc") or first_line.startswith("#chrom"):
             logger.info("    → VCF")
-            return "vcf"
+            return "vc"
         if "rsid" in first_line and "chromosome" in first_line and "genotype" in first_line:
             logger.info("    → 23andMe")
             return "23andme"
@@ -182,14 +179,14 @@ def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
 
         if strict:
             raise FileTypeDetectionError(
-                f"Cannot detect file type for {file_path.name}. " f"Use --format vcf|23andme|tsv"
+                "Cannot detect file type for {file_path.name}. " "Use --format vcf|23andme|tsv"
             )
-        logger.warning(f"    → Defaulting to 23andMe (AMBIGUOUS)")
+        logger.warning("    → Defaulting to 23andMe (AMBIGUOUS)")
         return "23andme"
-    except IOError as e:
+    except IOError:
         if strict:
-            raise FileTypeDetectionError(f"Cannot read file: {e}")
-        logger.warning(f"Detection failed: {e}, defaulting to 23andMe")
+            raise FileTypeDetectionError("Cannot read file: {e}")
+        logger.warning("Detection failed: {e}, defaulting to 23andMe")
         return "23andme"
 
 
@@ -205,15 +202,15 @@ def check_clinvar_freshness(
     days_old = (datetime.now() - mtime).days
 
     if days_old > max_age_days:
-        msg = f"⚠️  ClinVar is {days_old} days old (max: {max_age_days})"
+        msg = "⚠️  ClinVar is {days_old} days old (max: {max_age_days})"
         logger.warning(msg)
         if not interactive:
-            raise ValueError(f"{msg}. Use --force to override")
+            raise ValueError("{msg}. Use --force to override")
         response = input("   Continue? (yes): ")
         if response.lower() != "yes":
             return False
     else:
-        logger.info(f"  ✓ ClinVar OK ({days_old} days)")
+        logger.info("  ✓ ClinVar OK ({days_old} days)")
     return True
 
 
@@ -237,7 +234,7 @@ def main(
     print("=" * 70)
     print("CLINVAR-WGS PIPELINE v6.0.0")
     print("=" * 70)
-    print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     yaml_cfg = load_yaml_config(yaml_config_path or Path(".varidex.yaml"))
     SAFEGUARD_CONFIG = get_safeguard_config(yaml_cfg)
@@ -261,9 +258,9 @@ def main(
         print("=" * 70)
 
         if not clinvar_file.exists():
-            raise FileNotFoundError(f"ClinVar not found: {clinvar_file}")
+            raise FileNotFoundError("ClinVar not found: {clinvar_file}")
         if not user_file.exists():
-            raise FileNotFoundError(f"User data not found: {user_file}")
+            raise FileNotFoundError("User data not found: {user_file}")
 
         if not check_clinvar_freshness(
             clinvar_file,
@@ -275,12 +272,12 @@ def main(
 
         clinvar_type = loader.detect_clinvar_file_type(clinvar_file)
         user_type = user_format or detect_data_file_type(user_file, strict=not force)
-        match_mode = get_config_value("MATCH_MODE", "hybrid")
+        get_config_value("MATCH_MODE", "hybrid")
 
-        print(f"  ClinVar: {clinvar_type}")
-        print(f"  User: {user_type}")
-        print(f"  Mode: {match_mode}")
-        state.file_types = f"{clinvar_type}/{user_type}"
+        print("  ClinVar: {clinvar_type}")
+        print("  User: {user_type}")
+        print("  Mode: {match_mode}")
+        state.file_types = "{clinvar_type}/{user_type}"
 
         # STAGE 2: LOAD CLINVAR (delegated to stages.py)
         print()
@@ -297,8 +294,8 @@ def main(
         )
 
         state.variants_loaded = len(clinvar_df)
-        logger.info(f"✓ Loaded {state.variants_loaded:,} ClinVar variants")
-        print(f"  ✓ Loaded: {state.variants_loaded:,} variants")
+        logger.info("✓ Loaded {state.variants_loaded:,} ClinVar variants")
+        print("  ✓ Loaded: {state.variants_loaded:,} variants")
 
         # STAGE 3: LOAD USER DATA (delegated to stages.py)
         print()
@@ -309,8 +306,8 @@ def main(
         user_df = execute_stage3_load_user_data(user_file, user_type, loader)
 
         state.user_variants = len(user_df)
-        logger.info(f"✓ Loaded {state.user_variants:,} user variants")
-        print(f"  ✓ Loaded: {state.user_variants:,} variants")
+        logger.info("✓ Loaded {state.user_variants:,} user variants")
+        print("  ✓ Loaded: {state.user_variants:,} variants")
 
         # STAGE 4: HYBRID MATCHING (delegated to stages.py)
         print()
@@ -326,9 +323,9 @@ def main(
         if state.matches == 0:
             raise ValueError("No matches! Check formats & coordinates")
 
-        match_rate = (state.matches / state.user_variants * 100) if state.user_variants > 0 else 0
-        logger.info(f"✓ Matched {state.matches:,} variants ({match_rate:.1f}%)")
-        print(f"  ✓ Matched: {state.matches:,} ({match_rate:.1f}%)")
+        (state.matches / state.user_variants * 100) if state.user_variants > 0 else 0
+        logger.info("✓ Matched {state.matches:,} variants ({match_rate:.1f}%)")
+        print("  ✓ Matched: {state.matches:,} ({match_rate:.1f}%)")
 
         # STAGE 5: ACMG CLASSIFICATION (delegated to stages.py)
         print()
@@ -343,16 +340,16 @@ def main(
         if not classified_variants:
             raise ValueError("Classification failed")
 
-        logger.info(f"✓ Classified {len(classified_variants):,} variants")
-        print(f"  ✓ Classified: {len(classified_variants):,} variants")
-        print(f"    • Pathogenic: {stats.get('pathogenic', 0):,}")
-        print(f"    • Likely Pathogenic: {stats.get('likely_pathogenic', 0):,}")
-        print(f"    • VUS: {stats.get('vus', 0):,}")
-        print(f"    • Likely Benign: {stats.get('likely_benign', 0):,}")
-        print(f"    • Benign: {stats.get('benign', 0):,}")
+        logger.info("✓ Classified {len(classified_variants):,} variants")
+        print("  ✓ Classified: {len(classified_variants):,} variants")
+        print("    • Pathogenic: {stats.get('pathogenic', 0):,}")
+        print("    • Likely Pathogenic: {stats.get('likely_pathogenic', 0):,}")
+        print("    • VUS: {stats.get('vus', 0):,}")
+        print("    • Likely Benign: {stats.get('likely_benign', 0):,}")
+        print("    • Benign: {stats.get('benign', 0):,}")
 
         if stats.get("conflicts", 0) > 0:
-            print(f"    ⚠️  Conflicts: {stats['conflicts']:,}")
+            print("    ⚠️  Conflicts: {stats['conflicts']:,}")
 
         # STAGE 6: CREATE RESULTS (delegated to stages.py)
         print()
@@ -362,8 +359,8 @@ def main(
 
         results_df = execute_stage6_create_results(classified_variants, reports)
 
-        logger.info(f"✓ DataFrame: {len(results_df):,} rows")
-        print(f"  ✓ DataFrame: {len(results_df):,} variants")
+        logger.info("✓ DataFrame: {len(results_df):,} rows")
+        print("  ✓ DataFrame: {len(results_df):,} variants")
 
         # STAGE 7: GENERATE REPORTS (delegated to stages.py)
         print()
@@ -376,51 +373,51 @@ def main(
 
         report_files = execute_stage7_generate_reports(results_df, stats, output_dir, reports)
 
-        print(f"\n  ✓ Reports in: {output_dir.absolute()}/")
+        print("\n  ✓ Reports in: {output_dir.absolute()}/")
         for report_type, path in report_files.items():
-            print(f"    • {report_type.upper()}: {path.name}")
+            print("    • {report_type.upper()}: {path.name}")
 
         # COMPLETE
         print()
         print("=" * 70)
         print("✅ PIPELINE COMPLETE")
         print("=" * 70)
-        print(f"Coverage: {state.matches:,}/{state.user_variants:,} ({match_rate:.1f}%)")
+        print("Coverage: {state.matches:,}/{state.user_variants:,} ({match_rate:.1f}%)")
         print(
-            f"Pathogenic: {stats.get('pathogenic', 0):,} | "
-            f"Likely Pathogenic: {stats.get('likely_pathogenic', 0):,} | "
-            f"VUS: {stats.get('vus', 0):,}"
+            "Pathogenic: {stats.get('pathogenic', 0):,} | "
+            "Likely Pathogenic: {stats.get('likely_pathogenic', 0):,} | "
+            "VUS: {stats.get('vus', 0):,}"
         )
 
-        print(f"\nReports:")
+        print("\nReports:")
         for rtype, path in report_files.items():
-            size_kb = path.stat().st_size / 1024
-            print(f"  • {rtype.upper()}: {path.name} ({size_kb:.1f} KB)")
+            path.stat().st_size / 1024
+            print("  • {rtype.upper()}: {path.name} ({size_kb:.1f} KB)")
 
         print("\n⚠️  RESEARCH USE ONLY - Consult genetic counselor")
         print("=" * 70)
         logger.info("Pipeline completed")
         return True
 
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {e}")
-        print(f"\n❌ ERROR: {e}")
+    except FileNotFoundError:
+        logger.error("File not found: {e}")
+        print("\n❌ ERROR: {e}")
         return False
-    except FileTypeDetectionError as e:
-        logger.error(f"Detection failed: {e}")
-        print(f"\n❌ ERROR: {e}")
+    except FileTypeDetectionError:
+        logger.error("Detection failed: {e}")
+        print("\n❌ ERROR: {e}")
         return False
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        print(f"\n❌ ERROR: {e}")
+    except ValueError:
+        logger.error("Validation error: {e}")
+        print("\n❌ ERROR: {e}")
         return False
-    except ImportError as e:
-        logger.error(f"Import error: {e}")
-        print(f"\n❌ ERROR: {e}")
+    except ImportError:
+        logger.error("Import error: {e}")
+        print("\n❌ ERROR: {e}")
         return False
-    except Exception as e:
-        logger.error(f"Pipeline failed: {e}", exc_info=True)
-        print(f"\n❌ ERROR: {e}\n   Check pipeline.log")
+    except Exception:
+        logger.error("Pipeline failed: {e}", exc_info=True)
+        print("\n❌ ERROR: {e}\n   Check pipeline.log")
         return False
 
 
@@ -466,7 +463,7 @@ if __name__ == "__main__":
     parser.add_argument("user_data", nargs="?")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--non-interactive", action="store_true")
-    parser.add_argument("--format", choices=["vcf", "23andme", "tsv"])
+    parser.add_argument("--format", choices=["vc", "23andme", "tsv"])
     parser.add_argument("--config", type=Path)
     parser.add_argument("--help", action="store_true")
 

@@ -15,7 +15,6 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import requests
-from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +79,7 @@ class RateLimiter:
             oldest = self.requests[0]
             wait_time = self.time_window - (now - oldest)
             if wait_time > 0:
-                logger.debug(f"Rate limit reached, waiting {wait_time:.1f}s")
+                logger.debug("Rate limit reached, waiting {wait_time:.1f}s")
                 time.sleep(wait_time)
                 # Clear after wait
                 self.requests = []
@@ -128,7 +127,7 @@ class GnomadClient:
         self._cache: Dict[str, tuple[GnomadVariantFrequency, datetime]] = {}
         self._cache_duration = timedelta(hours=24)  # Cache for 24 hours
 
-        logger.info(f"Initialized gnomAD client: {self.api_url}")
+        logger.info("Initialized gnomAD client: {self.api_url}")
 
     def _get_from_cache(self, variant_id: str) -> Optional[GnomadVariantFrequency]:
         """Retrieve variant from cache if available and not expired."""
@@ -138,7 +137,7 @@ class GnomadClient:
         if variant_id in self._cache:
             result, timestamp = self._cache[variant_id]
             if datetime.now() - timestamp < self._cache_duration:
-                logger.debug(f"Cache hit: {variant_id}")
+                logger.debug("Cache hit: {variant_id}")
                 return result
             else:
                 # Expired, remove from cache
@@ -167,7 +166,7 @@ class GnomadClient:
         Returns:
             GraphQL query string
         """
-        query = f"""
+        query = """
         {{
           variant(dataset: "{dataset}", variantId: "{variant_id}") {{
             variantId
@@ -225,9 +224,9 @@ class GnomadClient:
                 data = response.json()
 
                 if "errors" in data:
-                    error_msg = data["errors"][0].get("message", "Unknown error")
-                    logger.warning(f"GraphQL error: {error_msg}")
-                    raise ValueError(f"GraphQL error: {error_msg}")
+                    data["errors"][0].get("message", "Unknown error")
+                    logger.warning("GraphQL error: {error_msg}")
+                    raise ValueError("GraphQL error: {error_msg}")
 
                 return data
 
@@ -235,10 +234,10 @@ class GnomadClient:
                 last_error = e
                 if attempt < self.retry_attempts - 1:
                     wait_time = 2**attempt  # Exponential backoff
-                    logger.debug(f"Retry {attempt + 1}/{self.retry_attempts} after {wait_time}s")
+                    logger.debug("Retry {attempt + 1}/{self.retry_attempts} after {wait_time}s")
                     time.sleep(wait_time)
                 else:
-                    logger.error(f"Failed after {self.retry_attempts} attempts: {e}")
+                    logger.error("Failed after {self.retry_attempts} attempts: {e}")
 
         raise last_error
 
@@ -257,7 +256,7 @@ class GnomadClient:
         try:
             variant_data = data.get("data", {}).get("variant")
             if not variant_data:
-                logger.debug(f"Variant not found in gnomAD: {variant_id}")
+                logger.debug("Variant not found in gnomAD: {variant_id}")
                 return None
 
             genome = variant_data.get("genome", {})
@@ -272,7 +271,7 @@ class GnomadClient:
             if genome and "populations" in genome:
                 for pop in genome["populations"]:
                     pop_id = pop.get("id")
-                    pop_af = pop.get("af")
+                    pop_af = pop.get("a")
                     if pop_id and pop_af is not None:
                         populations[f"genome_{pop_id}"] = pop_af
                         if popmax_af is None or pop_af > popmax_af:
@@ -283,7 +282,7 @@ class GnomadClient:
             if exome and "populations" in exome:
                 for pop in exome["populations"]:
                     pop_id = pop.get("id")
-                    pop_af = pop.get("af")
+                    pop_af = pop.get("a")
                     if pop_id and pop_af is not None:
                         populations[f"exome_{pop_id}"] = pop_af
                         if popmax_af is None or pop_af > popmax_af:
@@ -292,10 +291,10 @@ class GnomadClient:
 
             return GnomadVariantFrequency(
                 variant_id=variant_id,
-                genome_af=genome.get("af"),
+                genome_af=genome.get("a"),
                 genome_ac=genome.get("ac"),
                 genome_an=genome.get("an"),
-                exome_af=exome.get("af"),
+                exome_af=exome.get("a"),
                 exome_ac=exome.get("ac"),
                 exome_an=exome.get("an"),
                 popmax_af=popmax_af,
@@ -304,8 +303,8 @@ class GnomadClient:
                 filter_status=genome.get("filters", [""])[0] if genome.get("filters") else None,
             )
 
-        except (KeyError, TypeError, IndexError) as e:
-            logger.error(f"Failed to parse gnomAD response: {e}")
+        except (KeyError, TypeError, IndexError):
+            logger.error("Failed to parse gnomAD response: {e}")
             return None
 
     def get_variant_frequency(
@@ -324,10 +323,10 @@ class GnomadClient:
             GnomadVariantFrequency object or None if not found or on error
         """
         # Normalize chromosome
-        chrom = chromosome.replace("chr", "")
+        chromosome.replace("chr", "")
 
         # Build variant ID
-        variant_id = f"{chrom}-{position}-{ref}-{alt}"
+        variant_id = "{chrom}-{position}-{ref}-{alt}"
 
         # Check cache first
         cached = self._get_from_cache(variant_id)
@@ -344,12 +343,12 @@ class GnomadClient:
 
             if result:
                 self._add_to_cache(variant_id, result)
-                logger.info(f"Retrieved frequency for {variant_id}: AF={result.max_af}")
+                logger.info("Retrieved frequency for {variant_id}: AF={result.max_af}")
 
             return result
 
-        except Exception as e:
-            logger.error(f"Failed to get frequency for {variant_id}: {e}")
+        except Exception:
+            logger.error("Failed to get frequency for {variant_id}: {e}")
             return None
 
     def clear_cache(self) -> None:

@@ -54,19 +54,19 @@ class ACMGEvidenceSet:
         """Get human-readable summary."""
         parts = []
         if self.pvs:
-            parts.append(f"PVS:{len(self.pvs)}")
+            parts.append("PVS:{len(self.pvs)}")
         if self.ps:
-            parts.append(f"PS:{len(self.ps)}")
+            parts.append("PS:{len(self.ps)}")
         if self.pm:
-            parts.append(f"PM:{len(self.pm)}")
+            parts.append("PM:{len(self.pm)}")
         if self.pp:
-            parts.append(f"PP:{len(self.pp)}")
+            parts.append("PP:{len(self.pp)}")
         if self.ba:
-            parts.append(f"BA:{len(self.ba)}")
+            parts.append("BA:{len(self.ba)}")
         if self.bs:
-            parts.append(f"BS:{len(self.bs)}")
+            parts.append("BS:{len(self.bs)}")
         if self.bp:
-            parts.append(f"BP:{len(self.bp)}")
+            parts.append("BP:{len(self.bp)}")
         return " | ".join(parts) if parts else "No evidence"
 
     def __str__(self):
@@ -151,8 +151,8 @@ class VariantData:
     def get_variant_notation(self) -> str:
         """Get standard variant notation (chr:pos:ref>alt)."""
         if self.ref_allele and self.alt_allele:
-            return f"{self.chromosome}:{self.position}:{self.ref_allele}>{self.alt_allele}"
-        return f"{self.chromosome}:{self.position}"
+            return "{self.chromosome}:{self.position}:{self.ref_allele}>{self.alt_allele}"
+        return "{self.chromosome}:{self.position}"
 
     def is_protein_altering(self) -> bool:
         """Check if variant alters protein sequence."""
@@ -186,10 +186,10 @@ class VariantData:
         return summary
 
     def __str__(self):
-        notation = f" ({self.get_variant_notation()})" if self.ref_allele else ""
+        " ({self.get_variant_notation()})" if self.ref_allele else ""
         return (
-            f"Variant({self.rsid} in {self.gene}{notation}: {self.genotype} -> "
-            f"{self.acmg_classification} [{self.acmg_evidence.summary()}])"
+            "Variant({self.rsid} in {self.gene}{notation}: {self.genotype} -> "
+            "{self.acmg_classification} [{self.acmg_evidence.summary()}])"
         )
 
 
@@ -219,21 +219,21 @@ class PipelineState:
 
     def add_error(self, error: str):
         """Add error to state."""
-        self.errors.append(f"{datetime.now().isoformat()}: {error}")
+        self.errors.append("{datetime.now().isoformat()}: {error}")
 
     def add_warning(self, warning: str):
         """Add warning to state."""
-        self.warnings.append(f"{datetime.now().isoformat()}: {warning}")
+        self.warnings.append("{datetime.now().isoformat()}: {warning}")
 
     def summary(self) -> str:
         """Get summary string."""
         return (
-            f"Stage: {self.stage} | "
-            f"Loaded: {self.variants_loaded} | "
-            f"Matched: {self.variants_matched} | "
-            f"Classified: {self.variants_classified} | "
-            f"Errors: {len(self.errors)} | "
-            f"Warnings: {len(self.warnings)}"
+            "Stage: {self.stage} | "
+            "Loaded: {self.variants_loaded} | "
+            "Matched: {self.variants_matched} | "
+            "Classified: {self.variants_classified} | "
+            "Errors: {len(self.errors)} | "
+            "Warnings: {len(self.warnings)}"
         )
 
 
@@ -249,19 +249,19 @@ if __name__ == "__main__":
     evidence.pm.add("PM2")
     evidence.pp.add("PP3")
 
-    print(f"\n✓ ACMGEvidenceSet created with sets")
-    print(f"  - Pathogenic codes: {evidence.all_pathogenic()}")
-    print(f"  - Summary: {evidence.summary()}")
-    print(f"  - Auto-deduplication: {len(evidence.pvs) == 1}")
+    print("\n✓ ACMGEvidenceSet created with sets")
+    print("  - Pathogenic codes: {evidence.all_pathogenic()}")
+    print("  - Summary: {evidence.summary()}")
+    print("  - Auto-deduplication: {len(evidence.pvs) == 1}")
     assert len(evidence.pvs) == 1, "PVS1 should be deduplicated"
 
     # Test optimized has_conflict
-    print(f"\n✓ Testing optimized has_conflict()")
-    print(f"  - Initial: {evidence.has_conflict()}")
+    print("\n✓ Testing optimized has_conflict()")
+    print("  - Initial: {evidence.has_conflict()}")
     assert not evidence.has_conflict(), "Should be False with only pathogenic"
 
     evidence.bp.add("BP1")
-    print(f"  - After adding BP1: {evidence.has_conflict()}")
+    print("  - After adding BP1: {evidence.has_conflict()}")
     assert evidence.has_conflict(), "Should be True with mixed evidence"
 
     print("\n✅ All optimized models validated successfully")

@@ -21,7 +21,6 @@ Changes v6.0.0:
 
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 import warnings
 import sys
 
@@ -86,8 +85,8 @@ CLINVAR_FILE_TYPES = {
         "maxsize": 8 * 1024 * 1024 * 1024,  # 8GB
         "description": "NCBI summary format (rsID-indexed)",
     },
-    "vcf": {
-        "format": "vcf",
+    "vc": {
+        "format": "vc",
         "key_columns": ["CHROM", "POS", "REF", "ALT"],
         "maxsize": 25 * 1024 * 1024 * 1024,  # 25GB
         "description": "Full VCF format (position-based)",
@@ -278,14 +277,14 @@ def get_max_filesize(filetype: str = "variant_summary") -> int:
     """
     if not isinstance(filetype, str):
         raise TypeError(
-            f"filetype must be str, got {type(filetype).__name__}. "
-            f"Valid options: {', '.join(CLINVAR_FILE_TYPES.keys())}"
+            "filetype must be str, got {type(filetype).__name__}. "
+            "Valid options: {', '.join(CLINVAR_FILE_TYPES.keys())}"
         )
 
     if filetype not in CLINVAR_FILE_TYPES:
         raise ValueError(
-            f"Unknown filetype '{filetype}'. "
-            f"Valid options: {', '.join(CLINVAR_FILE_TYPES.keys())}"
+            "Unknown filetype '{filetype}'. "
+            "Valid options: {', '.join(CLINVAR_FILE_TYPES.keys())}"
         )
 
     return CLINVAR_FILE_TYPES[filetype]["maxsize"]
@@ -325,12 +324,12 @@ def is_in_functional_domain(gene: str, aa_position: int) -> bool:
     """
     if not isinstance(aa_position, int):
         raise TypeError(
-            f"aa_position must be int, got {type(aa_position).__name__}. "
+            "aa_position must be int, got {type(aa_position).__name__}. "
             "Amino acid positions are integers only."
         )
 
     if aa_position <= 0:
-        raise ValueError(f"aa_position must be positive, got {aa_position}")
+        raise ValueError("aa_position must be positive, got {aa_position}")
 
     return False  # PM1 disabled
 
@@ -338,16 +337,16 @@ def is_in_functional_domain(gene: str, aa_position: int) -> bool:
 def verify_config():
     """Verify configuration is valid (checks)"""
     checks = []
-    checks.append(f"Module version: {__version__}")
-    checks.append(f"Package version: {__version__}")
-    checks.append(f"Versions match: {__version__ == __version__}")
-    checks.append(f"LOF genes: {len(LOF_GENES)}")
-    checks.append(f"Missense rare genes: {len(MISSENSE_RARE_GENES)}")
-    checks.append(f"ClinVar file types: {len(CLINVAR_FILE_TYPES)}")
-    checks.append(f"Match mode: {MATCH_MODE}")
-    checks.append(f"PM1 status: PERMANENTLY DISABLED")
-    checks.append(f"FUNCTIONAL_DOMAINS: {len(FUNCTIONAL_DOMAINS)} (empty)")
-    checks.append(f"Export control: {len(__all__)} public symbols")
+    checks.append("Module version: {__version__}")
+    checks.append("Package version: {__version__}")
+    checks.append("Versions match: {__version__ == __version__}")
+    checks.append("LOF genes: {len(LOF_GENES)}")
+    checks.append("Missense rare genes: {len(MISSENSE_RARE_GENES)}")
+    checks.append("ClinVar file types: {len(CLINVAR_FILE_TYPES)}")
+    checks.append("Match mode: {MATCH_MODE}")
+    checks.append("PM1 status: PERMANENTLY DISABLED")
+    checks.append("FUNCTIONAL_DOMAINS: {len(FUNCTIONAL_DOMAINS)} (empty)")
+    checks.append("Export control: {len(__all__)} public symbols")
     return checks
 
 
@@ -384,10 +383,10 @@ def __getattribute__(name):
         if frame and frame.f_back:
             caller = frame.f_back
             filename = caller.f_code.co_filename
-            lineno = caller.f_lineno
+            caller.f_lineno
             if filename != __file__:
                 warnings.warn(
-                    f"MAXFILESIZE is deprecated (called from {filename}:{lineno}). "
+                    "MAXFILESIZE is deprecated (called from {filename}:{lineno}). "
                     "Use get_max_filesize() instead.",
                     DeprecationWarning,
                     stacklevel=2,
@@ -411,11 +410,11 @@ def __getattribute__(name):
 
 if __name__ == "__main__":
     print("=" * 70)
-    print(f"CONFIG MODULE VERIFICATION v{__version__} 10/10")
+    print("CONFIG MODULE VERIFICATION v{__version__} 10/10")
     print("=" * 70)
 
     for check in verify_config():
-        print(f"✓ {check}")
+        print("✓ {check}")
 
     print("=" * 70)
     print("STRICT TYPE VALIDATION TESTS")
@@ -435,24 +434,24 @@ if __name__ == "__main__":
         try:
             result = is_in_functional_domain(gene, pos)
             if expected_error:
-                print(f"✗ {description} - Should have raised {expected_error.__name__}")
+                print("✗ {description} - Should have raised {expected_error.__name__}")
             else:
                 if result == expected_result:
-                    print(f"✓ {description}")
+                    print("✓ {description}")
                     passed += 1
                 else:
-                    print(f"✗ {description}")
+                    print("✗ {description}")
         except Exception as e:
             if expected_error and isinstance(e, expected_error):
-                print(f"✓ {description} - Correctly raised {type(e).__name__}")
+                print("✓ {description} - Correctly raised {type(e).__name__}")
                 passed += 1
             else:
-                print(f"✗ {description} - Unexpected error: {e}")
+                print("✗ {description} - Unexpected error: {e}")
 
     print("=" * 70)
-    print(f"TYPE VALIDATION: {passed}/{total} tests passed")
+    print("TYPE VALIDATION: {passed}/{total} tests passed")
     print("=" * 70)
-    print(f"✓ Production-ready configuration module v{__version__}")
+    print("✓ Production-ready configuration module v{__version__}")
     print("=" * 70)
 else:
-    print(f"✓ config.py v{__version__} - WGS UPGRADE 10/10")
+    print("✓ config.py v{__version__} - WGS UPGRADE 10/10")

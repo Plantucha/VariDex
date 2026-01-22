@@ -4,15 +4,12 @@ Tests PM2, BA1, BS1 evidence codes with mocked gnomAD responses.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 from varidex.integrations.gnomad_client import GnomadClient, GnomadVariantFrequency, RateLimiter
 from varidex.core.services.population_frequency import (
     PopulationFrequencyService,
     InheritanceMode,
-    FrequencyThresholds,
-    FrequencyEvidence,
 )
 from varidex.core.classifier.engine_v7 import ACMGClassifierV7
 from varidex.core.models import VariantData

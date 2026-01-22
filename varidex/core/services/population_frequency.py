@@ -78,8 +78,8 @@ class FrequencyEvidence:
         if not codes:
             return "No frequency-based evidence"
 
-        af_str = f"AF={self.max_af:.6f}" if self.max_af is not None else "AF=unknown"
-        return f"{', '.join(codes)} ({af_str})"
+        af_str = "AF={self.max_af:.6f}" if self.max_af is not None else "AF=unknown"
+        return "{', '.join(codes)} ({af_str})"
 
 
 class PopulationFrequencyService:
@@ -105,7 +105,7 @@ class PopulationFrequencyService:
         if enable_gnomad and self.gnomad_client is None:
             self.gnomad_client = GnomadClient()
 
-        logger.info(f"Initialized PopulationFrequencyService (gnomAD: {enable_gnomad})")
+        logger.info("Initialized PopulationFrequencyService (gnomAD: {enable_gnomad})")
 
     def _check_pm2(
         self, freq: GnomadVariantFrequency, inheritance: InheritanceMode
@@ -133,20 +133,20 @@ class PopulationFrequencyService:
         if inheritance == InheritanceMode.DOMINANT:
             threshold = self.thresholds.pm2_dominant_threshold
             if max_af < threshold:
-                return True, f"AF {max_af:.6f} < {threshold} for dominant (PM2 applies)"
+                return True, "AF {max_af:.6f} < {threshold} for dominant (PM2 applies)"
 
         elif inheritance == InheritanceMode.RECESSIVE:
             threshold = self.thresholds.pm2_recessive_threshold
             if max_af < threshold:
-                return True, f"AF {max_af:.6f} < {threshold} for recessive (PM2 applies)"
+                return True, "AF {max_af:.6f} < {threshold} for recessive (PM2 applies)"
 
         else:
             # Unknown inheritance: use dominant threshold (more stringent)
             threshold = self.thresholds.pm2_dominant_threshold
             if max_af < threshold:
-                return True, f"AF {max_af:.6f} < {threshold} (PM2 applies, unknown inheritance)"
+                return True, "AF {max_af:.6f} < {threshold} (PM2 applies, unknown inheritance)"
 
-        return False, f"AF {max_af:.6f} too high for PM2"
+        return False, "AF {max_af:.6f} too high for PM2"
 
     def _check_ba1(self, freq: GnomadVariantFrequency) -> tuple[bool, str]:
         """Check BA1 criteria: Allele frequency > 5% in any population.
@@ -167,10 +167,10 @@ class PopulationFrequencyService:
         threshold = self.thresholds.ba1_threshold
 
         if max_af > threshold:
-            pop = freq.popmax_population or "unknown"
-            return True, f"AF {max_af:.6f} > {threshold} in {pop} (BA1 applies)"
+            freq.popmax_population or "unknown"
+            return True, "AF {max_af:.6f} > {threshold} in {pop} (BA1 applies)"
 
-        return False, f"AF {max_af:.6f} below BA1 threshold ({threshold})"
+        return False, "AF {max_af:.6f} below BA1 threshold ({threshold})"
 
     def _check_bs1(
         self, freq: GnomadVariantFrequency, inheritance: InheritanceMode
@@ -205,13 +205,13 @@ class PopulationFrequencyService:
         # BA1 takes precedence over BS1 (BA1 is > 5%)
         ba1_threshold = self.thresholds.ba1_threshold
         if max_af > ba1_threshold:
-            return False, f"AF {max_af:.6f} exceeds BA1 threshold, BA1 applies instead"
+            return False, "AF {max_af:.6f} exceeds BA1 threshold, BA1 applies instead"
 
         if max_af > threshold:
             mode_str = inheritance.value if inheritance != InheritanceMode.UNKNOWN else "unknown"
-            return True, f"AF {max_af:.6f} > {threshold} for {mode_str} (BS1 applies)"
+            return True, "AF {max_af:.6f} > {threshold} for {mode_str} (BS1 applies)"
 
-        return False, f"AF {max_af:.6f} below BS1 threshold ({threshold})"
+        return False, "AF {max_af:.6f} below BS1 threshold ({threshold})"
 
     def _check_allele_number_confidence(self, freq: GnomadVariantFrequency) -> tuple[bool, str]:
         """Check if allele number is sufficient for confident frequency estimate.
@@ -228,9 +228,9 @@ class PopulationFrequencyService:
             return False, "No allele number data"
 
         if an < self.thresholds.min_allele_number:
-            return False, f"Low allele number (AN={an} < {self.thresholds.min_allele_number})"
+            return False, "Low allele number (AN={an} < {self.thresholds.min_allele_number})"
 
-        return True, f"Sufficient allele number (AN={an})"
+        return True, "Sufficient allele number (AN={an})"
 
     def analyze_frequency(
         self,
@@ -264,11 +264,11 @@ class PopulationFrequencyService:
 
         try:
             # Query gnomAD
-            variant_str = f"{chromosome}:{position}:{ref}>{alt}"
+            variant_str = "{chromosome}:{position}:{ref}>{alt}"
             if gene:
-                variant_str += f" ({gene})"
+                variant_str += " ({gene})"
 
-            logger.info(f"Querying gnomAD for {variant_str}")
+            logger.info("Querying gnomAD for {variant_str}")
 
             freq = self.gnomad_client.get_variant_frequency(
                 chromosome=chromosome, position=position, ref=ref, alt=alt
@@ -278,7 +278,7 @@ class PopulationFrequencyService:
                 # Not found in gnomAD - treat as absent (PM2 applies)
                 evidence.pm2 = True
                 evidence.reasoning = "Variant not found in gnomAD (absent - PM2 applies)"
-                logger.info(f"Variant not in gnomAD: PM2 applies for {variant_str}")
+                logger.info("Variant not in gnomAD: PM2 applies for {variant_str}")
                 return evidence
 
             # Store frequency info
@@ -290,7 +290,7 @@ class PopulationFrequencyService:
             # Check allele number confidence
             sufficient, an_msg = self._check_allele_number_confidence(freq)
             if not sufficient:
-                logger.warning(f"Low confidence in frequency: {an_msg}")
+                logger.warning("Low confidence in frequency: {an_msg}")
 
             # Check evidence codes (order matters: BA1 > BS1 > PM2)
 
@@ -299,7 +299,7 @@ class PopulationFrequencyService:
             if ba1_applies:
                 evidence.ba1 = True
                 evidence.reasoning = ba1_reason
-                logger.info(f"BA1 applies for {variant_str}: {ba1_reason}")
+                logger.info("BA1 applies for {variant_str}: {ba1_reason}")
                 return evidence  # BA1 is stand-alone, no other codes needed
 
             # BS1: Frequency too high for disorder
@@ -307,7 +307,7 @@ class PopulationFrequencyService:
             if bs1_applies:
                 evidence.bs1 = True
                 evidence.reasoning = bs1_reason
-                logger.info(f"BS1 applies for {variant_str}: {bs1_reason}")
+                logger.info("BS1 applies for {variant_str}: {bs1_reason}")
                 return evidence  # BS1 excludes PM2
 
             # PM2: Absent/rare in controls
@@ -315,16 +315,16 @@ class PopulationFrequencyService:
             if pm2_applies:
                 evidence.pm2 = True
                 evidence.reasoning = pm2_reason
-                logger.info(f"PM2 applies for {variant_str}: {pm2_reason}")
+                logger.info("PM2 applies for {variant_str}: {pm2_reason}")
             else:
-                evidence.reasoning = f"No frequency evidence: {pm2_reason}"
-                logger.debug(f"No frequency evidence for {variant_str}")
+                evidence.reasoning = "No frequency evidence: {pm2_reason}"
+                logger.debug("No frequency evidence for {variant_str}")
 
             return evidence
 
-        except Exception as e:
-            logger.error(f"Error analyzing frequency: {e}")
-            evidence.reasoning = f"Error querying gnomAD: {str(e)}"
+        except Exception:
+            logger.error("Error analyzing frequency: {e}")
+            evidence.reasoning = "Error querying gnomAD: {str(e)}"
             return evidence
 
     def get_statistics(self) -> Dict[str, Any]:

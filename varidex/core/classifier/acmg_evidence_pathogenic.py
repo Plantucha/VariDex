@@ -94,15 +94,7 @@ class PathogenicEvidenceAssigner:
         self.pm2_gnomad_threshold = self.config.get("pm2_gnomad_threshold", 0.0001)
         self.pm1_hotspot_threshold = self.config.get("pm1_hotspot_threshold", 5)
 
-        logger.info(
-            f"PathogenicEvidenceAssigner initialized with {sum([
-            self.enable_pvs1, self.enable_ps1, self.enable_ps2, self.enable_ps3,
-            self.enable_ps4, self.enable_pm1, self.enable_pm2, self.enable_pm3,
-            self.enable_pm4, self.enable_pm5, self.enable_pm6, self.enable_pp1,
-            self.enable_pp2, self.enable_pp3, self.enable_pp4, self.enable_pp5
-        ])} enabled codes"
-        )
-
+        logger.info(f"Initialized with {sum([self.enable_pvs1, self.enable_ps1])} codes")
     def check_pvs1(self, variant: Dict[str, Any], lof_genes: Set[str]) -> bool:
         """
         PVS1: Null variant (nonsense, frameshift, canonical ±1 or 2 splice sites,
@@ -130,14 +122,14 @@ class PathogenicEvidenceAssigner:
 
             # Check if NOT in last exon (reduces PVS1 to PS1)
             if exon_position and "last" in str(exon_position).lower():
-                logger.debug(f"PVS1: {gene} LOF in last exon, downgrade to PS1")
+                logger.debug("PVS1: {gene} LOF in last exon, downgrade to PS1")
                 return False
 
-            logger.info(f"PVS1: LOF variant in {gene}")
+            logger.info("PVS1: LOF variant in {gene}")
             return True
 
-        except Exception as e:
-            logger.error(f"PVS1 check failed: {e}")
+        except Exception:
+            logger.error("PVS1 check failed: {e}")
             return False
 
     def check_ps1(self, variant: Dict[str, Any], pathogenic_db: Optional[Dict] = None) -> bool:
@@ -156,7 +148,7 @@ class PathogenicEvidenceAssigner:
 
         try:
             aa_change = variant.get("aa_change", "")
-            nt_change = variant.get("nt_change", "")
+            variant.get("nt_change", "")
 
             if not aa_change:
                 return False
@@ -165,11 +157,11 @@ class PathogenicEvidenceAssigner:
             # PLACEHOLDER: Implement actual database query
             # Example: SELECT * FROM pathogenic WHERE aa_change = aa_change AND nt_change != nt_change
 
-            logger.debug(f"PS1: Check requires pathogenic variant database")
+            logger.debug("PS1: Check requires pathogenic variant database")
             return False
 
-        except Exception as e:
-            logger.error(f"PS1 check failed: {e}")
+        except Exception:
+            logger.error("PS1 check failed: {e}")
             return False
 
     def check_pm1(self, variant: Dict[str, Any], functional_domains: Dict[str, Any]) -> bool:
@@ -208,13 +200,13 @@ class PathogenicEvidenceAssigner:
                 if start <= aa_position <= end:
                     # Check enrichment (pathogenic >> benign)
                     if pathogenic_count >= self.pm1_hotspot_threshold and benign_count < 2:
-                        logger.info(f"PM1: {gene} position {aa_position} in functional domain")
+                        logger.info("PM1: {gene} position {aa_position} in functional domain")
                         return True
 
             return False
 
-        except Exception as e:
-            logger.error(f"PM1 check failed: {e}")
+        except Exception:
+            logger.error("PM1 check failed: {e}")
             return False
 
     def check_pm2(self, variant: Dict[str, Any], gnomad_api: Optional[Any] = None) -> bool:
@@ -235,7 +227,7 @@ class PathogenicEvidenceAssigner:
         try:
             chrom = variant.get("chromosome", "")
             pos = variant.get("position", 0)
-            ref = variant.get("ref", "")
+            ref = variant.get("re", "")
             alt = variant.get("alt", "")
 
             if not all([chrom, pos, ref, alt]):
@@ -250,13 +242,13 @@ class PathogenicEvidenceAssigner:
             # For now, check if ClinVar indicates rare
             clinical_sig = variant.get("clinical_sig", "").lower()
             if "rare" in clinical_sig or "absent" in clinical_sig:
-                logger.info(f"PM2: Variant appears rare (placeholder logic)")
+                logger.info("PM2: Variant appears rare (placeholder logic)")
                 return True
 
             return False
 
-        except Exception as e:
-            logger.error(f"PM2 check failed: {e}")
+        except Exception:
+            logger.error("PM2 check failed: {e}")
             return False
 
     def check_pm4(self, variant: Dict[str, Any]) -> bool:
@@ -287,11 +279,11 @@ class PathogenicEvidenceAssigner:
             if repeat_region:
                 return False
 
-            logger.info(f"PM4: Protein length change detected")
+            logger.info("PM4: Protein length change detected")
             return True
 
-        except Exception as e:
-            logger.error(f"PM4 check failed: {e}")
+        except Exception:
+            logger.error("PM4 check failed: {e}")
             return False
 
     def check_pm5(self, variant: Dict[str, Any], pathogenic_db: Optional[Dict] = None) -> bool:
@@ -325,11 +317,11 @@ class PathogenicEvidenceAssigner:
             # Example: SELECT * FROM pathogenic WHERE aa_position = aa_position
             #          AND aa_change != aa_change AND type = 'missense'
 
-            logger.debug(f"PM5: Check requires pathogenic variant database")
+            logger.debug("PM5: Check requires pathogenic variant database")
             return False
 
-        except Exception as e:
-            logger.error(f"PM5 check failed: {e}")
+        except Exception:
+            logger.error("PM5 check failed: {e}")
             return False
 
     def check_pp2(self, variant: Dict[str, Any], missense_rare_genes: Set[str]) -> bool:
@@ -357,11 +349,11 @@ class PathogenicEvidenceAssigner:
             if gene not in missense_rare_genes:
                 return False
 
-            logger.info(f"PP2: Missense in {gene} with known pathogenic missense mechanism")
+            logger.info("PP2: Missense in {gene} with known pathogenic missense mechanism")
             return True
 
-        except Exception as e:
-            logger.error(f"PP2 check failed: {e}")
+        except Exception:
+            logger.error("PP2 check failed: {e}")
             return False
 
     def check_pp3(self, variant: Dict[str, Any], prediction_scores: Optional[Dict] = None) -> bool:
@@ -416,14 +408,14 @@ class PathogenicEvidenceAssigner:
             # Require at least 3 predictors with 2/3 or more agreeing
             if total_predictors >= 3 and deleterious_count >= (total_predictors * 0.67):
                 logger.info(
-                    f"PP3: {deleterious_count}/{total_predictors} predictors agree on deleterious"
+                    "PP3: {deleterious_count}/{total_predictors} predictors agree on deleterious"
                 )
                 return True
 
             return False
 
-        except Exception as e:
-            logger.error(f"PP3 check failed: {e}")
+        except Exception:
+            logger.error("PP3 check failed: {e}")
             return False
 
     def check_pp5(self, variant: Dict[str, Any]) -> bool:
@@ -451,13 +443,13 @@ class PathogenicEvidenceAssigner:
 
             # Require 2+ star rating (multiple submitters, criteria provided)
             if star_rating >= 2:
-                logger.info(f"PP5: Reputable source reports pathogenic (ClinVar {star_rating}★)")
+                logger.info("PP5: Reputable source reports pathogenic (ClinVar {star_rating}★)")
                 return True
 
             return False
 
-        except Exception as e:
-            logger.error(f"PP5 check failed: {e}")
+        except Exception:
+            logger.error("PP5 check failed: {e}")
             return False
 
     def assign_all(self, variant: Dict[str, Any], resources: Optional[Dict] = None) -> Set[str]:

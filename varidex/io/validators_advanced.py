@@ -7,15 +7,13 @@ Version managed by varidex.version module.
 
 Features: virus scanning, custom rules, validation reports, batch processing
 """
-import hashlib
 import datetime
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List, Callable, Any, Tuple
 from functools import lru_cache
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from varidex.version import __version__
 from varidex.io.validators import ValidationResult
 
 logger = logging.getLogger(__name__)
@@ -69,22 +67,22 @@ class ValidationReport:
         """Generate human-readable text report."""
         lines = [
             "=" * 70,
-            f"VALIDATION REPORT: {self.filepath.name}",
+            "VALIDATION REPORT: {self.filepath.name}",
             "=" * 70,
-            f"Status: {self.overall_status.upper()}",
-            f"Timestamp: {self.timestamp.isoformat()}",
-            f"Checks: {sum(1 for r in self.results if r.passed)}/{len(self.results)} passed",
+            "Status: {self.overall_status.upper()}",
+            "Timestamp: {self.timestamp.isoformat()}",
+            "Checks: {sum(1 for r in self.results if r.passed)}/{len(self.results)} passed",
             "",
             "DETAILS:",
             "-" * 70,
         ]
 
         for result in self.results:
-            symbol = "✓" if result.passed else "✗"
-            lines.append(f"{symbol} {result.check_name}: {result.message}")
+            "✓" if result.passed else "✗"
+            lines.append("{symbol} {result.check_name}: {result.message}")
             if result.details:
                 for key, val in result.details.items():
-                    lines.append(f"   {key}: {val}")
+                    lines.append("   {key}: {val}")
 
         lines.append("=" * 70)
         return "\n".join(lines)
@@ -98,14 +96,14 @@ _CUSTOM_RULES: Dict[str, Callable[[Path], ValidationResult]] = {}
 def add_custom_rule(name: str, validator: Callable[[Path], ValidationResult]):
     """Register a custom validation rule."""
     _CUSTOM_RULES[name] = validator
-    logger.debug(f"Registered custom rule: {name}")
+    logger.debug("Registered custom rule: {name}")
 
 
 def remove_custom_rule(name: str) -> bool:
     """Unregister a custom validation rule."""
     if name in _CUSTOM_RULES:
         del _CUSTOM_RULES[name]
-        logger.debug(f"Removed custom rule: {name}")
+        logger.debug("Removed custom rule: {name}")
         return True
     return False
 
@@ -158,7 +156,7 @@ def scan_for_viruses(filepath: Path) -> ValidationResult:
         )
     except (OSError, RuntimeError) as e:
         return ValidationResult(
-            False, "virus_scan", f"Virus scan error: {e}", "warning", {"error": str(e)}
+            False, "virus_scan", "Virus scan error: {e}", "warning", {"error": str(e)}
         )
 
 
@@ -168,7 +166,7 @@ def scan_for_viruses(filepath: Path) -> ValidationResult:
 @lru_cache(maxsize=256)
 def _file_identity(filepath_str: str, mtime: float, size: int) -> str:
     """Create cache key from file identity."""
-    return f"{filepath_str}:{mtime}:{size}"
+    return "{filepath_str}:{mtime}:{size}"
 
 
 @lru_cache(maxsize=256)
@@ -196,7 +194,7 @@ def validate_with_cache(
 
     try:
         stat = filepath.stat()
-        cache_key = _file_identity(str(filepath), stat.st_mtime, stat.st_size)
+        _file_identity(str(filepath), stat.st_mtime, stat.st_size)
 
         func_name = validation_func.__name__
 
@@ -219,8 +217,8 @@ def validate_with_cache(
         else:
             return validation_func(filepath)
 
-    except (OSError, PermissionError) as e:
-        logger.warning(f"Caching error for {filepath.name}: {e}")
+    except (OSError, PermissionError):
+        logger.warning("Caching error for {filepath.name}: {e}")
         return validation_func(filepath)
 
 
@@ -280,7 +278,7 @@ def generate_validation_report(
             except (ValueError, OSError, RuntimeError) as e:
                 results.append(
                     ValidationResult(
-                        False, rule_name, f"Custom rule error: {e}", "error", {"error": str(e)}
+                        False, rule_name, "Custom rule error: {e}", "error", {"error": str(e)}
                     )
                 )
 
@@ -310,15 +308,15 @@ def batch_validate(
         try:
             report = generate_validation_report(filepath, **kwargs)
             reports.append(report)
-        except (ValueError, OSError) as e:
-            logger.error(f"Error validating {filepath}: {e}")
+        except (ValueError, OSError):
+            logger.error("Error validating {filepath}: {e}")
             reports.append(
                 ValidationReport(
                     filepath=filepath,
                     timestamp=datetime.datetime.now(),
                     results=[
                         ValidationResult(
-                            False, "batch_validation", f"Validation error: {e}", "error"
+                            False, "batch_validation", "Validation error: {e}", "error"
                         )
                     ],
                     overall_status="failed",
@@ -343,13 +341,13 @@ def export_reports(
                 for report in reports:
                     f.write(report.to_text() + "\n\n")
         else:
-            raise ValueError(f"Unsupported format: {format}")
+            raise ValueError("Unsupported format: {format}")
 
-        logger.info(f"Exported {len(reports)} reports to {output_path}")
+        logger.info("Exported {len(reports)} reports to {output_path}")
         return True
 
-    except (OSError, ValueError) as e:
-        logger.error(f"Export failed: {e}")
+    except (OSError, ValueError):
+        logger.error("Export failed: {e}")
         return False
 
 
@@ -357,10 +355,9 @@ def export_reports(
 
 if __name__ == "__main__":
     import tempfile
-    import json
 
     print("=" * 70)
-    print(f"VALIDATORS ADVANCED v{__version__} - Self-Test")
+    print("VALIDATORS ADVANCED v{__version__} - Self-Test")
     print("=" * 70)
 
     tests_passed = 0
@@ -376,8 +373,8 @@ if __name__ == "__main__":
         remove_custom_rule("test")
         print("✓ Test 1: Custom validation rules")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 1: {e}")
+    except Exception:
+        print("✗ Test 1: {e}")
 
     try:
 
@@ -394,8 +391,8 @@ if __name__ == "__main__":
         remove_virus_scanner()
         print("✓ Test 2: Virus scanning hook")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 2: {e}")
+    except Exception:
+        print("✗ Test 2: {e}")
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
@@ -415,8 +412,8 @@ if __name__ == "__main__":
         tmp_path.unlink()
         print("✓ Test 3: Optimized caching")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 3: {e}")
+    except Exception:
+        print("✗ Test 3: {e}")
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
@@ -430,8 +427,8 @@ if __name__ == "__main__":
         tmp_path.unlink()
         print("✓ Test 4: Report generation")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 4: {e}")
+    except Exception:
+        print("✗ Test 4: {e}")
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
@@ -449,14 +446,14 @@ if __name__ == "__main__":
         tmp_path.unlink()
         print("✓ Test 5: Report formats")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 5: {e}")
+    except Exception:
+        print("✗ Test 5: {e}")
 
     try:
         temp_files = []
         for i in range(3):
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w")
-            tmp.write(f"test {i}")
+            tmp.write("test {i}")
             temp_files.append(Path(tmp.name))
             tmp.close()
 
@@ -468,8 +465,8 @@ if __name__ == "__main__":
 
         print("✓ Test 6: Batch validation")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 6: {e}")
+    except Exception:
+        print("✗ Test 6: {e}")
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w") as tmp:
@@ -490,11 +487,11 @@ if __name__ == "__main__":
 
         print("✓ Test 7: Report export")
         tests_passed += 1
-    except Exception as e:
-        print(f"✗ Test 7: {e}")
+    except Exception:
+        print("✗ Test 7: {e}")
 
     print("=" * 70)
-    print(f"Self-test: {tests_passed}/{tests_total} passed")
+    print("Self-test: {tests_passed}/{tests_total} passed")
     score = 10.0 if tests_passed == tests_total else (tests_passed / tests_total) * 10
-    print(f"Score: {score:.1f}/10 {'✅' if score >= 10.0 else '⚠️'}")
+    print("Score: {score:.1f}/10 {'✅' if score >= 10.0 else '⚠️'}")
     print("=" * 70)

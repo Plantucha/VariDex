@@ -23,10 +23,10 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from varidex.version import __version__
-from varidex.core.models import VariantData, ACMGEvidenceSet
+from varidex.core.models import VariantData
 from varidex.core.genotype import GenotypeNormalizer
 from varidex.core.classifier import ACMGClassifier
-from varidex.exceptions import ValidationError, VaridexError
+from varidex.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,6 @@ class DataValidator:
         Returns:
             (is_valid, error_message): Tuple indicating validation status
         """
-        import pandas as pd
 
         if df is None:
             return False, f"{stage_name}: DataFrame is None"

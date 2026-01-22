@@ -8,13 +8,11 @@ BUGFIX v6.0.1: Coordinate matching now assigns normalized DataFrames.
 import pandas as pd
 import logging
 from typing import Tuple
-from varidex.version import __version__
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 
 def normalize_column_names(df, source="unknown"):
     """Normalize column names for matching."""
-    import pandas as pd
 
     renames = {}
 
@@ -22,8 +20,8 @@ def normalize_column_names(df, source="unknown"):
         # ClinVar VCF uses: CHROM, POS, ID, REF, ALT
         if "ID" in df.columns and "rsid" not in df.columns:
             renames["ID"] = "rsid"
-        if "REF" in df.columns and "ref" not in df.columns:
-            renames["REF"] = "ref"
+        if "REF" in df.columns and "re" not in df.columns:
+            renames["REF"] = "re"
         if "ALT" in df.columns and "alt" not in df.columns:
             renames["ALT"] = "alt"
 
@@ -50,7 +48,7 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
         logger.warning("rsID column missing, returning empty DataFrame")
         return pd.DataFrame()
     matched = user_df.merge(clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar"))
-    logger.info(f"rsID matches: {len(matched):,}")
+    logger.info("rsID matches: {len(matched):,}")
     return matched
 
 
@@ -86,7 +84,7 @@ def match_by_coordinates(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.
         clinvar_df = normalize_dataframe_coordinates(clinvar_df)
 
     matched = user_df.merge(clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar"))
-    logger.info(f"Coordinate matches: {len(matched):,}")
+    logger.info("Coordinate matches: {len(matched):,}")
     return matched
 
 
@@ -121,9 +119,9 @@ def match_variants_hybrid(
     if clinvar_df is None or len(clinvar_df) == 0:
         raise ValueError("ClinVar DataFrame is empty")
 
-    logger.info(f"{'='*60}")
-    logger.info(f"MATCHING: {clinvar_type} × {user_type}")
-    logger.info(f"{'='*60}")
+    logger.info("{'='*60}")
+    logger.info("MATCHING: {clinvar_type} × {user_type}")
+    logger.info("{'='*60}")
 
     matches = []
     rsid_count = 0
@@ -135,10 +133,10 @@ def match_variants_hybrid(
         if len(rsid_matched) > 0:
             matches.append(rsid_matched)
             rsid_count = len(rsid_matched)
-            logger.info(f"✓ rsID: {rsid_count:,} matches")
+            logger.info("✓ rsID: {rsid_count:,} matches")
 
     # Try coordinate matching for unmatched variants
-    if clinvar_type in ["vcf", "vcf_tsv"]:
+    if clinvar_type in ["vc", "vcf_tsv"]:
         if rsid_count > 0 and "rsid" in user_df.columns:
             matched_rsids = set(rsid_matched["rsid"])
             unmatched = user_df[~user_df["rsid"].isin(matched_rsids)]
@@ -150,11 +148,11 @@ def match_variants_hybrid(
             if len(coord_matched) > 0:
                 matches.append(coord_matched)
                 coord_count = len(coord_matched)
-                logger.info(f"✓ Coordinate: {coord_count:,} matches")
+                logger.info("✓ Coordinate: {coord_count:,} matches")
 
     # Combine all matches
     if not matches:
-        raise ValueError(f"No matches found. ClinVar: {clinvar_type}, User: {user_type}")
+        raise ValueError("No matches found. ClinVar: {clinvar_type}, User: {user_type}")
 
     combined = pd.concat(matches, ignore_index=True)
 
@@ -164,9 +162,9 @@ def match_variants_hybrid(
     elif "rsid" in combined.columns:
         combined = combined.drop_duplicates(subset="rsid", keep="first")
 
-    coverage = len(combined) / len(user_df) * 100
-    logger.info(f"{'='*60}")
-    logger.info(f"TOTAL: {len(combined):,} matches ({coverage:.1f}% coverage)")
-    logger.info(f"{'='*60}")
+    len(combined) / len(user_df) * 100
+    logger.info("{'='*60}")
+    logger.info("TOTAL: {len(combined):,} matches ({coverage:.1f}% coverage)")
+    logger.info("{'='*60}")
 
     return combined, rsid_count, coord_count

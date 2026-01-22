@@ -33,8 +33,8 @@ CANON_COORD_KEY = "coord_key"
 CANON_ACMG_VERSION = "acmg_version"
 CANON_TOTAL_POINTS = "total_points"
 CANON_POINT_BREAKDOWN = "point_breakdown"
-CANON_GNOMAD_AF = "gnomad_af"
-CANON_POPULATION_AF = "population_af"
+CANON_GNOMAD_AF = "gnomad_a"
+CANON_POPULATION_AF = "population_a"
 CANON_GNOMAD_MODE = "gnomad_mode"
 CANON_IN_SILICO_SCORES = "in_silico_scores"
 
@@ -70,7 +70,7 @@ DEFAULT_ALIASES: Dict[str, str] = {
     "rs# (dbsnp)": CANON_RSID,
     "rsid": CANON_RSID,
     # alleles
-    "ref": CANON_REF,
+    "re": CANON_REF,
     "reference": CANON_REF,
     "ref_allele": CANON_REF,
     "alt": CANON_ALT,
@@ -95,8 +95,8 @@ DEFAULT_ALIASES: Dict[str, str] = {
     "molecular consequence": "molecular_consequence",
     "molecular_consequence": "molecular_consequence",
     # optional future
-    "gnomad_af": CANON_GNOMAD_AF,
-    "population_af": CANON_POPULATION_AF,
+    "gnomad_a": CANON_GNOMAD_AF,
+    "population_a": CANON_POPULATION_AF,
     "acmg_version": CANON_ACMG_VERSION,
     "total_points": CANON_TOTAL_POINTS,
     "point_breakdown": CANON_POINT_BREAKDOWN,

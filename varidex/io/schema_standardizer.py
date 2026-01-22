@@ -33,7 +33,7 @@ class SchemaStandardizer:
         "rsid": ["rs_id", "rsID", "RS", "dbSNP"],
         "chromosome": ["chr", "chrom", "CHROM", "Chromosome"],
         "position": ["pos", "POS", "Position", "PositionVCF", "Start"],
-        "ref_allele": ["ref", "REF", "reference", "refallele"],
+        "ref_allele": ["re", "REF", "reference", "refallele"],
         "alt_allele": ["alt", "ALT", "alternate", "altallele"],
         "gene": ["Gene", "gene_symbol", "GeneSymbol", "Genes"],
         "clinical_sig": ["clinicalsig", "ClinicalSignificance", "clinsig"],
@@ -50,7 +50,7 @@ class SchemaStandardizer:
     def standardize_dataframe(cls, df: pd.DataFrame, source: str = "unknown") -> pd.DataFrame:
         """Standardize all column names to canonical schema."""
         if df is None or len(df) == 0:
-            logger.warning(f"Empty DataFrame from {source}")
+            logger.warning("Empty DataFrame from {source}")
             return df
 
         rename_map = {}
@@ -64,7 +64,7 @@ class SchemaStandardizer:
 
         if rename_map:
             df = df.rename(columns=rename_map)
-            logger.info(f"[{source}] Standardized {len(rename_map)} columns")
+            logger.info("[{source}] Standardized {len(rename_map)} columns")
 
         return df
 

@@ -39,7 +39,7 @@ def load_vcf_file(*args, **kwargs):
     # Attempt to load as ClinVar VCF
     try:
         return load_clinvar_file(*args, **kwargs)
-    except Exception as e:
+    except Exception:
         # If that fails, try user file loader
         from varidex.io.loaders.user import load_user_file
 
