@@ -5,8 +5,8 @@ Client for accessing computational predictions via Ensembl VEP API.
 Provides SIFT, PolyPhen-2, CADD, and other algorithm predictions.
 
 Data Sources:
-  - Ensembl VEP REST API (primary)
-  - dbNSFP database (future: file-based parser)
+  - Ensembl VEP REST API (primary, requires internet)
+  - dbNSFP database (future: file-based parser for offline use)
 
 Algorithms Supported:
   - SIFT: Sorting Intolerant From Tolerant
@@ -15,13 +15,19 @@ Algorithms Supported:
   - REVEL: Rare Exome Variant Ensemble Learner
   - MetaSVM: Meta-predictor using SVM
 
+Offline Mode:
+  This client requires internet connectivity to access Ensembl VEP API.
+  For offline use, set enable_predictions=False in ComputationalPredictionService
+  or use the graceful degradation to engine_v7 (gnomAD only) or engine_v6 (base).
+  Future enhancement: Add file-based dbNSFP parser for full offline support.
+
 Reference:
   - https://rest.ensembl.org/
   - https://sites.google.com/site/jpopgen/dbNSFP
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 from functools import lru_cache
 import logging
@@ -33,7 +39,11 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PredictionScore:
-    """Container for computational prediction scores."""
+    """Container for computational prediction scores.
+    
+    Counts algorithms that predict deleterious vs benign effect.
+    Missing algorithm scores are handled gracefully (not counted).
+    """
     
     # SIFT (0-1, lower = more deleterious)
     sift_score: Optional[float] = None
@@ -122,6 +132,21 @@ class PredictionScore:
         
         return count
     
+    def get_available_algorithms(self) -> List[str]:
+        """Get list of algorithms with scores available."""
+        available = []
+        if self.sift_score is not None or self.sift_prediction:
+            available.append('SIFT')
+        if self.polyphen_score is not None or self.polyphen_prediction:
+            available.append('PolyPhen-2')
+        if self.cadd_phred is not None:
+            available.append('CADD')
+        if self.revel_score is not None:
+            available.append('REVEL')
+        if self.metasvm_score is not None or self.metasvm_prediction:
+            available.append('MetaSVM')
+        return available
+    
     @property
     def has_scores(self) -> bool:
         """Check if any prediction scores are available."""
@@ -137,7 +162,8 @@ class PredictionScore:
         """Generate human-readable summary."""
         deleterious = self.count_deleterious()
         benign = self.count_benign()
-        return f"{deleterious} deleterious, {benign} benign predictions"
+        algorithms = self.get_available_algorithms()
+        return f"{deleterious} deleterious, {benign} benign ({len(algorithms)} algorithms)"
 
 
 class DbNSFPClient:
@@ -145,6 +171,17 @@ class DbNSFPClient:
     
     Uses Ensembl VEP REST API to retrieve predictions for variants.
     Supports caching and rate limiting.
+    
+    Note: Requires internet connectivity. For offline use, disable predictions
+    at the service level or use engine_v7 (gnomAD only) or engine_v6 (base).
+    
+    Rate Limiting:
+      Ensembl VEP has rate limits (15 requests/second for REST API).
+      For bulk processing, consider:
+        - Using batch endpoints (future enhancement)
+        - Local VEP installation
+        - Pre-caching predictions
+        - Increasing cache TTL
     """
     
     DEFAULT_VEP_URL = "https://rest.ensembl.org"
@@ -169,6 +206,9 @@ class DbNSFPClient:
             cache_ttl: Cache time-to-live in seconds
             rate_limit: Enable rate limiting
             max_requests_per_second: Max requests per second
+        
+        Raises:
+            Warning: If offline (no internet connectivity)
         """
         self.vep_url = vep_url.rstrip('/')
         self.timeout = timeout
@@ -176,7 +216,7 @@ class DbNSFPClient:
         self.cache_ttl = timedelta(seconds=cache_ttl)
         
         # Cache: variant_id -> (PredictionScore, timestamp)
-        self._cache: Dict[str, tuple[PredictionScore, datetime]] = {}
+        self._cache: Dict[str, Tuple[PredictionScore, datetime]] = {}
         
         # Rate limiting
         self.rate_limit = rate_limit
@@ -191,7 +231,8 @@ class DbNSFPClient:
             'Accept': 'application/json'
         })
         
-        logger.info(f"DbNSFPClient initialized: VEP={vep_url}, cache={enable_cache}")
+        logger.info(f"DbNSFPClient initialized: VEP={vep_url}, cache={enable_cache}, rate_limit={rate_limit}")
+        logger.info(f"Note: This client requires internet connectivity to function")
     
     def _wait_if_needed(self) -> None:
         """Wait if rate limit would be exceeded."""
@@ -236,7 +277,12 @@ class DbNSFPClient:
         logger.info("Cache cleared")
     
     def _parse_vep_response(self, data: List[Dict[str, Any]], variant_id: str) -> Optional[PredictionScore]:
-        """Parse VEP API response and extract predictions."""
+        """Parse VEP API response and extract predictions.
+        
+        Note: Not all algorithms may be available in VEP response.
+        This is normal - VEP may not have scores for all variants/algorithms.
+        Missing scores are handled gracefully.
+        """
         try:
             if not data:
                 return None
@@ -281,7 +327,12 @@ class DbNSFPClient:
             if 'revel' in transcript:
                 prediction.revel_score = float(transcript['revel'])
             
+            # Log available algorithms
+            available = prediction.get_available_algorithms()
             logger.info(f"Parsed predictions for {variant_id}: {prediction.summary()}")
+            if len(available) < 3:
+                logger.warning(f"Limited algorithm coverage for {variant_id}: only {', '.join(available)} available")
+            
             return prediction
             
         except Exception as e:
@@ -307,6 +358,10 @@ class DbNSFPClient:
         
         Returns:
             PredictionScore object or None if not found/error
+        
+        Note:
+            Requires internet connectivity. If offline, returns None
+            and logs an error. Service will gracefully degrade.
         """
         variant_id = f"{chromosome}-{position}-{ref}-{alt}"
         
@@ -345,7 +400,11 @@ class DbNSFPClient:
             return prediction
             
         except requests.exceptions.Timeout:
-            logger.error(f"VEP request timeout for {variant_id}")
+            logger.error(f"VEP request timeout for {variant_id} (offline or slow connection?)")
+            return None
+        except requests.exceptions.ConnectionError:
+            logger.error(f"VEP connection failed for {variant_id} (offline or VEP unavailable?)")
+            logger.info("Tip: For offline use, disable predictions or use engine_v7/v6")
             return None
         except requests.exceptions.RequestException as e:
             logger.error(f"VEP request failed for {variant_id}: {e}")
@@ -366,6 +425,7 @@ class DbNSFPClient:
             'cache_ttl_seconds': self.cache_ttl.seconds,
             'rate_limit_enabled': self.rate_limit,
             'vep_url': self.vep_url,
+            'requires_internet': True,
         }
     
     def __del__(self):
@@ -384,12 +444,16 @@ if __name__ == "__main__":
     print("  • CADD: Combined Annotation Dependent Depletion")
     print("  • REVEL: Rare Exome Variant Ensemble Learner")
     print("  • MetaSVM: Meta-predictor using SVM")
+    print("\nRequirements:")
+    print("  ⚠️  Internet connectivity required")
+    print("  • For offline use, disable predictions or use engine_v7/v6")
     print("\nUsage:")
     print("  client = DbNSFPClient()")
     print("  predictions = client.get_predictions('17', 43094692, 'G', 'A')")
     print("  if predictions:")
+    print("      print(f'Available: {predictions.get_available_algorithms()}')")
     print("      print(f'Deleterious: {predictions.count_deleterious()}')")
     print("      print(f'Benign: {predictions.count_benign()}')")
     print("="*80)
 else:
-    logger.info("DbNSFPClient loaded - Ensembl VEP integration")
+    logger.info("DbNSFPClient loaded - Ensembl VEP integration (requires internet)")
