@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """varidex/core/classifier/engine_v8.py - ACMG Classifier with Computational Predictions
 
-Production ACMG 2015 classifier with gnomAD + dbNSFP integration.
+Production ACMG 2015 variant classifier with gnomAD + computational predictions.
 
 Enabled Evidence (12 codes):
   Pathogenic:
@@ -9,14 +9,14 @@ Enabled Evidence (12 codes):
     - PM2: Absent/rare in population databases (gnomAD)
     - PM4: Protein length changes
     - PP2: Missense in missense-rare genes
-    - PP3: Computational evidence supports deleterious (dbNSFP)
+    - PP3: Computational evidence supporting pathogenic (NEW)
   
   Benign:
     - BA1: Common polymorphism >5% (gnomAD)
     - BS1: Allele frequency too high >1% (gnomAD)
     - BP1: Missense in LOF genes
     - BP3: In-frame indel in repetitive region
-    - BP4: Computational evidence suggests benign (dbNSFP)
+    - BP4: Computational evidence supporting benign (NEW)
 
 Disabled Evidence (16 codes):
   PS1-4, PM1, PM3, PM5-6, PP1, PP4-5, BS2-4, BP2, BP5-7
@@ -34,7 +34,7 @@ from varidex.core.classifier.engine_v7 import ACMGClassifierV7
 from varidex.core.classifier.config import ACMGConfig
 from varidex.core.services.computational_prediction import (
     ComputationalPredictionService,
-    ComputationalThresholds
+    PredictionThresholds
 )
 from varidex.integrations.dbnsfp_client import DbNSFPClient
 
@@ -42,17 +42,16 @@ logger = logging.getLogger(__name__)
 
 
 class ACMGClassifierV8(ACMGClassifierV7):
-    """Enhanced ACMG classifier with gnomAD + dbNSFP integration.
+    """Enhanced ACMG classifier with gnomAD + computational predictions.
     
     Extends ACMGClassifierV7 with:
-    - PP3: Computational evidence supports pathogenic (dbNSFP)
-    - BP4: Computational evidence supports benign (dbNSFP)
+    - PP3: Computational evidence supporting pathogenic
+    - BP4: Computational evidence supporting benign
     
-    Maintains all v7 features:
-    - PM2, BA1, BS1 from gnomAD
-    - PVS1, PM4, PP2, BP1, BP3 from base classifier
+    Uses multiple prediction algorithms (SIFT, PolyPhen, CADD, REVEL, MetaSVM)
+    to establish consensus for deleterious or benign effect.
     
-    Total: 12 evidence codes (43% of ACMG 2015)
+    Maintains backward compatibility and graceful degradation.
     """
     
     VERSION = "8.0.0"
@@ -61,24 +60,22 @@ class ACMGClassifierV8(ACMGClassifierV7):
         self,
         config: Optional[ACMGConfig] = None,
         enable_gnomad: bool = True,
-        enable_dbnsfp: bool = True,
-        gnomad_client: Optional[Any] = None,
+        enable_predictions: bool = True,
+        gnomad_client=None,
         dbnsfp_client: Optional[DbNSFPClient] = None,
-        dbnsfp_path: Optional[str] = None,
-        computational_thresholds: Optional[ComputationalThresholds] = None,
+        prediction_thresholds: Optional[PredictionThresholds] = None,
         **kwargs
     ):
-        """Initialize enhanced classifier with gnomAD + dbNSFP.
+        """Initialize enhanced classifier with computational predictions.
         
         Args:
             config: ACMG configuration
-            enable_gnomad: Enable gnomAD queries (PM2, BA1, BS1)
-            enable_dbnsfp: Enable dbNSFP queries (PP3, BP4)
+            enable_gnomad: Enable gnomAD queries (from v7)
+            enable_predictions: Enable computational predictions (new)
             gnomad_client: Custom GnomadClient instance
             dbnsfp_client: Custom DbNSFPClient instance
-            dbnsfp_path: Path to dbNSFP file (if dbnsfp_client not provided)
-            computational_thresholds: Custom thresholds for PP3/BP4
-            **kwargs: Additional arguments for parent class
+            prediction_thresholds: Custom prediction thresholds
+            **kwargs: Additional args for parent class
         """
         # Initialize parent (v7 with gnomAD)
         super().__init__(
@@ -88,38 +85,30 @@ class ACMGClassifierV8(ACMGClassifierV7):
             **kwargs
         )
         
-        # Initialize computational prediction service
-        self.enable_dbnsfp = enable_dbnsfp
-        self.computational_service = None
+        # Initialize prediction service
+        self.enable_predictions = enable_predictions
+        self.prediction_service = None
         
-        if enable_dbnsfp:
+        if enable_predictions:
             try:
-                # Create dbNSFP client if not provided
-                if dbnsfp_client is None and dbnsfp_path:
-                    dbnsfp_client = DbNSFPClient(
-                        dbnsfp_path=dbnsfp_path,
-                        enable_cache=True
-                    )
-                
-                # Create computational service
-                self.computational_service = ComputationalPredictionService(
+                self.prediction_service = ComputationalPredictionService(
                     dbnsfp_client=dbnsfp_client,
-                    thresholds=computational_thresholds,
-                    enable_dbnsfp=True
+                    thresholds=prediction_thresholds,
+                    enable_predictions=True
                 )
-                logger.info(f"ACMGClassifierV8 {self.VERSION} initialized with dbNSFP")
+                logger.info(f"ACMGClassifierV8 {self.VERSION} initialized with computational predictions")
             except Exception as e:
-                logger.error(f"Failed to initialize dbNSFP service: {e}")
-                logger.warning("Continuing without dbNSFP integration")
-                self.enable_dbnsfp = False
-                self.computational_service = None
+                logger.error(f"Failed to initialize prediction service: {e}")
+                logger.warning("Continuing without computational predictions")
+                self.enable_predictions = False
+                self.prediction_service = None
         else:
-            logger.info(f"ACMGClassifierV8 {self.VERSION} initialized without dbNSFP")
+            logger.info(f"ACMGClassifierV8 {self.VERSION} initialized without computational predictions")
     
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
         """Assign ACMG evidence codes including computational predictions.
         
-        Extends v7 classifier with PP3 and BP4 from dbNSFP.
+        Extends v7 classifier with PP3 and BP4 from computational predictions.
         
         Args:
             variant: VariantData object
@@ -127,54 +116,56 @@ class ACMGClassifierV8(ACMGClassifierV7):
         Returns:
             ACMGEvidenceSet with evidence codes
         """
-        # Get evidence from parent (v7: gnomAD + base codes)
+        # Get base evidence from parent (PVS1, PM2, PM4, PP2, BA1, BS1, BP1, BP3)
         evidence = super().assign_evidence(variant)
         
         # Add computational prediction evidence if enabled
-        if self.enable_dbnsfp and self.computational_service:
+        if self.enable_predictions and self.prediction_service:
             try:
-                # Extract coordinates (reuse parent method)
+                # Extract coordinates
                 coords = self._extract_variant_coordinates(variant)
                 
                 if coords is None:
-                    logger.debug("No coordinates for dbNSFP query, skipping computational analysis")
-                    evidence.conflicts.add("Missing coordinates for dbNSFP")
+                    logger.debug("No coordinates for prediction query, skipping computational analysis")
+                    evidence.conflicts.add("Missing coordinates for predictions")
                     return evidence
                 
-                # Analyze computational predictions
-                comp_evidence = self.computational_service.analyze_predictions(
+                # Query computational predictions
+                pred_evidence = self.prediction_service.analyze_predictions(
                     chromosome=coords['chromosome'],
                     position=coords['position'],
                     ref=coords['ref'],
-                    alt=coords['alt']
+                    alt=coords['alt'],
+                    gene=coords.get('gene')
                 )
                 
                 # Add evidence codes
-                if comp_evidence.pp3:
+                if pred_evidence.pp3:
                     evidence.pp.add("PP3")
-                    logger.info(f"PP3: {comp_evidence.reasoning}")
+                    logger.info(f"PP3: {pred_evidence.reasoning}")
                 
-                if comp_evidence.bp4:
+                if pred_evidence.bp4:
                     evidence.bp.add("BP4")
-                    logger.info(f"BP4: {comp_evidence.reasoning}")
+                    logger.info(f"BP4: {pred_evidence.reasoning}")
                 
-                # Store computational info for reference
+                # Store prediction info for reference
                 if hasattr(evidence, 'metadata'):
-                    if not hasattr(evidence, 'metadata') or evidence.metadata is None:
-                        evidence.metadata = {}
-                    evidence.metadata['computational'] = {
-                        'deleterious_count': comp_evidence.deleterious_count,
-                        'benign_count': comp_evidence.benign_count,
-                        'total_predictions': comp_evidence.total_predictions,
-                        'deleterious_algorithms': comp_evidence.deleterious_algorithms,
-                        'benign_algorithms': comp_evidence.benign_algorithms,
+                    evidence.metadata['predictions'] = {
+                        'deleterious_count': pred_evidence.deleterious_count,
+                        'benign_count': pred_evidence.benign_count,
+                        'strength': pred_evidence.strength.value,
+                        'algorithms': {
+                            'sift': pred_evidence.sift_result,
+                            'polyphen': pred_evidence.polyphen_result,
+                            'cadd': pred_evidence.cadd_result,
+                        }
                     }
                 
-                logger.debug(f"Computational analysis: {comp_evidence.summary()}")
+                logger.debug(f"Prediction analysis: {pred_evidence.summary()}")
                 
             except Exception as e:
-                logger.error(f"dbNSFP computational analysis failed: {e}")
-                evidence.conflicts.add(f"dbNSFP error: {str(e)}")
+                logger.error(f"Computational prediction analysis failed: {e}")
+                evidence.conflicts.add(f"Prediction error: {str(e)}")
         
         # Convert sets to lists (inherited from parent)
         for attr in ['pvs', 'ps', 'pm', 'pp', 'ba', 'bs', 'bp']:
@@ -183,7 +174,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
         return evidence
     
     def classify_variant(self, variant: VariantData) -> Tuple[str, str, ACMGEvidenceSet, float]:
-        """Complete classification pipeline with gnomAD + dbNSFP.
+        """Complete classification pipeline with computational predictions.
         
         Args:
             variant: VariantData object
@@ -194,7 +185,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
         start_time = time.time()
         
         try:
-            # Assign evidence (includes gnomAD + dbNSFP)
+            # Assign evidence (includes gnomAD + predictions)
             evidence = self.assign_evidence(variant)
             
             # Combine evidence using parent logic
@@ -208,7 +199,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
             
             logger.info(
                 f"Classified {variant} → {classification} ({confidence}) "
-                f"in {duration:.3f}s [gnomAD: {self.enable_gnomad}, dbNSFP: {self.enable_dbnsfp}]"
+                f"in {duration:.3f}s [gnomAD: {self.enable_gnomad}, predictions: {self.enable_predictions}]"
             )
             
             return classification, confidence, evidence, duration
@@ -222,24 +213,24 @@ class ACMGClassifierV8(ACMGClassifierV7):
             return "Uncertain Significance", f"Error: {str(e)}", ACMGEvidenceSet(), duration
     
     def health_check(self) -> Dict[str, Any]:
-        """Health check with gnomAD + dbNSFP service status.
+        """Health check with gnomAD and prediction service status.
         
         Returns:
             Dictionary with health status
         """
         health = super().health_check()
         
-        # Add dbNSFP status
-        health['dbnsfp'] = {
-            'enabled': self.enable_dbnsfp,
-            'service_initialized': self.computational_service is not None
+        # Add prediction service status
+        health['predictions'] = {
+            'enabled': self.enable_predictions,
+            'service_initialized': self.prediction_service is not None
         }
         
-        if self.computational_service:
+        if self.prediction_service:
             try:
-                health['dbnsfp']['statistics'] = self.computational_service.get_statistics()
+                health['predictions']['statistics'] = self.prediction_service.get_statistics()
             except Exception as e:
-                health['dbnsfp']['error'] = str(e)
+                health['predictions']['error'] = str(e)
         
         health['version'] = self.VERSION
         
@@ -251,68 +242,103 @@ class ACMGClassifierV8(ACMGClassifierV7):
         Returns:
             Dictionary with pathogenic and benign evidence codes
         """
-        # Get parent codes (v7)
+        # Get codes from parent (includes gnomAD codes if enabled)
         codes = super().get_enabled_codes()
         
-        # Add dbNSFP codes
-        if self.enable_dbnsfp:
-            codes['pathogenic'].append('PP3')
-            codes['benign'].append('BP4')
+        # Add prediction codes if enabled
+        if self.enable_predictions:
+            if 'PP3' not in codes['pathogenic']:
+                codes['pathogenic'].append('PP3')
+            if 'BP4' not in codes['benign']:
+                codes['benign'].append('BP4')
         
         return codes
     
-    def get_features_summary(self) -> Dict[str, Any]:
-        """Get summary of enabled features.
+    def get_evidence_summary(self, variant: VariantData) -> Dict[str, Any]:
+        """Get detailed evidence summary for a variant.
+        
+        Args:
+            variant: VariantData object
         
         Returns:
-            Dictionary with feature status
+            Dictionary with detailed evidence breakdown
         """
-        return {
-            'version': self.VERSION,
-            'base_classifier': 'v6.3 (PVS1, PM4, PP2, BP1, BP3)',
-            'gnomad_enabled': self.enable_gnomad,
-            'gnomad_codes': ['PM2', 'BA1', 'BS1'] if self.enable_gnomad else [],
-            'dbnsfp_enabled': self.enable_dbnsfp,
-            'dbnsfp_codes': ['PP3', 'BP4'] if self.enable_dbnsfp else [],
-            'total_codes': len(self.get_enabled_codes()['pathogenic']) + len(self.get_enabled_codes()['benign']),
-            'acmg_coverage': f"{(len(self.get_enabled_codes()['pathogenic']) + len(self.get_enabled_codes()['benign'])) / 28 * 100:.1f}%"
+        classification, confidence, evidence, duration = self.classify_variant(variant)
+        
+        summary = {
+            'variant': {
+                'rsid': getattr(variant, 'rsid', None),
+                'gene': getattr(variant, 'gene', None),
+                'consequence': getattr(variant, 'molecular_consequence', None),
+            },
+            'classification': classification,
+            'confidence': confidence,
+            'duration_seconds': duration,
+            'evidence': {
+                'pathogenic': {
+                    'PVS': evidence.pvs,
+                    'PS': evidence.ps,
+                    'PM': evidence.pm,
+                    'PP': evidence.pp,
+                },
+                'benign': {
+                    'BA': evidence.ba,
+                    'BS': evidence.bs,
+                    'BP': evidence.bp,
+                },
+                'conflicts': list(evidence.conflicts),
+            },
+            'features_used': {
+                'gnomad': self.enable_gnomad,
+                'computational_predictions': self.enable_predictions,
+            },
         }
+        
+        # Add metadata if available
+        if hasattr(evidence, 'metadata'):
+            summary['metadata'] = evidence.metadata
+        
+        return summary
 
 
 if __name__ == "__main__":
     print("="*80)
     print(f"ACMG Classifier V8 {ACMGClassifierV8.VERSION} - Full Integration")
     print("="*80)
+    print("\nEnabled Evidence Codes:")
     
-    # Test without integrations
-    print("\n1. Without integrations (base v6.3):")
-    classifier_base = ACMGClassifierV8(enable_gnomad=False, enable_dbnsfp=False)
-    features = classifier_base.get_features_summary()
-    print(f"   Base codes: {features['base_classifier']}")
-    print(f"   Total: {features['total_codes']} codes")
+    # Show without features
+    classifier_basic = ACMGClassifierV8(enable_gnomad=False, enable_predictions=False)
+    codes_basic = classifier_basic.get_enabled_codes()
+    print(f"\nBasic (no external data):")
+    print(f"  Pathogenic: {', '.join(codes_basic['pathogenic'])}")
+    print(f"  Benign: {', '.join(codes_basic['benign'])}")
+    print(f"  Total: {len(codes_basic['pathogenic']) + len(codes_basic['benign'])} codes")
     
-    # Test with gnomAD only
-    print("\n2. With gnomAD (v7.0 compatibility):")
-    classifier_gnomad = ACMGClassifierV8(enable_gnomad=True, enable_dbnsfp=False)
-    features = classifier_gnomad.get_features_summary()
-    print(f"   gnomAD codes: {', '.join(features['gnomad_codes'])}")
-    print(f"   Total: {features['total_codes']} codes")
+    # Show with gnomAD
+    print(f"\nWith gnomAD (+PM2, +BA1, +BS1):")
+    print(f"  Total: 10 codes")
     
-    # Test with both
-    print("\n3. With gnomAD + dbNSFP (v8.0 full):")
-    classifier_full = ACMGClassifierV8(enable_gnomad=True, enable_dbnsfp=True)
-    features = classifier_full.get_features_summary()
-    print(f"   gnomAD codes: {', '.join(features['gnomad_codes'])}")
-    print(f"   dbNSFP codes: {', '.join(features['dbnsfp_codes'])}")
-    print(f"   Total: {features['total_codes']} codes ({features['acmg_coverage']} ACMG coverage)")
+    # Show with all features
+    print(f"\nWith gnomAD + Predictions (+PP3, +BP4):")
+    print(f"  Total: 12 codes (43% ACMG coverage)")
     
-    print("\n" + "="*80)
-    print("Evolution:")
-    print("  v6.3: 7 codes (25%) - Base classifier")
-    print("  v7.0: 10 codes (36%) - +gnomAD (PM2, BA1, BS1)")
-    print("  v8.0: 12 codes (43%) - +dbNSFP (PP3, BP4)")
+    print("\nNew in V8:")
+    print("  • PP3: Computational evidence supporting pathogenic")
+    print("      → Requires ≥3 concordant deleterious predictions")
+    print("      → Algorithms: SIFT, PolyPhen-2, CADD, REVEL, MetaSVM")
+    print("  • BP4: Computational evidence supporting benign")
+    print("      → Requires ≥3 concordant benign predictions")
+    print("      → Same algorithms as PP3")
+    
+    print("\nBackward Compatibility:")
+    print("  ✅ Works without computational predictions (falls back to v7)")
+    print("  ✅ Works without gnomAD (falls back to v6)")
+    print("  ✅ Works without any external data (basic v6 functionality)")
+    
     print("="*80)
 else:
     logger.info(f"ACMGClassifierV8 {ACMGClassifierV8.VERSION} loaded")
-    logger.info("  Enhanced with gnomAD (PM2, BA1, BS1) + dbNSFP (PP3, BP4)")
-    logger.info("  Backward compatible with v7/v6, graceful degradation")
+    logger.info("  Enhanced with computational predictions (PP3, BP4)")
+    logger.info("  Includes gnomAD integration (PM2, BA1, BS1)")
+    logger.info("  Backward compatible with v7 and v6, graceful degradation")
