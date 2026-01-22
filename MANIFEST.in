@@ -1,0 +1,35 @@
+# Include documentation files
+include README.md
+include LICENSE
+include TESTING.md
+include VARIDEX_CODE_STANDARDS.md
+include VARIDEX_COMPLETE_ACMG_IMPLEMENTATION.md
+include COMMERCIAL_LICENSE.md
+include COMMERCIAL_LICENSE_QUICK_REFERENCE.md
+include FILE_SPLITTING_GUIDE_INTEGRATED.md
+include VariDex_500_Line_Limit_Migration_Proposal.md
+include VariDex Canonical Schema.md
+
+# Include configuration files
+include pytest.ini
+include requirements.txt
+include requirements-test.txt
+include pyproject.toml
+
+# Include test scripts
+include test_e2e.sh
+include test_installation_enhanced_v2.sh
+
+# Include JSON data
+include acmg_implementation_roadmap_INTEGRATED.json
+
+# Exclude development and backup files
+exclude .gitignore
+prune .cleanup_backup_*
+prune .github
+prune tests/__pycache__
+prune varidex/__pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .pytest_cache
