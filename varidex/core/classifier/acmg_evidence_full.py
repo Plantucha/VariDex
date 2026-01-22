@@ -38,10 +38,10 @@ Benign Evidence (12 codes):
 
 Reference: Richards et al. 2015, PMID 25741868
 
-Version: 1.1 (bugfixes)
+Version: 1.2.0 (critical bugfix - PS3/BS3 enum support)
 """
 
-from typing import Dict, Optional, Set, Any
+from typing import Dict, Optional, Set, Any, Union
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -102,7 +102,7 @@ class DataRequirements:
     # Clinical data
     de_novo_confirmed: Optional[bool] = None  # Parental testing
     de_novo_assumed: Optional[bool] = None  # No parental data
-    functional_study_result: Optional[str] = None  # Use FunctionalStudyResult enum values
+    functional_study_result: Union[str, FunctionalStudyResult, None] = None  # Accepts enum or string
     segregation_data: Optional[Dict] = None  # Family data
     
     # Literature/Database evidence
@@ -132,6 +132,7 @@ class ACMGEvidenceEngine:
     Complete ACMG 2015 evidence code engine.
     
     Implements all 28 codes with graceful degradation when data unavailable.
+    Version 1.2.0 - Critical bugfix for PS3/BS3 enum support.
     """
     
     def __init__(self, 
@@ -170,7 +171,7 @@ class ACMGEvidenceEngine:
         self.missense_rare_genes = missense_rare_genes
         self.thresholds = thresholds if thresholds else PredictorThresholds()
         
-        logger.info(f"ACMGEvidenceEngine initialized: {len(lof_genes)} LOF genes, "
+        logger.info(f"ACMGEvidenceEngine v1.2.0 initialized: {len(lof_genes)} LOF genes, "
                    f"{len(missense_rare_genes)} missense-rare genes")
         
     # ========== PATHOGENIC EVIDENCE ==========
@@ -235,8 +236,11 @@ class ACMGEvidenceEngine:
             return EvidenceResult('PS3', False, 'No functional study data',
                                 0.0, False)
         
-        # IMPROVED: Support enum or string
-        result = data.functional_study_result.lower()
+        # CRITICAL FIX: Handle both enum and string
+        if isinstance(data.functional_study_result, FunctionalStudyResult):
+            result = data.functional_study_result.value
+        else:
+            result = data.functional_study_result.lower()
         
         if result == FunctionalStudyResult.DELETERIOUS.value:
             return EvidenceResult('PS3', True,
@@ -244,7 +248,7 @@ class ACMGEvidenceEngine:
                                 0.95, True)
         
         return EvidenceResult('PS3', False,
-                            f'Functional study: {data.functional_study_result}',
+                            f'Functional study: {result}',
                             0.0, True)
     
     def ps4(self, data: DataRequirements) -> EvidenceResult:
@@ -471,8 +475,11 @@ class ACMGEvidenceEngine:
             return EvidenceResult('BS3', False, 'No functional study data',
                                 0.0, False)
         
-        # IMPROVED: Support enum or string
-        result = data.functional_study_result.lower()
+        # CRITICAL FIX: Handle both enum and string
+        if isinstance(data.functional_study_result, FunctionalStudyResult):
+            result = data.functional_study_result.value
+        else:
+            result = data.functional_study_result.lower()
         
         if result == FunctionalStudyResult.BENIGN.value:
             return EvidenceResult('BS3', True,
@@ -480,7 +487,7 @@ class ACMGEvidenceEngine:
                                 0.95, True)
         
         return EvidenceResult('BS3', False,
-                            f'Functional study: {data.functional_study_result}',
+                            f'Functional study: {result}',
                             0.0, True)
     
     def bs4(self, data: DataRequirements) -> EvidenceResult:
@@ -620,12 +627,17 @@ class ACMGEvidenceEngine:
 
 if __name__ == '__main__':
     print("="*80)
-    print("ACMG Complete Evidence Engine - 28 Evidence Codes v1.1")
+    print("ACMG Complete Evidence Engine - 28 Evidence Codes v1.2.0")
     print("="*80)
     print("Use via: from varidex.core.classifier.acmg_evidence_full import ACMGEvidenceEngine")
     print("Implements all ACMG 2015 guidelines with graceful degradation")
     print("")
-    print("Bugfixes v1.1:")
+    print("Bugfixes v1.2.0:")
+    print("  - CRITICAL: Fixed PS3/BS3 to handle FunctionalStudyResult enum")
+    print("  - Updated type hint to Union[str, FunctionalStudyResult, None]")
+    print("  - Maintains backward compatibility with string inputs")
+    print("")
+    print("Previous fixes (v1.1):")
     print("  - Fixed PS1 boolean logic (None vs False)")
     print("  - Added input validation for gene sets")
     print("  - Handle empty clinvar_sig strings")
