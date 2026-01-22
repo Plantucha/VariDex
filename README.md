@@ -1,16 +1,14 @@
-# VariDex v6.0.0
+# VariDex
 
 **Variant Data Extraction and Classification System**
 
-A comprehensive Python package for ACMG 2015-compliant variant classification, ClinVar integration, and genomic data analysis.
+A Python package for ACMG 2015-compliant variant classification, ClinVar integration, and genomic data analysis.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-[![CI/CD](https://github.com/Plantucha/VariDex/actions/workflows/test.yml/badge.svg)](https://github.com/Plantucha/VariDex/actions/workflows/test.yml)
-[![Tests](https://img.shields.io/badge/tests-200%2B%20passing-brightgreen.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-97%25%2B-brightgreen.svg)](tests/)
-[![Quality](https://img.shields.io/badge/quality-10%2F10-gold.svg)](tests/)
-[![Code Status](https://img.shields.io/badge/status-production%20ready-success.svg)](https://github.com/Plantucha/VariDex)
+[![Code Status](https://img.shields.io/badge/status-in%20development-yellow.svg)](https://github.com/Plantucha/VariDex)
+
+> **⚠️ Development Status:** VariDex is currently in active development. Testing and validation are ongoing. Not yet recommended for production clinical use.
 
 ---
 
@@ -18,6 +16,7 @@ A comprehensive Python package for ACMG 2015-compliant variant classification, C
 
 - [Overview](#overview)
 - [Features](#features)
+- [Current Status](#current-status)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Usage Examples](#usage-examples)
@@ -32,12 +31,12 @@ A comprehensive Python package for ACMG 2015-compliant variant classification, C
 
 ## 🔬 Overview
 
-VariDex is a production-ready Python package designed for genomic variant analysis following the **ACMG 2015 guidelines** (Richards et al., 2015). It provides a complete workflow for:
+VariDex is a Python package designed for genomic variant analysis following the **ACMG 2015 guidelines** (Richards et al., 2015). It provides a workflow for:
 
 - Loading and normalizing variant data from ClinVar and user genome files
 - Classifying variants using ACMG/AMP 2015 evidence criteria
-- Generating comprehensive analysis reports
-- Orchestrating full variant analysis pipelines
+- Generating variant analysis reports
+- Orchestrating variant analysis pipelines
 
 **Key Reference:**  
 *Richards S, et al. Standards and guidelines for the interpretation of sequence variants: a joint consensus recommendation of the American College of Medical Genetics and Genomics and the Association for Molecular Pathology. Genet Med. 2015 May;17(5):405-24. PMID: 25741868*
@@ -48,15 +47,18 @@ VariDex is a production-ready Python package designed for genomic variant analys
 
 ### 🎯 Core Capabilities
 
-- **ACMG 2015 Compliant Classification**
-  - Partial ACMG implementation (7/28 evidence codes, 25% coverage)
-  - Evidence codes: PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4, BP1-7
+- **ACMG 2015 Classification Engine**
+  - **Implementation status:** 7 out of 28 evidence codes (25% coverage)
+  - **Implemented codes:** PVS1, PM4, PP2, BA1, BS1, BP1, BP3
+  - **Pending implementation:** PS1-4, PM1-3, PM5-6, PP1, PP3-5, BS2-4, BP2, BP4-7 (21 codes)
   - Automated variant classification (Pathogenic/Likely Pathogenic/VUS/Likely Benign/Benign)
+  - Follows ACMG 2015 combination rules
 
 - **ClinVar Integration**
-  - Native ClinVar data loading and parsing
+  - ClinVar data loading and parsing
   - Variant normalization and matching
   - Clinical significance mapping
+  - Star rating extraction
 
 - **User Genome Processing**
   - VCF file support
@@ -65,24 +67,69 @@ VariDex is a production-ready Python package designed for genomic variant analys
   - Coordinate normalization
 
 - **Pipeline Orchestration**
-  - End-to-end workflow management
+  - Workflow management
   - Batch variant processing
   - Progress tracking and logging
 
 - **Report Generation**
-  - Detailed classification reports
+  - Classification reports
   - Evidence summary tables
-  - Multiple output formats (CSV, JSON, HTML)
+  - Multiple output formats (CSV, JSON, HTML planned)
 
-### 🛡️ Quality Standards
+### 🔧 Quality Features
 
-- ✅ **Production-Ready Test Suite** - 200+ comprehensive tests with 97%+ coverage
-- ✅ **Automated CI/CD** - Tests on Python 3.9-3.12 across Ubuntu, Windows, macOS
-- ✅ **Zero Errors** - All tests passing, 10/10 quality score
-- ✅ **Clean Code** - All files under 500 lines
-- ✅ **Proper Packaging** - Standard Python package structure
-- ✅ **Type Safety** - Type hints throughout
-- ✅ **Comprehensive Logging** - Built-in logging system
+- ✅ **Type Hints** - Type safety throughout codebase
+- ✅ **Error Handling** - Comprehensive exception hierarchy
+- ✅ **Logging** - Built-in logging system
+- ✅ **Configuration** - Flexible configuration management
+- ✅ **Code Standards** - Files under 500 lines, semantic naming
+- ⚠️ **Testing** - In progress (see [Testing](#testing) section)
+- ⚠️ **CI/CD** - Planned
+- ⚠️ **Production Validation** - Pending
+
+---
+
+## 📊 Current Status
+
+### Implementation Progress
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Core Engine** | ✅ Complete | ACMG classifier engine functional |
+| **Evidence Codes** | 🟡 Partial | 7/28 codes (25%) implemented |
+| **ClinVar Integration** | ✅ Complete | Data loading and parsing working |
+| **User File Processing** | ✅ Complete | VCF and 23andMe support |
+| **Pipeline Orchestration** | ✅ Complete | End-to-end workflow functional |
+| **Report Generation** | ✅ Complete | CSV and basic reporting working |
+| **Test Suite** | ⚠️ Limited | Basic tests only, needs expansion |
+| **Documentation** | 🟡 Partial | Core docs exist, needs completion |
+| **Production Validation** | ❌ Pending | Not yet validated for clinical use |
+
+### ACMG Evidence Code Coverage
+
+**Implemented (7/28 = 25%):**
+- PVS1: Loss-of-function in LOF-intolerant genes
+- PM4: Protein length changes
+- PP2: Missense in missense-rare genes
+- BA1: Common polymorphism
+- BS1: High population frequency
+- BP1: Missense in LOF genes
+- BP3: In-frame indel in repetitive region
+
+**Pending Implementation (21/28 = 75%):**
+- PS1-4: Strong pathogenic evidence (4 codes)
+- PM1-3, PM5-6: Moderate pathogenic evidence (5 codes)
+- PP1, PP3-5: Supporting pathogenic evidence (4 codes)
+- BS2-4: Strong benign evidence (3 codes)
+- BP2, BP4-7: Supporting benign evidence (5 codes)
+
+### Known Limitations
+
+- ⚠️ **Limited evidence code coverage**: Only 7/28 ACMG codes implemented
+- ⚠️ **No external database integration**: gnomAD, SpliceAI, etc. not yet integrated
+- ⚠️ **Testing incomplete**: Test suite needs significant expansion
+- ⚠️ **Not clinically validated**: Not yet suitable for diagnostic use
+- ⚠️ **Documentation gaps**: Some modules lack complete documentation
 
 ---
 
@@ -110,11 +157,11 @@ pip install -r requirements-test.txt
 ### Verify Installation
 
 ```bash
-# Run the production test suite
+# Set Python path
 export PYTHONPATH=$(pwd):$PYTHONPATH
-pytest tests/ -v
 
-# Expected output: 200+ tests passing in <1 second
+# Run basic tests
+pytest tests/ -v
 ```
 
 ---
@@ -124,40 +171,47 @@ pytest tests/ -v
 ### Basic Variant Classification
 
 ```python
-from varidex import version
-from varidex.core.classifier import ACMGClassifier
-from varidex.exceptions import ACMGValidationError
+from varidex.version import __version__
+from varidex.core.classifier.engine import ACMGClassifier
+from varidex.core.models import VariantData
 
 # Check version
-print(f"VariDex v{version}")  # Output: VariDex v6.0.0
+print(f"VariDex v{__version__}")
 
 # Initialize classifier
 classifier = ACMGClassifier()
 
-# Classify a variant
-variant = {
-    'chromosome': '17',
-    'position': 43094692,
-    'ref': 'G',
-    'alt': 'A',
-    'gene': 'BRCA1'
-}
+# Create a variant
+variant = VariantData(
+    rsid='rs80357906',
+    chromosome='17',
+    position='43094692',
+    genotype='AG',
+    gene='BRCA1',
+    clinical_sig='Pathogenic',
+    review_status='reviewed by expert panel',
+    variant_type='single nucleotide variant',
+    molecular_consequence='frameshift variant',
+    ref_allele='G',
+    alt_allele='A'
+)
 
-try:
-    result = classifier.classify(variant)
-    print(f"Classification: {result['classification']}")
-    print(f"Evidence: {result['evidence']}")
-except ACMGValidationError as e:
-    print(f"Validation error: {e}")
+# Classify the variant
+classification, confidence, evidence, duration = classifier.classify_variant(variant)
+
+print(f"Classification: {classification}")
+print(f"Confidence: {confidence}")
+print(f"Evidence: {evidence.summary()}")
+print(f"Time: {duration:.3f}s")
 ```
 
 ### Load ClinVar Data
 
 ```python
-from varidex.io.loaders import clinvar
+from varidex.io.loaders.clinvar import load_clinvar_file
 
 # Load ClinVar VCF file
-clinvar_data = clinvar.load_clinvar_file('clinvar.vcf.gz')
+clinvar_data = load_clinvar_file('clinvar.vcf.gz')
 
 print(f"Loaded {len(clinvar_data)} ClinVar variants")
 ```
@@ -165,11 +219,11 @@ print(f"Loaded {len(clinvar_data)} ClinVar variants")
 ### Process User Genome File
 
 ```python
-from varidex.io.loaders import user
+from varidex.io.loaders.user import load_user_file
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 # Load user VCF file
-user_variants = user.load_user_file('sample.vcf')
+user_variants = load_user_file('sample.vcf')
 
 # Normalize coordinates
 normalized_variants = normalize_dataframe_coordinates(user_variants)
@@ -177,42 +231,20 @@ normalized_variants = normalize_dataframe_coordinates(user_variants)
 print(f"Processed {len(normalized_variants)} variants")
 ```
 
-### Run Complete Pipeline
-
-```python
-from varidex.pipeline import orchestrator
-from varidex.reports import generator
-
-# Configure and run pipeline
-config = {
-    'input_file': 'variants.vcf',
-    'clinvar_file': 'clinvar.vcf.gz',
-    'output_dir': 'results/'
-}
-
-# Execute pipeline
-results = orchestrator.run_pipeline(config)
-
-# Generate report
-report = generator.create_results_dataframe(results)
-print(f"Pipeline complete. Analyzed {len(results)} variants.")
-```
-
 ---
 
 ## 🧪 Testing
 
-### Production Test Suite
+### Current Test Status
 
-VariDex includes a comprehensive, production-ready test suite:
+VariDex has **basic tests** covering:
+- Exception hierarchy
+- Core data models
+- Basic functionality
 
-- **200+ test cases** with 97%+ code coverage
-- **Zero errors** - fully validated
-- **Parametrized tests** eliminate code duplication
-- **Custom fixtures** with builder pattern
-- **Automated CI/CD** on multiple platforms
+**Test coverage is limited and needs expansion.**
 
-### Run Tests Locally
+### Run Tests
 
 ```bash
 # Set Python path
@@ -224,26 +256,18 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ --cov=varidex --cov-report=html
 
-# Run specific test class
-pytest tests/test_exceptions.py::TestExceptionHierarchy -v
-
-# Run smoke tests only
-pytest tests/ -m smoke
+# Run specific test file
+pytest tests/test_exceptions.py -v
 ```
 
-### Automated CI/CD
+### Testing Roadmap
 
-Tests run automatically on every push via GitHub Actions:
-- ✅ Python 3.9, 3.10, 3.11, 3.12
-- ✅ Ubuntu, Windows, macOS
-- ✅ Code coverage reporting
-- ✅ Code quality checks
-
-**View CI/CD status:** [GitHub Actions](https://github.com/Plantucha/VariDex/actions)
-
-### Test Documentation
-
-For detailed testing information, see **[TESTING.md](TESTING.md)**
+- [ ] Expand test coverage to 90%+
+- [ ] Add integration tests
+- [ ] Add performance tests
+- [ ] Set up CI/CD pipeline
+- [ ] Add automated testing on multiple platforms
+- [ ] Validate against known variant datasets
 
 ---
 
@@ -272,14 +296,12 @@ See: [LICENSE](LICENSE) for full AGPL v3 terms
 - ❌ Keeping modifications private
 
 **Pricing:**
-- Startup/Clinic (<10 users): $10,000/year
-- Professional (<50 users): $25,000/year
-- Enterprise (unlimited/SaaS): Custom pricing
+- Contact for custom pricing based on use case and deployment scale
+- Educational discounts available
+- Volume licensing available
 
 **Contact:** licensing@varidex.com  
 **Docs:** See [LICENSING.md](LICENSING.md) and [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)
-
-**Quick Reference:** [COMMERCIAL_LICENSE_QUICK_REFERENCE.md](COMMERCIAL_LICENSE_QUICK_REFERENCE.md)
 
 ---
 
@@ -288,29 +310,34 @@ See: [LICENSE](LICENSE) for full AGPL v3 terms
 ```
 VariDex/
 ├── varidex/                    # Main package
-│   ├── __init__.py             # Package initialization (v6.0.0)
+│   ├── __init__.py             # Package initialization
 │   ├── version.py              # Version management
 │   ├── exceptions.py           # Custom exceptions (14 types)
 │   ├── core/                   # Core classification engine
+│   │   ├── classifier/         # ACMG classifier
+│   │   │   ├── engine.py       # Main classifier (v6.3.0)
+│   │   │   ├── acmg_evidence_full.py  # Full 28-code implementation
+│   │   │   └── config.py       # Configuration
+│   │   └── models.py           # Data models
 │   ├── io/                     # Input/Output operations
+│   │   ├── loaders/            # Data loaders
+│   │   └── normalization.py    # Coordinate normalization
 │   ├── reports/                # Report generation
 │   ├── pipeline/               # Pipeline orchestration
 │   └── utils/                  # Utility functions
 │
-├── tests/                      # Test suite (200+ tests)
+├── tests/                      # Test suite
 │   ├── conftest.py             # Shared fixtures
-│   └── test_exceptions.py      # Exception tests (100% coverage)
+│   └── test_exceptions.py      # Exception tests
 │
-├── .github/
-│   └── workflows/
-│       └── test.yml            # CI/CD pipeline
+├── docs/                       # Documentation
+│   ├── ACMG_28_IMPLEMENTATION.md
+│   ├── ACMG_DATA_REQUIREMENTS.md
+│   └── TESTING.md
 │
 ├── pytest.ini                  # Test configuration
 ├── requirements-test.txt       # Test dependencies
-├── README.md                   # This file
-└── TESTING.md                  # Test documentation
-
-Total: 30 Python files, 9 packages
+└── README.md                   # This file
 ```
 
 ---
@@ -319,7 +346,8 @@ Total: 30 Python files, 9 packages
 
 ### Core Modules
 
-- **`varidex.core.classifier`** - ACMG classification engine
+- **`varidex.core.classifier.engine`** - ACMG classification engine (7 evidence codes)
+- **`varidex.core.classifier.acmg_evidence_full`** - Full 28-code implementation (in progress)
 - **`varidex.io.loaders`** - Data loading utilities
 - **`varidex.reports`** - Report generation
 - **`varidex.pipeline`** - Pipeline orchestration
@@ -327,22 +355,32 @@ Total: 30 Python files, 9 packages
 
 ### Documentation Files
 
-- **[TESTING.md](TESTING.md)** - Comprehensive testing guide
-- **[LICENSING.md](LICENSING.md)** - Full licensing information
-- **[COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)** - Commercial license details
+- **[ACMG_28_IMPLEMENTATION.md](docs/ACMG_28_IMPLEMENTATION.md)** - Full ACMG implementation guide
+- **[ACMG_DATA_REQUIREMENTS.md](docs/ACMG_DATA_REQUIREMENTS.md)** - Data requirements reference
+- **[TESTING.md](docs/TESTING.md)** - Testing guide
+- **[LICENSING.md](LICENSING.md)** - Licensing information
 - **[VARIDEX_CODE_STANDARDS.md](VARIDEX_CODE_STANDARDS.md)** - Coding standards
 
 ### Key Classes
 
-- **`ACMGClassifier`** - Main variant classifier
-- **`DataValidator`** - Data validation utilities
-- **`PipelineOrchestrator`** - Pipeline management
+- **`ACMGClassifier`** - Main variant classifier (engine.py)
+- **`VariantData`** - Variant data model
+- **`ACMGEvidenceSet`** - Evidence code container
+- **`ACMGConfig`** - Classifier configuration
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these guidelines:
+We welcome contributions! VariDex is in active development and needs help with:
+
+### Priority Areas
+
+1. **Test Coverage** - Expand test suite to 90%+
+2. **Evidence Codes** - Implement remaining 21/28 ACMG codes
+3. **External Integrations** - gnomAD, SpliceAI, ClinGen, etc.
+4. **Documentation** - Complete module documentation
+5. **Validation** - Test against known variant datasets
 
 ### Development Setup
 
@@ -355,7 +393,7 @@ cd VariDex
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install in development mode with test dependencies
+# Install in development mode
 pip install -e .
 pip install -r requirements-test.txt
 
@@ -371,7 +409,7 @@ pytest tests/ -v
 - ✅ Use semantic naming (no file_1, file_2 patterns)
 - ✅ Include type hints
 - ✅ Add docstrings to all functions
-- ✅ Maintain 90%+ test coverage
+- ✅ Write tests for new features
 - ✅ All tests must pass before submitting PR
 
 See **[VARIDEX_CODE_STANDARDS.md](VARIDEX_CODE_STANDARDS.md)** for complete standards.
@@ -387,8 +425,8 @@ If you use VariDex in your research, please cite:
   title = {VariDex: Variant Data Extraction and Classification System},
   author = {VariDex Development Team},
   year = {2026},
-  version = {6.0.0},
-  url = {https://github.com/Plantucha/VariDex}
+  url = {https://github.com/Plantucha/VariDex},
+  note = {In development}
 }
 ```
 
@@ -414,32 +452,46 @@ And the ACMG 2015 guidelines:
 
 - **Issues:** [GitHub Issues](https://github.com/Plantucha/VariDex/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/Plantucha/VariDex/discussions)
-- **CI/CD Status:** [GitHub Actions](https://github.com/Plantucha/VariDex/actions)
 - **Commercial Licensing:** licensing@varidex.com
 
 ---
 
 ## 🔄 Version History
 
+### v6.3.0 (2026-01-22)
+- ✅ Engine.py optimizations (removed redundant operations)
+- ✅ Added early exit for empty consequence
+- ✅ Fixed critical bugs (orphaned decorator, data type issues)
+- ✅ Code quality improvements
+
 ### v6.0.0 (2026-01-21)
-- ✅ Production-ready test suite (200+ tests, 97%+ coverage)
-- ✅ Automated CI/CD pipeline (GitHub Actions)
-- ✅ Complete ACMG 2015 implementation (8/28 evidence codes)
+- ✅ Initial release
+- ✅ ACMG classification engine (7 evidence codes)
 - ✅ ClinVar integration
 - ✅ Pipeline orchestration
-- ✅ Zero errors, 10/10 quality score
 - ✅ Dual licensing (AGPL v3 + Commercial)
 
 ---
 
 ## 🎯 Roadmap
 
-- [ ] Additional ACMG evidence codes (Phase 2: 18/28, Phase 3: 28/28)
+### Short Term (v6.x)
+- [ ] Expand test suite to 90%+ coverage
+- [ ] Complete evidence code implementation (21 remaining codes)
+- [ ] Set up CI/CD pipeline
+- [ ] Improve documentation
+
+### Medium Term (v7.x)
+- [ ] External database integration (gnomAD, SpliceAI)
+- [ ] Clinical validation
+- [ ] Performance optimization
+- [ ] REST API
+
+### Long Term (v8.x+)
 - [ ] GUI interface
 - [ ] Additional file format support (BAM, CRAM)
 - [ ] Machine learning integration
 - [ ] Cloud deployment options
-- [ ] REST API
 - [ ] Database backend support
 
 ---
@@ -452,6 +504,20 @@ And the ACMG 2015 guidelines:
 
 ---
 
-**Built with ❤️ for the genomics community**
+## ⚠️ Disclaimer
 
-*Last updated: January 21, 2026*
+**VariDex is currently in development and not yet validated for clinical diagnostic use.** 
+
+This software is provided "as is" for research and educational purposes. While it follows ACMG 2015 guidelines, it:
+- Has limited evidence code coverage (7/28 codes)
+- Lacks comprehensive testing and validation
+- Has not been clinically validated
+- Should not be used for clinical decision-making without proper validation
+
+For clinical use, consult with qualified genetic counselors and medical professionals.
+
+---
+
+**Built for the genomics community**
+
+*Last updated: January 22, 2026*
