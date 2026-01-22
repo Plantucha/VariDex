@@ -8,3 +8,7 @@ dist/
 build/
 .venv/
 venv/
+pipeline.log
+test_output/
+*.backup.*
+*_test_results_*.log
