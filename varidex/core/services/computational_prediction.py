@@ -11,13 +11,24 @@ Evidence Codes:
 Algorithm Consensus:
   - Requires ≥3 concordant predictions for PP3
   - Requires ≥3 concordant predictions for BP4
-  - PP3 and BP4 are mutually exclusive
+  - PP3 and BP4 are mutually exclusive (PP3 takes precedence)
+
+Offline Mode:
+  This service requires internet connectivity via DbNSFPClient.
+  For offline use, initialize with enable_predictions=False.
+  The classifier will gracefully degrade to engine_v7 (gnomAD only)
+  or engine_v6 (base functionality).
+
+Algorithm Availability:
+  VEP may not return all algorithms for every variant.
+  Missing algorithms are handled gracefully and do not count toward consensus.
+  A warning is logged if fewer than 3 algorithms are available.
 
 Reference: Richards et al. 2015, PMID 25741868
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from enum import Enum
 import logging
 
@@ -89,6 +100,15 @@ class ComputationalEvidence:
     revel_result: Optional[str] = None
     metasvm_result: Optional[str] = None
     
+    # Algorithm availability tracking
+    algorithms_available: int = 0
+    algorithms_missing: list = None
+    
+    def __post_init__(self):
+        """Initialize mutable defaults."""
+        if self.algorithms_missing is None:
+            self.algorithms_missing = []
+    
     def summary(self) -> str:
         """Generate human-readable summary."""
         if self.pp3:
@@ -104,6 +124,12 @@ class ComputationalPredictionService:
     
     Uses multiple prediction algorithms to establish consensus for
     deleterious (PP3) or benign (BP4) effect.
+    
+    Gracefully handles:
+      - Missing algorithms (logs warning if < 3 available)
+      - Offline mode (returns no evidence)
+      - API failures (returns no evidence)
+      - Incomplete data (uses available algorithms)
     """
     
     def __init__(
@@ -117,17 +143,17 @@ class ComputationalPredictionService:
         Args:
             dbnsfp_client: DbNSFP/VEP client instance
             thresholds: Custom prediction thresholds
-            enable_predictions: Enable prediction queries (False for testing)
+            enable_predictions: Enable prediction queries (False for testing/offline)
         """
         self.enable_predictions = enable_predictions
         self.thresholds = thresholds if thresholds else PredictionThresholds()
         
         if enable_predictions:
             self.client = dbnsfp_client if dbnsfp_client else DbNSFPClient()
+            logger.info(f"ComputationalPredictionService initialized with VEP client")
         else:
             self.client = None
-        
-        logger.info(f"ComputationalPredictionService initialized: enabled={enable_predictions}")
+            logger.info(f"ComputationalPredictionService initialized in offline mode")
     
     def _analyze_sift(self, score: PredictionScore) -> Optional[str]:
         """Analyze SIFT prediction.
@@ -213,7 +239,7 @@ class ComputationalPredictionService:
         
         return None
     
-    def _check_pp3(self, evidence: ComputationalEvidence) -> tuple[bool, str]:
+    def _check_pp3(self, evidence: ComputationalEvidence) -> Tuple[bool, str]:
         """Check if PP3 (computational evidence supporting pathogenic) applies.
         
         Args:
@@ -237,7 +263,7 @@ class ComputationalPredictionService:
         
         return False, "PP3 not met: insufficient concordant deleterious predictions"
     
-    def _check_bp4(self, evidence: ComputationalEvidence) -> tuple[bool, str]:
+    def _check_bp4(self, evidence: ComputationalEvidence) -> Tuple[bool, str]:
         """Check if BP4 (computational evidence supporting benign) applies.
         
         Args:
@@ -290,13 +316,14 @@ class ComputationalPredictionService:
         try:
             # Get predictions
             if not self.enable_predictions or not self.client:
-                evidence.reasoning = "Predictions disabled"
+                evidence.reasoning = "Predictions disabled (offline mode)"
+                logger.info("Predictions disabled - use enable_predictions=True or check connectivity")
                 return evidence
             
             predictions = self.client.get_predictions(chromosome, position, ref, alt)
             
             if predictions is None or not predictions.has_scores:
-                evidence.reasoning = "No prediction scores available"
+                evidence.reasoning = "No prediction scores available from VEP"
                 logger.debug(f"No predictions for {chromosome}:{position} {ref}>{alt}")
                 return evidence
             
@@ -307,10 +334,26 @@ class ComputationalPredictionService:
             evidence.revel_result = self._analyze_revel(predictions)
             evidence.metasvm_result = self._analyze_metasvm(predictions)
             
-            # Count votes
-            for result in [evidence.sift_result, evidence.polyphen_result, 
+            # Track algorithm availability
+            all_algorithms = ['SIFT', 'PolyPhen-2', 'CADD', 'REVEL', 'MetaSVM']
+            all_results = [evidence.sift_result, evidence.polyphen_result, 
                           evidence.cadd_result, evidence.revel_result, 
-                          evidence.metasvm_result]:
+                          evidence.metasvm_result]
+            
+            evidence.algorithms_available = sum(1 for r in all_results if r is not None)
+            evidence.algorithms_missing = [algo for algo, result in zip(all_algorithms, all_results) if result is None]
+            
+            # Warn if limited algorithm coverage
+            if evidence.algorithms_available < 3:
+                logger.warning(
+                    f"Limited algorithm coverage for {chromosome}:{position} - "
+                    f"only {evidence.algorithms_available}/5 algorithms available. "
+                    f"Missing: {', '.join(evidence.algorithms_missing)}. "
+                    f"PP3/BP4 requires ≥3 algorithms."
+                )
+            
+            # Count votes
+            for result in all_results:
                 if result == 'deleterious':
                     evidence.deleterious_count += 1
                     evidence.total_predictions += 1
@@ -320,7 +363,7 @@ class ComputationalPredictionService:
             
             logger.info(f"Predictions for {chromosome}:{position}: "
                        f"{evidence.deleterious_count}D/{evidence.benign_count}B "
-                       f"of {evidence.total_predictions}")
+                       f"of {evidence.total_predictions} ({evidence.algorithms_available} algorithms)")
             
             # Check PP3 first (pathogenic takes precedence)
             pp3_applies, pp3_reason = self._check_pp3(evidence)
@@ -343,6 +386,9 @@ class ComputationalPredictionService:
                     # Neither applies
                     if evidence.total_predictions == 0:
                         evidence.reasoning = "No predictions available"
+                    elif evidence.algorithms_available < 3:
+                        evidence.reasoning = (f"Insufficient algorithms ({evidence.algorithms_available}/5) "
+                                            f"for PP3/BP4 determination")
                     elif evidence.deleterious_count > 0 and evidence.benign_count > 0:
                         evidence.reasoning = f"Conflicting predictions: {evidence.deleterious_count}D/{evidence.benign_count}B"
                         evidence.strength = PredictionStrength.NEUTRAL
@@ -366,6 +412,7 @@ class ComputationalPredictionService:
         """
         stats = {
             'enabled': self.enable_predictions,
+            'offline_mode': not self.enable_predictions,
             'thresholds': {
                 'pp3_min_concordant': self.thresholds.pp3_min_concordant,
                 'bp4_min_concordant': self.thresholds.bp4_min_concordant,
@@ -393,6 +440,15 @@ if __name__ == "__main__":
     print("  • CADD (phred ≥ 20 = deleterious)")
     print("  • REVEL (score ≥ 0.5 = deleterious)")
     print("  • MetaSVM (D = deleterious, T = tolerated)")
+    print("\nAlgorithm Availability:")
+    print("  ⚠️  VEP may not return all algorithms for every variant")
+    print("  • Missing algorithms are handled gracefully")
+    print("  • Warning logged if < 3 algorithms available")
+    print("  • PP3/BP4 requires ≥3 algorithms minimum")
+    print("\nOffline Mode:")
+    print("  • Set enable_predictions=False for offline use")
+    print("  • Service will return no evidence gracefully")
+    print("  • Classifier degrades to engine_v7 or v6")
     print("="*80)
 else:
     logger.info("ComputationalPredictionService loaded - PP3/BP4 determination")
