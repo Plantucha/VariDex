@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/core/classifier/engine.py - ACMG Classifier Engine v6.1.0
+varidex/core/classifier/engine.py - ACMG Classifier Engine v6.2.0
 
 Production-grade ACMG 2015 variant classification.
 
@@ -12,10 +12,11 @@ Disabled Evidence (21 codes):
 
 Reference: Richards et al. 2015, PMID 25741868
 
-Bugfixes v6.1.0:
-  - Removed orphaned decorator on line 32
-  - Fixed .add() → .append() (conflicts is a list)
-  - Removed unused FUNCTIONAL_DOMAINS
+Bugfixes v6.2.0:
+  - CRITICAL: Reverted .append() back to .add()
+  - conflicts is Set[str] in models.py, not list
+  - Original code was correct
+  - Kept: Removed orphaned decorator (good fix)
 """
 
 from typing import Tuple, List, Dict, Optional, Set, Any
@@ -178,7 +179,7 @@ class ACMGClassifier:
                 if self.metrics:
                     self.metrics.record_validation_error()
                 for error in errors:
-                    evidence.conflicts.append(f"Validation error: {error}")
+                    evidence.conflicts.add(f"Validation error: {error}")  # CORRECT: conflicts is a set
                 logger.warning(f"Validation failed: {errors}")
                 return evidence
 
@@ -189,7 +190,7 @@ class ACMGClassifier:
 
             # Check for conflicting interpretations
             if 'conflict' in sig_lower or '/' in variant.clinical_sig:
-                evidence.conflicts.append("ClinVar conflicting interpretations")
+                evidence.conflicts.add("ClinVar conflicting interpretations")  # CORRECT: conflicts is a set
 
             # === PATHOGENIC EVIDENCE ===
 
@@ -227,7 +228,7 @@ class ACMGClassifier:
 
             # PM2 DISABLED - add to conflicts
             if not self.config.enable_pm2:
-                evidence.conflicts.append("PM2 DISABLED: requires gnomAD API")
+                evidence.conflicts.add("PM2 DISABLED: requires gnomAD API")  # CORRECT: conflicts is a set
 
             # === BENIGN EVIDENCE ===
 
@@ -243,8 +244,8 @@ class ACMGClassifier:
             # BS1: High population frequency
             if self.config.enable_bs1:
                 try:
-                    if ('population' in sig_lower and 'frequency' in sig_lower and 'high' in sig_lower) or \
-                       ('common' in sig_lower and 'pathogenic' not in sig_lower):
+                    if (('population' in sig_lower and 'frequency' in sig_lower and 'high' in sig_lower) or
+                        ('common' in sig_lower and 'pathogenic' not in sig_lower)):
                         evidence.bs.add("BS1")
                         logger.debug("BS1: High population frequency")
                 except Exception as e:
@@ -273,7 +274,7 @@ class ACMGClassifier:
 
             # BP7 DISABLED - add to conflicts
             if not self.config.enable_bp7:
-                evidence.conflicts.append("BP7 DISABLED: requires SpliceAI scores")
+                evidence.conflicts.add("BP7 DISABLED: requires SpliceAI scores")  # CORRECT: conflicts is a set
 
             # Convert sets to lists for deduplication (already done by sets)
             # This ensures no duplicate codes
@@ -284,7 +285,7 @@ class ACMGClassifier:
 
         except Exception as e:
             logger.error(f"Evidence assignment failed: {e}", exc_info=True)
-            evidence.conflicts.append(f"Assignment error: {str(e)}")
+            evidence.conflicts.add(f"Assignment error: {str(e)}")  # CORRECT: conflicts is a set
             return evidence
 
     def calculate_evidence_score(self, evidence: ACMGEvidenceSet) -> Tuple[float, float]:
