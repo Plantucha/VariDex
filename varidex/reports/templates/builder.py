@@ -173,7 +173,7 @@ def generate_html_template(
             try {{
                 const input = document.getElementById('searchBox');
                 if (!input) return;
-                const filter = (input.value || '').replace(/[^a-zA-Z0-9 \-_]/g, '').substring(0, 100).toUpperCase();
+                const filter = (input.value || '').replace(/[^a-zA-Z0-9 \\-_]/g, '').substring(0, 100).toUpperCase();
                 const table = document.getElementById('variantTable');
                 if (!table) return;
                 const rows = table.getElementsByTagName('tr');
