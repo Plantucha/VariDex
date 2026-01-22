@@ -9,6 +9,7 @@ VERSION: 6.0.0 | AUTHOR: VariDex Team
 import os
 import secrets
 import logging
+
 logger = logging.getLogger(__name__)
 
 import html

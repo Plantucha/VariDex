@@ -19,6 +19,7 @@ This file contains:
 
 Stage implementations are in varidex/pipeline/stages.py
 """
+
 import sys
 import os
 from pathlib import Path
@@ -143,7 +144,6 @@ def get_safeguard_config(yaml_config: Dict) -> Dict:
 
 class FileTypeDetectionError(Exception):
     """Raised when file type is ambiguous."""
-
 
 
 def get_config_value(name: str, default=None):
@@ -428,8 +428,7 @@ def main(
 
 def print_usage() -> None:
     """Print usage."""
-    print(
-        """
+    print("""
 CLINVAR-WGS PIPELINE v6.0.0 (PRODUCTION)
 
 USAGE:
@@ -449,8 +448,7 @@ EXAMPLES:
 
 ⚠️  RESEARCH USE ONLY
 Reference: Richards et al. 2015, PMID 25741868
-"""
-    )
+""")
 
 
 if __name__ == "__main__":

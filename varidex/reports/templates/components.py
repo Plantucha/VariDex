@@ -7,6 +7,7 @@ Reusable HTML component generators for variant reports.
 Security: All user data is HTML-escaped, no inline JavaScript, CSP-compatible.
 Components: Summary cards, variant table, classification legend, report footer.
 """
+
 import html
 from typing import Dict, Optional
 from datetime import datetime

@@ -95,6 +95,7 @@ class PathogenicEvidenceAssigner:
         self.pm1_hotspot_threshold = self.config.get("pm1_hotspot_threshold", 5)
 
         logger.info(f"Initialized with {sum([self.enable_pvs1, self.enable_ps1])} codes")
+
     def check_pvs1(self, variant: Dict[str, Any], lof_genes: Set[str]) -> bool:
         """
         PVS1: Null variant (nonsense, frameshift, canonical ±1 or 2 splice sites,

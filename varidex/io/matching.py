@@ -5,6 +5,7 @@ varidex/io/matching.py - Variant Matching Strategies v6.0.0
 Match user genome variants to ClinVar database using rsID or coordinates.
 BUGFIX v6.0.1: Coordinate matching now assigns normalized DataFrames.
 """
+
 import pandas as pd
 import logging
 from typing import Tuple

@@ -103,9 +103,7 @@ def validate_not_empty(value: Any, name: str) -> None:
 def validate_type(value: Any, expected_type: type, name: str) -> None:
     """Raise ValidationError if value is not of expected type."""
     if not isinstance(value, expected_type):
-        raise ValidationError(
-            "{name} must be {expected_type.__name__}, got {type(value).__name__}"
-        )
+        raise ValidationError("{name} must be {expected_type.__name__}, got {type(value).__name__}")
 
 
 # Self-test

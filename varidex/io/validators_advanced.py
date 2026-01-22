@@ -7,6 +7,7 @@ Version managed by varidex.version module.
 
 Features: virus scanning, custom rules, validation reports, batch processing
 """
+
 import datetime
 import logging
 from pathlib import Path

@@ -475,9 +475,7 @@ class ACMGClassifier:
             if self.metrics:
                 self.metrics.record_success(duration, classification, evidence)
 
-            logger.info(
-                "Classified {variant} → {classification} ({confidence}) in {duration:.3f}s"
-            )
+            logger.info("Classified {variant} → {classification} ({confidence}) in {duration:.3f}s")
 
             return classification, confidence, evidence, duration
 

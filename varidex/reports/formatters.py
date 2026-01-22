@@ -15,6 +15,7 @@ Security features:
 - JSON size limits with automatic stratification
 - HTML XSS protection (delegated to templates/builder.py)
 """
+
 import csv
 import json
 import html
@@ -201,8 +202,7 @@ def generate_html_report(
             "stars": "★" * row.get("star_rating", 0),
         }
 
-        table_rows.append(
-            """
+        table_rows.append("""
             <tr>
                 <td>{escaped_row['icon']}</td>
                 <td>{escaped_row['rsid']}</td>
@@ -211,8 +211,7 @@ def generate_html_report(
                 <td>{escaped_row['evidence']}</td>
                 <td>{escaped_row['stars']}</td>
             </tr>
-        """
-        )
+        """)
 
     table_html = "".join(table_rows)
     is_truncated = len(df) > max_html_variants
