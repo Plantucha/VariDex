@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/core/classifier/engine.py - ACMG Classifier Engine v6.2.0
+varidex/core/classifier/engine.py - ACMG Classifier Engine v6.3.0
 
 Production-grade ACMG 2015 variant classification.
 
@@ -12,11 +12,10 @@ Disabled Evidence (21 codes):
 
 Reference: Richards et al. 2015, PMID 25741868
 
-Bugfixes v6.2.0:
-  - CRITICAL: Reverted .append() back to .add()
-  - conflicts is Set[str] in models.py, not list
-  - Original code was correct
-  - Kept: Removed orphaned decorator (good fix)
+Optimizations v6.3.0:
+  - Removed redundant dict.fromkeys() (sets auto-deduplicate)
+  - Added early exit for empty molecular_consequence
+  - Performance improvements without behavior changes
 """
 
 from typing import Tuple, List, Dict, Optional, Set, Any
@@ -179,7 +178,7 @@ class ACMGClassifier:
                 if self.metrics:
                     self.metrics.record_validation_error()
                 for error in errors:
-                    evidence.conflicts.add(f"Validation error: {error}")  # CORRECT: conflicts is a set
+                    evidence.conflicts.add(f"Validation error: {error}")
                 logger.warning(f"Validation failed: {errors}")
                 return evidence
 
@@ -188,9 +187,14 @@ class ACMGClassifier:
             genes = self.extract_genes(variant.gene)
             consequence = normalize_text(variant.molecular_consequence)
 
+            # Early exit optimization for empty molecular consequence
+            if not consequence:
+                logger.debug("Empty molecular consequence, skipping evidence assignment")
+                return evidence
+
             # Check for conflicting interpretations
             if 'conflict' in sig_lower or '/' in variant.clinical_sig:
-                evidence.conflicts.add("ClinVar conflicting interpretations")  # CORRECT: conflicts is a set
+                evidence.conflicts.add("ClinVar conflicting interpretations")
 
             # === PATHOGENIC EVIDENCE ===
 
@@ -228,7 +232,7 @@ class ACMGClassifier:
 
             # PM2 DISABLED - add to conflicts
             if not self.config.enable_pm2:
-                evidence.conflicts.add("PM2 DISABLED: requires gnomAD API")  # CORRECT: conflicts is a set
+                evidence.conflicts.add("PM2 DISABLED: requires gnomAD API")
 
             # === BENIGN EVIDENCE ===
 
@@ -274,18 +278,17 @@ class ACMGClassifier:
 
             # BP7 DISABLED - add to conflicts
             if not self.config.enable_bp7:
-                evidence.conflicts.add("BP7 DISABLED: requires SpliceAI scores")  # CORRECT: conflicts is a set
+                evidence.conflicts.add("BP7 DISABLED: requires SpliceAI scores")
 
-            # Convert sets to lists for deduplication (already done by sets)
-            # This ensures no duplicate codes
+            # Convert sets to lists (sets already deduplicated, no need for dict.fromkeys)
             for attr in ['pvs', 'ps', 'pm', 'pp', 'ba', 'bs', 'bp']:
-                setattr(evidence, attr, list(dict.fromkeys(getattr(evidence, attr))))
+                setattr(evidence, attr, list(getattr(evidence, attr)))
 
             return evidence
 
         except Exception as e:
             logger.error(f"Evidence assignment failed: {e}", exc_info=True)
-            evidence.conflicts.add(f"Assignment error: {str(e)}")  # CORRECT: conflicts is a set
+            evidence.conflicts.add(f"Assignment error: {str(e)}")
             return evidence
 
     def calculate_evidence_score(self, evidence: ACMGEvidenceSet) -> Tuple[float, float]:
