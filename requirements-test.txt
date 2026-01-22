@@ -1,0 +1,6 @@
+# VariDex Test Suite Dependencies
+pytest>=7.4.0,<9.0.0
+pandas>=1.5.0,<3.0.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.0
+hypothesis>=6.82.0
