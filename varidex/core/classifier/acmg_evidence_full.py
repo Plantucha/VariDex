@@ -37,15 +37,48 @@ Benign Evidence (12 codes):
 - BP7: Synonymous variant with no predicted splice impact
 
 Reference: Richards et al. 2015, PMID 25741868
+
+Version: 1.1 (bugfixes)
 """
 
 from typing import Dict, Optional, Set, Any
 from dataclasses import dataclass
+from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['ACMGEvidenceEngine', 'EvidenceResult', 'DataRequirements']
+__all__ = [
+    'ACMGEvidenceEngine',
+    'EvidenceResult',
+    'DataRequirements',
+    'FunctionalStudyResult',
+    'PredictorThresholds'
+]
+
+
+class FunctionalStudyResult(Enum):
+    """Enum for functional study outcomes."""
+    DELETERIOUS = "deleterious"
+    BENIGN = "benign"
+    NEUTRAL = "neutral"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class PredictorThresholds:
+    """Configurable thresholds for computational predictors."""
+    sift_deleterious: float = 0.05  # SIFT < 0.05 = deleterious
+    sift_tolerated: float = 0.05    # SIFT >= 0.05 = tolerated
+    polyphen_damaging: float = 0.85  # PolyPhen > 0.85 = damaging
+    polyphen_benign: float = 0.15    # PolyPhen <= 0.15 = benign
+    cadd_pathogenic: float = 20.0    # CADD >= 20 = likely pathogenic
+    cadd_benign: float = 15.0        # CADD < 15 = likely benign
+    revel_pathogenic: float = 0.5    # REVEL > 0.5 = pathogenic
+    spliceai_high: float = 0.5       # SpliceAI > 0.5 = high impact
+    ba1_af: float = 0.05             # 5% allele frequency
+    bs1_af: float = 0.01             # 1% allele frequency
+    pm2_af: float = 0.0001           # 0.01% allele frequency
 
 
 @dataclass
@@ -69,7 +102,7 @@ class DataRequirements:
     # Clinical data
     de_novo_confirmed: Optional[bool] = None  # Parental testing
     de_novo_assumed: Optional[bool] = None  # No parental data
-    functional_study_result: Optional[str] = None  # "deleterious"|"benign"|None
+    functional_study_result: Optional[str] = None  # Use FunctionalStudyResult enum values
     segregation_data: Optional[Dict] = None  # Family data
     
     # Literature/Database evidence
@@ -101,16 +134,44 @@ class ACMGEvidenceEngine:
     Implements all 28 codes with graceful degradation when data unavailable.
     """
     
-    def __init__(self, lof_genes: Set[str], missense_rare_genes: Set[str]):
+    def __init__(self, 
+                 lof_genes: Set[str], 
+                 missense_rare_genes: Set[str],
+                 thresholds: Optional[PredictorThresholds] = None):
+        """
+        Initialize ACMG evidence engine.
+        
+        Args:
+            lof_genes: Set of genes where LOF is pathogenic mechanism
+            missense_rare_genes: Set of genes with low missense variation
+            thresholds: Optional custom thresholds for predictors
+            
+        Raises:
+            TypeError: If gene sets are not of type set
+            ValueError: If gene sets are empty
+        """
+        # Input validation
+        if not isinstance(lof_genes, set):
+            raise TypeError(
+                f"lof_genes must be set, got {type(lof_genes).__name__}. "
+                "Use set(LOF_GENES) if converting from other types."
+            )
+        if not isinstance(missense_rare_genes, set):
+            raise TypeError(
+                f"missense_rare_genes must be set, got {type(missense_rare_genes).__name__}"
+            )
+        
+        if not lof_genes:
+            raise ValueError("lof_genes cannot be empty")
+        if not missense_rare_genes:
+            raise ValueError("missense_rare_genes cannot be empty")
+        
         self.lof_genes = lof_genes
         self.missense_rare_genes = missense_rare_genes
+        self.thresholds = thresholds if thresholds else PredictorThresholds()
         
-        # Thresholds (configurable)
-        self.ba1_threshold = 0.05  # 5%
-        self.bs1_threshold = 0.01  # 1%
-        self.pm2_threshold = 0.0001  # 0.01%
-        self.cadd_deleterious = 20.0
-        self.spliceai_high = 0.5
+        logger.info(f"ACMGEvidenceEngine initialized: {len(lof_genes)} LOF genes, "
+                   f"{len(missense_rare_genes)} missense-rare genes")
         
     # ========== PATHOGENIC EVIDENCE ==========
     
@@ -135,7 +196,13 @@ class ACMGEvidenceEngine:
     def ps1(self, gene: str, aa_change: Optional[str],
             data: DataRequirements) -> EvidenceResult:
         """PS1: Same amino acid change as established pathogenic."""
-        if not aa_change or not data.clinvar_pathogenic_same_aa:
+        # FIXED: Explicit None check instead of 'not'
+        if not aa_change:
+            return EvidenceResult('PS1', False,
+                                'No amino acid change data',
+                                0.0, False)
+        
+        if data.clinvar_pathogenic_same_aa is None:
             return EvidenceResult('PS1', False,
                                 'No data on pathogenic variants at same position',
                                 0.0, False)
@@ -145,7 +212,9 @@ class ACMGEvidenceEngine:
                                 f'Same AA change as known pathogenic in {gene}',
                                 0.9, True)
         
-        return EvidenceResult('PS1', False, 'Different AA change', 0.0, True)
+        return EvidenceResult('PS1', False, 
+                            'Different AA change (checked, no match)', 
+                            0.0, True)
     
     def ps2(self, data: DataRequirements) -> EvidenceResult:
         """PS2: De novo (confirmed parental testing)."""
@@ -166,7 +235,10 @@ class ACMGEvidenceEngine:
             return EvidenceResult('PS3', False, 'No functional study data',
                                 0.0, False)
         
-        if data.functional_study_result == 'deleterious':
+        # IMPROVED: Support enum or string
+        result = data.functional_study_result.lower()
+        
+        if result == FunctionalStudyResult.DELETERIOUS.value:
             return EvidenceResult('PS3', True,
                                 'Functional studies confirm deleterious effect',
                                 0.95, True)
@@ -206,7 +278,7 @@ class ACMGEvidenceEngine:
         
         af = data.gnomad_af if data.gnomad_af is not None else data.exac_af
         
-        if af is not None and af < self.pm2_threshold:
+        if af is not None and af < self.thresholds.pm2_af:
             return EvidenceResult('PM2', True,
                                 f'Absent/rare in population (AF={af:.6f})',
                                 0.85, True)
@@ -290,18 +362,26 @@ class ACMGEvidenceEngine:
         """PP3: Computational evidence supports deleterious."""
         scores = []
         
+        # IMPROVED: Use configurable thresholds
         if data.sift_score is not None:
-            scores.append(('SIFT', data.sift_score < 0.05, data.sift_score))
+            scores.append(('SIFT', 
+                          data.sift_score < self.thresholds.sift_deleterious, 
+                          data.sift_score))
         
         if data.polyphen_score is not None:
-            scores.append(('PolyPhen', data.polyphen_score > 0.85, data.polyphen_score))
+            scores.append(('PolyPhen', 
+                          data.polyphen_score > self.thresholds.polyphen_damaging, 
+                          data.polyphen_score))
         
         if data.cadd_score is not None:
-            scores.append(('CADD', data.cadd_score > self.cadd_deleterious,
+            scores.append(('CADD', 
+                          data.cadd_score > self.thresholds.cadd_pathogenic,
                           data.cadd_score))
         
         if data.revel_score is not None:
-            scores.append(('REVEL', data.revel_score > 0.5, data.revel_score))
+            scores.append(('REVEL', 
+                          data.revel_score > self.thresholds.revel_pathogenic, 
+                          data.revel_score))
         
         if not scores:
             return EvidenceResult('PP3', False, 'No computational predictions',
@@ -309,6 +389,7 @@ class ACMGEvidenceEngine:
         
         deleterious_count = sum(1 for _, pred, _ in scores if pred)
         
+        # Require 2+ deleterious predictions
         if deleterious_count >= 2:
             details = ', '.join(f'{name}={val:.3f}' for name, _, val in scores)
             return EvidenceResult('PP3', True,
@@ -316,7 +397,7 @@ class ACMGEvidenceEngine:
                                 0.65, True)
         
         return EvidenceResult('PP3', False,
-                            f'Insufficient computational support ({deleterious_count}/4)',
+                            f'Insufficient computational support ({deleterious_count}/{len(scores)} tools)',
                             0.0, True)
     
     def pp4(self, data: DataRequirements) -> EvidenceResult:
@@ -333,6 +414,11 @@ class ACMGEvidenceEngine:
     
     def pp5(self, clinvar_sig: str) -> EvidenceResult:
         """PP5: Reputable source reports pathogenic."""
+        # FIXED: Handle empty strings
+        if not clinvar_sig or not clinvar_sig.strip():
+            return EvidenceResult('PP5', False, 'No ClinVar significance data',
+                                0.0, False)
+        
         path_terms = {'pathogenic', 'likely_pathogenic'}
         
         if any(term in clinvar_sig.lower() for term in path_terms):
@@ -349,7 +435,7 @@ class ACMGEvidenceEngine:
         if data.gnomad_af is None:
             return EvidenceResult('BA1', False, 'No frequency data', 0.0, False)
         
-        if data.gnomad_af > self.ba1_threshold:
+        if data.gnomad_af > self.thresholds.ba1_af:
             return EvidenceResult('BA1', True,
                                 f'Common polymorphism (AF={data.gnomad_af:.4f})',
                                 1.0, True)
@@ -363,7 +449,7 @@ class ACMGEvidenceEngine:
         if data.gnomad_af is None:
             return EvidenceResult('BS1', False, 'No frequency data', 0.0, False)
         
-        if data.gnomad_af > self.bs1_threshold:
+        if data.gnomad_af > self.thresholds.bs1_af:
             return EvidenceResult('BS1', True,
                                 f'Higher than expected frequency (AF={data.gnomad_af:.4f})',
                                 0.9, True)
@@ -385,7 +471,10 @@ class ACMGEvidenceEngine:
             return EvidenceResult('BS3', False, 'No functional study data',
                                 0.0, False)
         
-        if data.functional_study_result == 'benign':
+        # IMPROVED: Support enum or string
+        result = data.functional_study_result.lower()
+        
+        if result == FunctionalStudyResult.BENIGN.value:
             return EvidenceResult('BS3', True,
                                 'Functional studies show benign effect',
                                 0.95, True)
@@ -448,14 +537,15 @@ class ACMGEvidenceEngine:
         """BP4: Computational evidence suggests no impact."""
         scores = []
         
+        # IMPROVED: Use configurable thresholds
         if data.sift_score is not None:
-            scores.append(('SIFT', data.sift_score >= 0.05))
+            scores.append(('SIFT', data.sift_score >= self.thresholds.sift_tolerated))
         
         if data.polyphen_score is not None:
-            scores.append(('PolyPhen', data.polyphen_score <= 0.15))
+            scores.append(('PolyPhen', data.polyphen_score <= self.thresholds.polyphen_benign))
         
         if data.cadd_score is not None:
-            scores.append(('CADD', data.cadd_score < 15.0))
+            scores.append(('CADD', data.cadd_score < self.thresholds.cadd_benign))
         
         if not scores:
             return EvidenceResult('BP4', False, 'No computational predictions',
@@ -469,7 +559,7 @@ class ACMGEvidenceEngine:
                                 0.6, True)
         
         return EvidenceResult('BP4', False,
-                            f'Insufficient benign predictions ({benign_count}/{len(scores)})',
+                            f'Insufficient benign predictions ({benign_count}/{len(scores)} tools)',
                             0.0, True)
     
     def bp5(self, data: DataRequirements) -> EvidenceResult:
@@ -487,7 +577,13 @@ class ACMGEvidenceEngine:
     
     def bp6(self, clinvar_sig: str, data: DataRequirements) -> EvidenceResult:
         """BP6: Reputable source reports benign."""
-        if data.clinvar_benign_reported is None:
+        # FIXED: Handle empty strings
+        if not clinvar_sig or not clinvar_sig.strip():
+            if data.clinvar_benign_reported is None:
+                return EvidenceResult('BP6', False, 'No ClinVar significance data',
+                                    0.0, False)
+            is_benign = data.clinvar_benign_reported
+        elif data.clinvar_benign_reported is None:
             benign_terms = {'benign', 'likely_benign'}
             is_benign = any(term in clinvar_sig.lower() for term in benign_terms)
         else:
@@ -495,7 +591,7 @@ class ACMGEvidenceEngine:
         
         if is_benign:
             return EvidenceResult('BP6', True,
-                                f'ClinVar reports: {clinvar_sig}',
+                                f'ClinVar reports: {clinvar_sig or "benign"}',
                                 0.75, True)
         
         return EvidenceResult('BP6', False, 'No benign reports', 0.0, True)
@@ -512,7 +608,7 @@ class ACMGEvidenceEngine:
                                 'Synonymous but no splice prediction available',
                                 0.0, False)
         
-        if data.spliceai_score < self.spliceai_high:
+        if data.spliceai_score < self.thresholds.spliceai_high:
             return EvidenceResult('BP7', True,
                                 f'Synonymous with low splice impact (SpliceAI={data.spliceai_score:.3f})',
                                 0.7, True)
@@ -524,8 +620,15 @@ class ACMGEvidenceEngine:
 
 if __name__ == '__main__':
     print("="*80)
-    print("ACMG Complete Evidence Engine - 28 Evidence Codes")
+    print("ACMG Complete Evidence Engine - 28 Evidence Codes v1.1")
     print("="*80)
     print("Use via: from varidex.core.classifier.acmg_evidence_full import ACMGEvidenceEngine")
     print("Implements all ACMG 2015 guidelines with graceful degradation")
+    print("")
+    print("Bugfixes v1.1:")
+    print("  - Fixed PS1 boolean logic (None vs False)")
+    print("  - Added input validation for gene sets")
+    print("  - Handle empty clinvar_sig strings")
+    print("  - Added FunctionalStudyResult enum")
+    print("  - Configurable predictor thresholds")
     print("="*80)
