@@ -22,9 +22,10 @@ Refactored in v6.4.0:
     - Maintained backward compatibility
 """
 
+from typing import List
 from varidex.version import get_version
 
-__version__ = get_version("core.classifier")
+__version__: str = get_version("core.classifier")
 
 # Core classifier engines
 from .engine import ACMGClassifier
@@ -50,18 +51,18 @@ from .evidence_assignment import (
 try:
     from .engine_v7 import ACMGClassifierV7
 
-    HAS_V7 = True
+    HAS_V7: bool = True
 except ImportError:
     HAS_V7 = False
 
 try:
     from .engine_v8 import ACMGClassifierV8
 
-    HAS_V8 = True
+    HAS_V8: bool = True
 except ImportError:
     HAS_V8 = False
 
-__all__ = [
+__all__: List[str] = [
     # Main classifier
     "ACMGClassifier",
     "ACMGConfig",

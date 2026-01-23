@@ -5,9 +5,9 @@ Custom exceptions for variant analysis pipeline.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List, Type
 
-__all__ = [
+__all__: List[str] = [
     "VaridexError",
     "ValidationError",
     "DataLoadError",
@@ -37,7 +37,7 @@ if __name__ == "__main__":
             FileProcessingError,
         )
 
-        test_classes = [
+        test_classes: List[Type[Exception]] = [
             ValidationError,
             DataLoadError,
             ClassificationError,
@@ -69,45 +69,45 @@ class VaridexError(Exception):
     """Base exception for all VariDex errors."""
 
     def __init__(
-        self, message: str, code: Optional[ErrorCode] = None, context: Optional[dict] = None
-    ):
+        self, message: str, code: Optional[ErrorCode] = None, context: Optional[Dict[str, Any]] = None
+    ) -> None:
         super().__init__(message)
-        self.code = code
-        self.context = context or {}
+        self.code: Optional[ErrorCode] = code
+        self.context: Dict[str, Any] = context or {}
 
 
 class ValidationError(VaridexError):
     """Raised when validation fails."""
 
-    def __init__(self, message: str, context: Optional[dict] = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.VALIDATION, context)
 
 
 class DataLoadError(VaridexError):
     """Raised when data loading fails."""
 
-    def __init__(self, message: str, context: Optional[dict] = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.DATA_LOAD, context)
 
 
 class ClassificationError(VaridexError):
     """Raised when variant classification fails."""
 
-    def __init__(self, message: str, context: Optional[dict] = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.CLASSIFICATION, context)
 
 
 class ReportError(VaridexError):
     """Raised when report generation fails."""
 
-    def __init__(self, message: str, context: Optional[dict] = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.REPORT, context)
 
 
 class FileProcessingError(VaridexError):
     """Raised when file processing fails."""
 
-    def __init__(self, message: str, context: Optional[dict] = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.FILE_PROCESSING, context)
 
 
@@ -130,7 +130,7 @@ def validate_not_empty(value: Any, name: str) -> None:
         raise ValidationError(f"{name} cannot be empty")
 
 
-def validate_type(value: Any, expected_type: type, name: str) -> None:
+def validate_type(value: Any, expected_type: Type[Any], name: str) -> None:
     """Raise ValidationError if value is not of expected type."""
     if not isinstance(value, expected_type):
         raise ValidationError(
@@ -144,8 +144,8 @@ if __name__ == "__main__":
     print("EXCEPTIONS MODULE - Self-Test")
     print("=" * 70)
 
-    passed = 0
-    total = 14
+    passed: int = 0
+    total: int = 14
 
     try:
         raise VaridexError("test")
