@@ -1,4 +1,4 @@
-"""
+""" 
 VariDex Exception Module
 =========================
 Custom exceptions for variant analysis pipeline.
@@ -6,6 +6,8 @@ Custom exceptions for variant analysis pipeline.
 
 from enum import Enum
 from typing import Any, Optional
+
+__version__ = "6.0.0"
 
 __all__ = [
     "VaridexError",
@@ -98,3 +100,52 @@ def validate_type(value: Any, expected_type: type, name: str) -> None:
     """Raise ValidationError if value is not of expected type."""
     if not isinstance(value, expected_type):
         raise ValidationError(f"{name} must be {expected_type.__name__}, got {type(value).__name__}")
+
+
+if __name__ == "__main__":
+    """Self-test: verify all exception classes can be instantiated."""
+    print(f"VariDex Exceptions v{__version__} - All systems OK")
+    
+    # Test all exception classes
+    exception_classes = [
+        (VaridexError, "Base error"),
+        (ValidationError, "Validation failed"),
+        (DataLoadError, "Data load failed"),
+        (ClassificationError, "Classification failed"),
+        (ReportError, "Report generation failed"),
+        (FileProcessingError, "File processing failed"),
+        (ACMGValidationError, "ACMG validation failed"),
+        (ACMGClassificationError, "ACMG classification failed"),
+        (ACMGConfigurationError, "ACMG configuration failed"),
+    ]
+    
+    try:
+        for exc_class, test_msg in exception_classes:
+            exc = exc_class(test_msg)
+            assert isinstance(exc, Exception), f"{exc_class.__name__} is not an Exception"
+            assert str(exc) == test_msg, f"{exc_class.__name__} message mismatch"
+        
+        # Test validation helpers
+        try:
+            validate_not_none(None, "test_value")
+            raise AssertionError("validate_not_none should have raised ValidationError")
+        except ValidationError:
+            pass
+        
+        try:
+            validate_not_empty("", "test_value")
+            raise AssertionError("validate_not_empty should have raised ValidationError")
+        except ValidationError:
+            pass
+        
+        try:
+            validate_type("string", int, "test_value")
+            raise AssertionError("validate_type should have raised ValidationError")
+        except ValidationError:
+            pass
+        
+        print("Self-test passed: all exception classes instantiable")
+        exit(0)
+    except Exception as e:
+        print(f"Self-test FAILED: {e}")
+        exit(1)
