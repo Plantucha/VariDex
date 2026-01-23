@@ -27,8 +27,8 @@ echo "======================================================================"
 echo
 
 if [ ! -d "data" ]; then
-    echo "❌ Error: data/ directory not found"
-    echo "   Please ensure data/clinvar_GRCh38.vcf exists"
+    echo "❌ Error: clinvar/ directory not found"
+    echo "   Please ensure clinvar/clinvar_GRCh38.vcf exists"
     exit 1
 fi
 
@@ -38,17 +38,18 @@ if [ ! -d "varidex" ]; then
 fi
 
 echo "✓ data/ directory exists"
+echo "✓ clinvar/ directory exists"
 echo "✓ varidex/ package exists"
 echo
 
 # Check for required data files
-if [ -f "data/clinvar_GRCh38.vcf" ]; then
+if [ -f "clinvar/clinvar_GRCh38.vcf" ]; then
     echo "✓ ClinVar VCF found"
-    CLINVAR_SIZE=$(du -h data/clinvar_GRCh38.vcf | cut -f1)
+    CLINVAR_SIZE=$(du -h clinvar/clinvar_GRCh38.vcf | cut -f1)
     echo "  Size: $CLINVAR_SIZE"
-elif [ -f "data/clinvar_GRCh38.vcf.gz" ]; then
+elif [ -f "clinvar/clinvar_GRCh38.vcf.gz" ]; then
     echo "✓ ClinVar VCF.GZ found"
-    CLINVAR_SIZE=$(du -h data/clinvar_GRCh38.vcf.gz | cut -f1)
+    CLINVAR_SIZE=$(du -h clinvar/clinvar_GRCh38.vcf.gz | cut -f1)
     echo "  Size: $CLINVAR_SIZE"
 else
     echo "❌ Error: No ClinVar file found"
