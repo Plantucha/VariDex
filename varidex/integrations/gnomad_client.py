@@ -11,7 +11,7 @@ Reference:
 
 import logging
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import requests
@@ -54,9 +54,9 @@ class GnomadVariantFrequency:
 class RateLimiter:
     """Simple rate limiter for API requests."""
 
-    def __init__(self, max_requests: int = 100, time_window: int = 60):
-        self.max_requests = max_requests
-        self.time_window = time_window
+    def __init__(self, max_requests: int = 100, time_window: int = 60) -> None:
+        self.max_requests: int = max_requests
+        self.time_window: int = time_window
         self.requests: List[float] = []
 
     def wait_if_needed(self) -> None:
@@ -77,10 +77,10 @@ class RateLimiter:
 class GnomadClient:
     """Client for gnomAD GraphQL API."""
 
-    DEFAULT_API_URL = "https://gnomad.broadinstitute.org/api"
-    DEFAULT_TIMEOUT = 30
-    DEFAULT_RETRY_ATTEMPTS = 3
-    CACHE_SIZE = 1000
+    DEFAULT_API_URL: str = "https://gnomad.broadinstitute.org/api"
+    DEFAULT_TIMEOUT: int = 30
+    DEFAULT_RETRY_ATTEMPTS: int = 3
+    CACHE_SIZE: int = 1000
 
     def __init__(
         self,
@@ -89,21 +89,21 @@ class GnomadClient:
         retry_attempts: int = DEFAULT_RETRY_ATTEMPTS,
         enable_cache: bool = True,
         rate_limit: bool = True,
-    ):
-        self.api_url = api_url or self.DEFAULT_API_URL
-        self.timeout = timeout
-        self.retry_attempts = retry_attempts
-        self.enable_cache = enable_cache
-        self.session = requests.Session()
+    ) -> None:
+        self.api_url: str = api_url or self.DEFAULT_API_URL
+        self.timeout: int = timeout
+        self.retry_attempts: int = retry_attempts
+        self.enable_cache: bool = enable_cache
+        self.session: requests.Session = requests.Session()
         self.session.headers.update(
             {
                 "Content-Type": "application/json",
                 "User-Agent": "VariDex/6.0 (genomic variant analysis)",
             }
         )
-        self.rate_limiter = RateLimiter() if rate_limit else None
-        self._cache: Dict[str, tuple[GnomadVariantFrequency, datetime]] = {}
-        self._cache_duration = timedelta(hours=24)
+        self.rate_limiter: Optional[RateLimiter] = RateLimiter() if rate_limit else None
+        self._cache: Dict[str, Tuple[GnomadVariantFrequency, datetime]] = {}
+        self._cache_duration: timedelta = timedelta(hours=24)
 
         logger.info(f"Initialized gnomAD client: {self.api_url}")
 
@@ -164,7 +164,7 @@ class GnomadClient:
         if self.rate_limiter:
             self.rate_limiter.wait_if_needed()
 
-        last_error = None
+        last_error: Optional[Exception] = None
         for attempt in range(self.retry_attempts):
             try:
                 response = self.session.post(
@@ -185,7 +185,9 @@ class GnomadClient:
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Failed after {self.retry_attempts} attempts: {e}")
-        raise last_error
+        if last_error:
+            raise last_error
+        raise RuntimeError("Unexpected error in query execution")
 
     def _parse_response(
         self, data: Dict[str, Any], variant_id: str
@@ -199,9 +201,9 @@ class GnomadClient:
             genome = variant_data.get("genome", {})
             exome = variant_data.get("exome", {})
 
-            populations = {}
-            popmax_af = None
-            popmax_pop = None
+            populations: Dict[str, float] = {}
+            popmax_af: Optional[float] = None
+            popmax_pop: Optional[str] = None
 
             # Genome populations
             for pop in genome.get("populations", []):

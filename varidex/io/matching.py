@@ -8,15 +8,15 @@ BUGFIX v6.0.1: Coordinate matching now assigns normalized DataFrames.
 
 import pandas as pd
 import logging
-from typing import Tuple
+from typing import Tuple, Dict, Any, List, Set
 import re
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 
-def normalize_column_names(df, source="unknown"):
+def normalize_column_names(df: pd.DataFrame, source: str = "unknown") -> pd.DataFrame:
     """Normalize column names for matching."""
 
-    renames = {}
+    renames: Dict[str, str] = {}
 
     if source == "clinvar":
         # ClinVar VCF uses: CHROM, POS, ID, REF, ALT
@@ -34,7 +34,7 @@ def normalize_column_names(df, source="unknown"):
 
 
 logger = logging.getLogger(__name__)
-REQUIRED_COORD_COLUMNS = ["chromosome", "position", "ref_allele", "alt_allele"]
+REQUIRED_COORD_COLUMNS: List[str] = ["chromosome", "position", "ref_allele", "alt_allele"]
 
 
 def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
@@ -125,11 +125,12 @@ def match_variants_hybrid(
     logger.info("MATCHING: {clinvar_type} × {user_type}")
     logger.info("{'='*60}")
 
-    matches = []
-    rsid_count = 0
-    coord_count = 0
+    matches: List[pd.DataFrame] = []
+    rsid_count: int = 0
+    coord_count: int = 0
 
     # Try rsID matching first
+    rsid_matched: pd.DataFrame = pd.DataFrame()
     if "rsid" in user_df.columns and "rsid" in clinvar_df.columns:
         rsid_matched = match_by_rsid(user_df, clinvar_df)
         if len(rsid_matched) > 0:
@@ -140,7 +141,7 @@ def match_variants_hybrid(
     # Try coordinate matching for unmatched variants
     if clinvar_type in ["vc", "vcf_tsv"]:
         if rsid_count > 0 and "rsid" in user_df.columns:
-            matched_rsids = set(rsid_matched["rsid"])
+            matched_rsids: Set[Any] = set(rsid_matched["rsid"])
             unmatched = user_df[~user_df["rsid"].isin(matched_rsids)]
         else:
             unmatched = user_df
@@ -179,7 +180,7 @@ def match_variants_hybrid(
     # Extract gene from INFO field if missing
     if "gene" not in combined.columns or combined["gene"].isna().all():
 
-        def extract_gene(info_str):
+        def extract_gene(info_str: Any) -> Any:
             if pd.isna(info_str):
                 return None
             match = re.search(r"GENEINFO=([^:;]+)", str(info_str))
@@ -190,7 +191,7 @@ def match_variants_hybrid(
     # Ensure molecular_consequence exists
     if "molecular_consequence" not in combined.columns:
 
-        def extract_consequence(info_str):
+        def extract_consequence(info_str: Any) -> str:
             if pd.isna(info_str):
                 return ""
             match = re.search(r"MC=([^;]+)", str(info_str))
@@ -201,7 +202,7 @@ def match_variants_hybrid(
     # Ensure variant_type exists
     if "variant_type" not in combined.columns:
 
-        def extract_variant_type(info_str):
+        def extract_variant_type(info_str: Any) -> str:
             if pd.isna(info_str):
                 return "single_nucleotide_variant"
             match = re.search(r"CLNVC=([^;]+)", str(info_str))

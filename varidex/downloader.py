@@ -15,11 +15,11 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 
 # Configuration
-FTP_BASE = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar"
-SAFETY_MARGIN_GB = 5  # Keep 5GB free space buffer
+FTP_BASE: str = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar"
+SAFETY_MARGIN_GB: int = 5  # Keep 5GB free space buffer
 
 # Define files to download (filename, URL, approx_unzipped_size_MB)
-FILES = [
+FILES: List[Tuple[str, str, int]] = [
     ("variant_summary.txt.gz", f"{FTP_BASE}/tab_delimited/variant_summary.txt.gz", 3000),
     ("var_citations.txt", f"{FTP_BASE}/tab_delimited/var_citations.txt", 50),
     ("cross_references.txt", f"{FTP_BASE}/tab_delimited/cross_references.txt", 100),
@@ -93,7 +93,7 @@ def download_file(url: str, filepath: Path) -> bool:
     try:
         print(f"  URL: {url}")
 
-        def reporthook(block_num, block_size, total_size):
+        def reporthook(block_num: int, block_size: int, total_size: int) -> None:
             if total_size > 0:
                 percent = min(block_num * block_size * 100 / total_size, 100)
                 sys.stdout.write(f"\r  Progress: {percent:.1f}%")
@@ -107,7 +107,7 @@ def download_file(url: str, filepath: Path) -> bool:
         return False
 
 
-def main():
+def main() -> int:
     # Get download directory from argument or use default
     if len(sys.argv) > 1:
         clinvar_dir = Path(sys.argv[1])
@@ -128,9 +128,9 @@ def main():
     print()
 
     # Check which files need updating
-    to_download = []
-    to_delete = []
-    total_size_needed = 0
+    to_download: List[Tuple[str, str, int]] = []
+    to_delete: List[Path] = []
+    total_size_needed: int = 0
 
     print("Checking existing files...")
     for filename, url, size_mb in FILES:
