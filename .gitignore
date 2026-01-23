@@ -13,3 +13,5 @@ debug_*.py
 fix_*.py
 .coverage
 *.egg-info/
+# Backup files
+*.backup
