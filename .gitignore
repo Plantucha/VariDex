@@ -8,3 +8,8 @@ output/
 fuzzy_output/
 __pycache__/
 *.log
+# Debug files
+debug_*.py
+fix_*.py
+.coverage
+*.egg-info/
