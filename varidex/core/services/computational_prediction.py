@@ -28,13 +28,13 @@ Reference: Richards et al. 2015, PMID 25741868
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from enum import Enum
 import logging
 
 from varidex.integrations.dbnsfp_client import DbNSFPClient, PredictionScore
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class PredictionStrength(Enum):
@@ -103,9 +103,9 @@ class ComputationalEvidence:
 
     # Algorithm availability tracking
     algorithms_available: int = 0
-    algorithms_missing: list = None
+    algorithms_missing: Optional[List[str]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize mutable defaults."""
         if self.algorithms_missing is None:
             self.algorithms_missing = []
@@ -113,11 +113,11 @@ class ComputationalEvidence:
     def summary(self) -> str:
         """Generate human-readable summary."""
         if self.pp3:
-            return "PP3: {self.deleterious_count}/{self.total_predictions} deleterious"
+            return f"PP3: {self.deleterious_count}/{self.total_predictions} deleterious"
         elif self.bp4:
-            return "BP4: {self.benign_count}/{self.total_predictions} benign"
+            return f"BP4: {self.benign_count}/{self.total_predictions} benign"
         else:
-            return "Neither PP3 nor BP4: {self.deleterious_count}D/{self.benign_count}B"
+            return f"Neither PP3 nor BP4: {self.deleterious_count}D/{self.benign_count}B"
 
 
 class ComputationalPredictionService:
@@ -138,7 +138,7 @@ class ComputationalPredictionService:
         dbnsfp_client: Optional[DbNSFPClient] = None,
         thresholds: Optional[PredictionThresholds] = None,
         enable_predictions: bool = True,
-    ):
+    ) -> None:
         """Initialize computational prediction service.
 
         Args:
@@ -146,11 +146,15 @@ class ComputationalPredictionService:
             thresholds: Custom prediction thresholds
             enable_predictions: Enable prediction queries (False for testing/offline)
         """
-        self.enable_predictions = enable_predictions
-        self.thresholds = thresholds if thresholds else PredictionThresholds()
+        self.enable_predictions: bool = enable_predictions
+        self.thresholds: PredictionThresholds = (
+            thresholds if thresholds else PredictionThresholds()
+        )
 
         if enable_predictions:
-            self.client = dbnsfp_client if dbnsfp_client else DbNSFPClient()
+            self.client: Optional[DbNSFPClient] = (
+                dbnsfp_client if dbnsfp_client else DbNSFPClient()
+            )
             logger.info("ComputationalPredictionService initialized with VEP client")
         else:
             self.client = None
@@ -163,7 +167,7 @@ class ComputationalPredictionService:
             'deleterious', 'benign', or None
         """
         if score.sift_prediction:
-            pred = score.sift_prediction.lower()
+            pred: str = score.sift_prediction.lower()
             if "deleterious" in pred:
                 return "deleterious"
             elif "tolerated" in pred:
@@ -184,7 +188,7 @@ class ComputationalPredictionService:
             'deleterious', 'benign', or None
         """
         if score.polyphen_prediction:
-            pred = score.polyphen_prediction.lower()
+            pred: str = score.polyphen_prediction.lower()
             if "damaging" in pred:  # probably_damaging or possibly_damaging
                 return "deleterious"
             elif "benign" in pred:
@@ -249,20 +253,20 @@ class ComputationalPredictionService:
         Returns:
             Tuple of (applies, reasoning)
         """
-        min_concordant = self.thresholds.pp3_min_concordant
+        min_concordant: int = self.thresholds.pp3_min_concordant
 
         if evidence.deleterious_count >= min_concordant:
             if evidence.benign_count == 0:
-                reason = (
-                    "PP3: {evidence.deleterious_count} concordant deleterious predictions "
-                    "(SIFT={evidence.sift_result}, PolyPhen={evidence.polyphen_result}, "
-                    "CADD={evidence.cadd_result})"
+                reason: str = (
+                    f"PP3: {evidence.deleterious_count} concordant deleterious predictions "
+                    f"(SIFT={evidence.sift_result}, PolyPhen={evidence.polyphen_result}, "
+                    f"CADD={evidence.cadd_result})"
                 )
                 return True, reason
             elif evidence.deleterious_count > evidence.benign_count * 2:
                 reason = (
-                    "PP3: {evidence.deleterious_count} deleterious vs "
-                    "{evidence.benign_count} benign predictions (strong consensus)"
+                    f"PP3: {evidence.deleterious_count} deleterious vs "
+                    f"{evidence.benign_count} benign predictions (strong consensus)"
                 )
                 return True, reason
 
@@ -277,7 +281,7 @@ class ComputationalPredictionService:
         Returns:
             Tuple of (applies, reasoning)
         """
-        min_concordant = self.thresholds.bp4_min_concordant
+        min_concordant: int = self.thresholds.bp4_min_concordant
 
         # BP4 cannot apply if PP3 already applies
         if evidence.pp3:
@@ -285,16 +289,16 @@ class ComputationalPredictionService:
 
         if evidence.benign_count >= min_concordant:
             if evidence.deleterious_count == 0:
-                reason = (
-                    "BP4: {evidence.benign_count} concordant benign predictions "
-                    "(SIFT={evidence.sift_result}, PolyPhen={evidence.polyphen_result}, "
-                    "CADD={evidence.cadd_result})"
+                reason: str = (
+                    f"BP4: {evidence.benign_count} concordant benign predictions "
+                    f"(SIFT={evidence.sift_result}, PolyPhen={evidence.polyphen_result}, "
+                    f"CADD={evidence.cadd_result})"
                 )
                 return True, reason
             elif evidence.benign_count > evidence.deleterious_count * 2:
                 reason = (
-                    "BP4: {evidence.benign_count} benign vs "
-                    "{evidence.deleterious_count} deleterious predictions (strong consensus)"
+                    f"BP4: {evidence.benign_count} benign vs "
+                    f"{evidence.deleterious_count} deleterious predictions (strong consensus)"
                 )
                 return True, reason
 
@@ -315,7 +319,7 @@ class ComputationalPredictionService:
         Returns:
             ComputationalEvidence with PP3/BP4 determination
         """
-        evidence = ComputationalEvidence()
+        evidence: ComputationalEvidence = ComputationalEvidence()
 
         try:
             # Get predictions
@@ -326,11 +330,13 @@ class ComputationalPredictionService:
                 )
                 return evidence
 
-            predictions = self.client.get_predictions(chromosome, position, ref, alt)
+            predictions: Optional[PredictionScore] = self.client.get_predictions(
+                chromosome, position, ref, alt
+            )
 
             if predictions is None or not predictions.has_scores:
                 evidence.reasoning = "No prediction scores available from VEP"
-                logger.debug("No predictions for {chromosome}:{position} {ref}>{alt}")
+                logger.debug(f"No predictions for {chromosome}:{position} {ref}>{alt}")
                 return evidence
 
             # Analyze each algorithm
@@ -341,8 +347,8 @@ class ComputationalPredictionService:
             evidence.metasvm_result = self._analyze_metasvm(predictions)
 
             # Track algorithm availability
-            all_algorithms = ["SIFT", "PolyPhen-2", "CADD", "REVEL", "MetaSVM"]
-            all_results = [
+            all_algorithms: List[str] = ["SIFT", "PolyPhen-2", "CADD", "REVEL", "MetaSVM"]
+            all_results: List[Optional[str]] = [
                 evidence.sift_result,
                 evidence.polyphen_result,
                 evidence.cadd_result,
@@ -358,10 +364,10 @@ class ComputationalPredictionService:
             # Warn if limited algorithm coverage
             if evidence.algorithms_available < 3:
                 logger.warning(
-                    "Limited algorithm coverage for {chromosome}:{position} - "
-                    "only {evidence.algorithms_available}/5 algorithms available. "
-                    "Missing: {', '.join(evidence.algorithms_missing)}. "
-                    "PP3/BP4 requires ≥3 algorithms."
+                    f"Limited algorithm coverage for {chromosome}:{position} - "
+                    f"only {evidence.algorithms_available}/5 algorithms available. "
+                    f"Missing: {', '.join(evidence.algorithms_missing)}. "
+                    f"PP3/BP4 requires ≥3 algorithms."
                 )
 
             # Count votes
@@ -374,50 +380,54 @@ class ComputationalPredictionService:
                     evidence.total_predictions += 1
 
             logger.info(
-                "Predictions for {chromosome}:{position}: "
-                "{evidence.deleterious_count}D/{evidence.benign_count}B "
-                "of {evidence.total_predictions} ({evidence.algorithms_available} algorithms)"
+                f"Predictions for {chromosome}:{position}: "
+                f"{evidence.deleterious_count}D/{evidence.benign_count}B "
+                f"of {evidence.total_predictions} ({evidence.algorithms_available} algorithms)"
             )
 
             # Check PP3 first (pathogenic takes precedence)
+            pp3_applies: bool
+            pp3_reason: str
             pp3_applies, pp3_reason = self._check_pp3(evidence)
             evidence.pp3 = pp3_applies
 
             if pp3_applies:
                 evidence.reasoning = pp3_reason
                 evidence.strength = PredictionStrength.STRONG_DELETERIOUS
-                logger.info("PP3 applies: {pp3_reason}")
+                logger.info(f"PP3 applies: {pp3_reason}")
             else:
                 # Check BP4 only if PP3 doesn't apply
+                bp4_applies: bool
+                bp4_reason: str
                 bp4_applies, bp4_reason = self._check_bp4(evidence)
                 evidence.bp4 = bp4_applies
 
                 if bp4_applies:
                     evidence.reasoning = bp4_reason
                     evidence.strength = PredictionStrength.STRONG_BENIGN
-                    logger.info("BP4 applies: {bp4_reason}")
+                    logger.info(f"BP4 applies: {bp4_reason}")
                 else:
                     # Neither applies
                     if evidence.total_predictions == 0:
                         evidence.reasoning = "No predictions available"
                     elif evidence.algorithms_available < 3:
                         evidence.reasoning = (
-                            "Insufficient algorithms ({evidence.algorithms_available}/5) "
-                            "for PP3/BP4 determination"
+                            f"Insufficient algorithms ({evidence.algorithms_available}/5) "
+                            f"for PP3/BP4 determination"
                         )
                     elif evidence.deleterious_count > 0 and evidence.benign_count > 0:
-                        evidence.reasoning = "Conflicting predictions: {evidence.deleterious_count}D/{evidence.benign_count}B"
+                        evidence.reasoning = f"Conflicting predictions: {evidence.deleterious_count}D/{evidence.benign_count}B"
                         evidence.strength = PredictionStrength.NEUTRAL
                     else:
                         evidence.reasoning = "Insufficient concordant predictions for PP3 or BP4"
 
-                    logger.debug("Neither PP3 nor BP4: {evidence.reasoning}")
+                    logger.debug(f"Neither PP3 nor BP4: {evidence.reasoning}")
 
             return evidence
 
-        except Exception:
-            logger.error("Prediction analysis failed for {chromosome}:{position}: {e}")
-            evidence.reasoning = "Analysis error: {str(e)}"
+        except Exception as e:
+            logger.error(f"Prediction analysis failed for {chromosome}:{position}: {e}")
+            evidence.reasoning = f"Analysis error: {str(e)}"
             return evidence
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -426,7 +436,7 @@ class ComputationalPredictionService:
         Returns:
             Dictionary with service statistics
         """
-        stats = {
+        stats: Dict[str, Any] = {
             "enabled": self.enable_predictions,
             "offline_mode": not self.enable_predictions,
             "thresholds": {
