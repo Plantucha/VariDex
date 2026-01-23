@@ -9,6 +9,7 @@ BUGFIX v6.0.1: Coordinate matching now assigns normalized DataFrames.
 import pandas as pd
 import logging
 from typing import Tuple
+import re
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 
@@ -167,5 +168,44 @@ def match_variants_hybrid(
     logger.info("{'='*60}")
     logger.info("TOTAL: {len(combined):,} matches ({coverage:.1f}% coverage)")
     logger.info("{'='*60}")
+
+    
+    # Reconcile column names for classification
+    if 'chromosome_clinvar' in combined.columns and 'chromosome' not in combined.columns:
+        combined['chromosome'] = combined['chromosome_clinvar']
+    
+    if 'position_clinvar' in combined.columns and 'position' not in combined.columns:
+        combined['position'] = combined['position_clinvar']
+    
+    # Extract gene from INFO field if missing
+    if 'gene' not in combined.columns or combined['gene'].isna().all():
+        def extract_gene(info_str):
+            if pd.isna(info_str):
+                return None
+            match = re.search(r'GENEINFO=([^:;]+)', str(info_str))
+            return match.group(1) if match else None
+        
+        combined['gene'] = combined['INFO'].apply(extract_gene)
+    
+    # Ensure molecular_consequence exists
+    if 'molecular_consequence' not in combined.columns:
+        def extract_consequence(info_str):
+            if pd.isna(info_str):
+                return ''
+            match = re.search(r'MC=([^;]+)', str(info_str))
+            return match.group(1) if match else ''
+        
+        combined['molecular_consequence'] = combined['INFO'].apply(extract_consequence)
+    
+    # Ensure variant_type exists
+    if 'variant_type' not in combined.columns:
+        def extract_variant_type(info_str):
+            if pd.isna(info_str):
+                return 'single_nucleotide_variant'
+            match = re.search(r'CLNVC=([^;]+)', str(info_str))
+            return match.group(1).replace('_', ' ') if match else 'single_nucleotide_variant'
+        
+        combined['variant_type'] = combined['INFO'].apply(extract_variant_type)
+
 
     return combined, rsid_count, coord_count

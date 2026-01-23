@@ -1,14 +1,10 @@
+# Data files (NEVER upload)
+data/
+clinvar/
+*.vcf
+*.txt
+*.csv
+output/
+fuzzy_output/
 __pycache__/
-*.py[cod]
-.pytest_cache/
-.coverage
-htmlcov/
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
-pipeline.log
-test_output/
-*.backup.*
-*_test_results_*.log
+*.log
