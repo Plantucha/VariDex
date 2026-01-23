@@ -53,18 +53,18 @@ class ACMGClassifierV8(ACMGClassifierV7):
     Maintains backward compatibility and graceful degradation.
     """
 
-    VERSION = "8.0.0"
+    VERSION = "8.0.1"
 
     def __init__(
         self,
         config: Optional[ACMGConfig] = None,
         enable_gnomad: bool = True,
         enable_predictions: bool = True,
-        gnomad_client=None,
+        gnomad_client: Optional[Any] = None,
         dbnsfp_client: Optional[DbNSFPClient] = None,
         prediction_thresholds: Optional[PredictionThresholds] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize enhanced classifier with computational predictions.
 
         Args:
@@ -82,8 +82,8 @@ class ACMGClassifierV8(ACMGClassifierV7):
         )
 
         # Initialize prediction service
-        self.enable_predictions = enable_predictions
-        self.prediction_service = None
+        self.enable_predictions: bool = enable_predictions
+        self.prediction_service: Optional[ComputationalPredictionService] = None
 
         if enable_predictions:
             try:
@@ -93,16 +93,16 @@ class ACMGClassifierV8(ACMGClassifierV7):
                     enable_predictions=True,
                 )
                 logger.info(
-                    "ACMGClassifierV8 {self.VERSION} initialized with computational predictions"
+                    f"ACMGClassifierV8 {self.VERSION} initialized with computational predictions"
                 )
-            except Exception:
-                logger.error("Failed to initialize prediction service: {e}")
+            except Exception as e:
+                logger.error(f"Failed to initialize prediction service: {e}")
                 logger.warning("Continuing without computational predictions")
                 self.enable_predictions = False
                 self.prediction_service = None
         else:
             logger.info(
-                "ACMGClassifierV8 {self.VERSION} initialized without computational predictions"
+                f"ACMGClassifierV8 {self.VERSION} initialized without computational predictions"
             )
 
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
@@ -136,7 +136,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 pred_evidence = self.prediction_service.analyze_predictions(
                     chromosome=coords["chromosome"],
                     position=coords["position"],
-                    ref=coords["re"],
+                    ref=coords["ref"],  # FIXED: was coords["re"]
                     alt=coords["alt"],
                     gene=coords.get("gene"),
                 )
@@ -144,11 +144,11 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 # Add evidence codes
                 if pred_evidence.pp3:
                     evidence.pp.add("PP3")
-                    logger.info("PP3: {pred_evidence.reasoning}")
+                    logger.info(f"PP3: {pred_evidence.reasoning}")
 
                 if pred_evidence.bp4:
                     evidence.bp.add("BP4")
-                    logger.info("BP4: {pred_evidence.reasoning}")
+                    logger.info(f"BP4: {pred_evidence.reasoning}")
 
                 # Store prediction info for reference
                 if hasattr(evidence, "metadata"):
@@ -163,11 +163,11 @@ class ACMGClassifierV8(ACMGClassifierV7):
                         },
                     }
 
-                logger.debug("Prediction analysis: {pred_evidence.summary()}")
+                logger.debug(f"Prediction analysis: {pred_evidence.summary()}")
 
-            except Exception:
-                logger.error("Computational prediction analysis failed: {e}")
-                evidence.conflicts.add("Prediction error: {str(e)}")
+            except Exception as e:
+                logger.error(f"Computational prediction analysis failed: {e}")
+                evidence.conflicts.add(f"Prediction error: {str(e)}")
 
         # Convert sets to lists (inherited from parent)
         for attr in ["pvs", "ps", "pm", "pp", "ba", "bs", "bp"]:
@@ -175,7 +175,9 @@ class ACMGClassifierV8(ACMGClassifierV7):
 
         return evidence
 
-    def classify_variant(self, variant: VariantData) -> Tuple[str, str, ACMGEvidenceSet, float]:
+    def classify_variant(
+        self, variant: VariantData
+    ) -> Tuple[str, str, ACMGEvidenceSet, float]:
         """Complete classification pipeline with computational predictions.
 
         Args:
@@ -200,19 +202,25 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 self.metrics.record_success(duration, classification, evidence)
 
             logger.info(
-                "Classified {variant} → {classification} ({confidence}) "
-                "in {duration:.3f}s [gnomAD: {self.enable_gnomad}, predictions: {self.enable_predictions}]"
+                f"Classified {variant} → {classification} ({confidence}) "
+                f"in {duration:.3f}s [gnomAD: {self.enable_gnomad}, "
+                f"predictions: {self.enable_predictions}]"
             )
 
             return classification, confidence, evidence, duration
 
-        except Exception:
+        except Exception as e:
             duration = time.time() - start_time
             if self.metrics:
                 self.metrics.record_failure()
 
-            logger.error("Classification pipeline failed: {e}", exc_info=True)
-            return "Uncertain Significance", "Error: {str(e)}", ACMGEvidenceSet(), duration
+            logger.error(f"Classification pipeline failed: {e}", exc_info=True)
+            return (
+                "Uncertain Significance",
+                f"Error: {str(e)}",
+                ACMGEvidenceSet(),
+                duration,
+            )
 
     def health_check(self) -> Dict[str, Any]:
         """Health check with gnomAD and prediction service status.
@@ -230,7 +238,9 @@ class ACMGClassifierV8(ACMGClassifierV7):
 
         if self.prediction_service:
             try:
-                health["predictions"]["statistics"] = self.prediction_service.get_statistics()
+                health["predictions"]["statistics"] = (
+                    self.prediction_service.get_statistics()
+                )
             except Exception as e:
                 health["predictions"]["error"] = str(e)
 
@@ -267,7 +277,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
         """
         classification, confidence, evidence, duration = self.classify_variant(variant)
 
-        summary = {
+        summary: Dict[str, Any] = {
             "variant": {
                 "rsid": getattr(variant, "rsid", None),
                 "gene": getattr(variant, "gene", None),
@@ -305,7 +315,7 @@ class ACMGClassifierV8(ACMGClassifierV7):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print("ACMG Classifier V8 {ACMGClassifierV8.VERSION} - Full Integration")
+    print(f"ACMG Classifier V8 {ACMGClassifierV8.VERSION} - Full Integration")
     print("=" * 80)
     print("\nEnabled Evidence Codes:")
 
@@ -313,9 +323,10 @@ if __name__ == "__main__":
     classifier_basic = ACMGClassifierV8(enable_gnomad=False, enable_predictions=False)
     codes_basic = classifier_basic.get_enabled_codes()
     print("\nBasic (no external data):")
-    print("  Pathogenic: {', '.join(codes_basic['pathogenic'])}")
-    print("  Benign: {', '.join(codes_basic['benign'])}")
-    print("  Total: {len(codes_basic['pathogenic']) + len(codes_basic['benign'])} codes")
+    print(f"  Pathogenic: {', '.join(codes_basic['pathogenic'])}")
+    print(f"  Benign: {', '.join(codes_basic['benign'])}")
+    total_basic = len(codes_basic["pathogenic"]) + len(codes_basic["benign"])
+    print(f"  Total: {total_basic} codes")
 
     # Show with gnomAD
     print("\nWith gnomAD (+PM2, +BA1, +BS1):")
@@ -340,7 +351,7 @@ if __name__ == "__main__":
 
     print("=" * 80)
 else:
-    logger.info("ACMGClassifierV8 {ACMGClassifierV8.VERSION} loaded")
+    logger.info(f"ACMGClassifierV8 {ACMGClassifierV8.VERSION} loaded")
     logger.info("  Enhanced with computational predictions (PP3, BP4)")
     logger.info("  Includes gnomAD integration (PM2, BA1, BS1)")
     logger.info("  Backward compatible with v7 and v6, graceful degradation")
