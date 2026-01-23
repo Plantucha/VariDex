@@ -1,4 +1,4 @@
-""" 
+"""
 VariDex Exception Module
 =========================
 Custom exceptions for variant analysis pipeline.
@@ -28,6 +28,7 @@ __all__ = [
 
 class ErrorCode(Enum):
     """Error codes for categorizing exceptions."""
+
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
     CLASSIFICATION = "CLASSIFICATION"
@@ -39,7 +40,9 @@ class ErrorCode(Enum):
 class VaridexError(Exception):
     """Base exception for all VariDex errors."""
 
-    def __init__(self, message: str, code: Optional[ErrorCode] = None, context: Optional[dict] = None):
+    def __init__(
+        self, message: str, code: Optional[ErrorCode] = None, context: Optional[dict] = None
+    ):
         super().__init__(message)
         self.code = code
         self.context = context or {}
@@ -47,30 +50,35 @@ class VaridexError(Exception):
 
 class ValidationError(VaridexError):
     """Raised when validation fails."""
+
     def __init__(self, message: str, context: Optional[dict] = None):
         super().__init__(message, ErrorCode.VALIDATION, context)
 
 
 class DataLoadError(VaridexError):
     """Raised when data loading fails."""
+
     def __init__(self, message: str, context: Optional[dict] = None):
         super().__init__(message, ErrorCode.DATA_LOAD, context)
 
 
 class ClassificationError(VaridexError):
     """Raised when variant classification fails."""
+
     def __init__(self, message: str, context: Optional[dict] = None):
         super().__init__(message, ErrorCode.CLASSIFICATION, context)
 
 
 class ReportError(VaridexError):
     """Raised when report generation fails."""
+
     def __init__(self, message: str, context: Optional[dict] = None):
         super().__init__(message, ErrorCode.REPORT, context)
 
 
 class FileProcessingError(VaridexError):
     """Raised when file processing fails."""
+
     def __init__(self, message: str, context: Optional[dict] = None):
         super().__init__(message, ErrorCode.FILE_PROCESSING, context)
 
@@ -99,13 +107,15 @@ def validate_not_empty(value: Any, name: str) -> None:
 def validate_type(value: Any, expected_type: type, name: str) -> None:
     """Raise ValidationError if value is not of expected type."""
     if not isinstance(value, expected_type):
-        raise ValidationError(f"{name} must be {expected_type.__name__}, got {type(value).__name__}")
+        raise ValidationError(
+            f"{name} must be {expected_type.__name__}, got {type(value).__name__}"
+        )
 
 
 if __name__ == "__main__":
     """Self-test: verify all exception classes can be instantiated."""
     print(f"VariDex Exceptions v{__version__} - All systems OK")
-    
+
     # Test all exception classes
     exception_classes = [
         (VaridexError, "Base error"),
@@ -118,32 +128,32 @@ if __name__ == "__main__":
         (ACMGClassificationError, "ACMG classification failed"),
         (ACMGConfigurationError, "ACMG configuration failed"),
     ]
-    
+
     try:
         for exc_class, test_msg in exception_classes:
             exc = exc_class(test_msg)
             assert isinstance(exc, Exception), f"{exc_class.__name__} is not an Exception"
             assert str(exc) == test_msg, f"{exc_class.__name__} message mismatch"
-        
+
         # Test validation helpers
         try:
             validate_not_none(None, "test_value")
             raise AssertionError("validate_not_none should have raised ValidationError")
         except ValidationError:
             pass
-        
+
         try:
             validate_not_empty("", "test_value")
             raise AssertionError("validate_not_empty should have raised ValidationError")
         except ValidationError:
             pass
-        
+
         try:
             validate_type("string", int, "test_value")
             raise AssertionError("validate_type should have raised ValidationError")
         except ValidationError:
             pass
-        
+
         print("Self-test passed: all exception classes instantiable")
         exit(0)
     except Exception as e:

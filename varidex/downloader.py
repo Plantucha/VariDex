@@ -28,7 +28,11 @@ FILES = [
     ("clinvar_GRCh37.vcf.gz", f"{FTP_BASE}/vcf_GRCh37/clinvar.vcf.gz", 1500),
     ("clinvar_GRCh38.vcf.gz", f"{FTP_BASE}/vcf_GRCh38/clinvar.vcf.gz", 1500),
     ("ClinVarVCVRelease.xml.gz", f"{FTP_BASE}/xml/ClinVarVCVRelease_00-latest.xml.gz", 8000),
-    ("ClinVarRCVRelease.xml.gz", f"{FTP_BASE}/xml/RCV_release/ClinVarRCVRelease_00-latest.xml.gz", 12000),
+    (
+        "ClinVarRCVRelease.xml.gz",
+        f"{FTP_BASE}/xml/RCV_release/ClinVarRCVRelease_00-latest.xml.gz",
+        12000,
+    ),
 ]
 
 # Sort by size (smallest first)

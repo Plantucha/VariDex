@@ -167,7 +167,9 @@ class GnomadClient:
         last_error = None
         for attempt in range(self.retry_attempts):
             try:
-                response = self.session.post(self.api_url, json={"query": query}, timeout=self.timeout)
+                response = self.session.post(
+                    self.api_url, json={"query": query}, timeout=self.timeout
+                )
                 response.raise_for_status()
                 data = response.json()
                 if "errors" in data:
@@ -185,7 +187,9 @@ class GnomadClient:
                     logger.error(f"Failed after {self.retry_attempts} attempts: {e}")
         raise last_error
 
-    def _parse_response(self, data: Dict[str, Any], variant_id: str) -> Optional[GnomadVariantFrequency]:
+    def _parse_response(
+        self, data: Dict[str, Any], variant_id: str
+    ) -> Optional[GnomadVariantFrequency]:
         try:
             variant_data = data.get("data", {}).get("variant")
             if not variant_data:
