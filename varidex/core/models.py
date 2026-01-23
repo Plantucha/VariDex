@@ -6,7 +6,7 @@ Optimized data structures for variant analysis with sets for O(1) operations.
 """
 
 from dataclasses import dataclass, field
-from typing import Set, List, Optional
+from typing import Set, List, Optional, Dict, Any
 from datetime import datetime
 
 
@@ -52,24 +52,24 @@ class ACMGEvidenceSet:
 
     def summary(self) -> str:
         """Get human-readable summary."""
-        parts = []
+        parts: List[str] = []
         if self.pvs:
-            parts.append("PVS:{len(self.pvs)}")
+            parts.append(f"PVS:{len(self.pvs)}")
         if self.ps:
-            parts.append("PS:{len(self.ps)}")
+            parts.append(f"PS:{len(self.ps)}")
         if self.pm:
-            parts.append("PM:{len(self.pm)}")
+            parts.append(f"PM:{len(self.pm)}")
         if self.pp:
-            parts.append("PP:{len(self.pp)}")
+            parts.append(f"PP:{len(self.pp)}")
         if self.ba:
-            parts.append("BA:{len(self.ba)}")
+            parts.append(f"BA:{len(self.ba)}")
         if self.bs:
-            parts.append("BS:{len(self.bs)}")
+            parts.append(f"BS:{len(self.bs)}")
         if self.bp:
-            parts.append("BP:{len(self.bp)}")
+            parts.append(f"BP:{len(self.bp)}")
         return " | ".join(parts) if parts else "No evidence"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.summary()
 
 
@@ -120,7 +120,7 @@ class VariantData:
         return self._processed_timestamp
 
     @processed_timestamp.setter
-    def processed_timestamp(self, value: Optional[str]):
+    def processed_timestamp(self, value: Optional[str]) -> None:
         """Allow explicit timestamp setting."""
         self._processed_timestamp = value
 
@@ -143,7 +143,7 @@ class VariantData:
             or (self.acmg_classification == "Uncertain Significance" and self.star_rating >= 2)
         )
 
-    def add_conflict(self, detail: str):
+    def add_conflict(self, detail: str) -> None:
         """Add conflict detail."""
         if detail and detail not in self.conflict_details:
             self.conflict_details.append(detail)
@@ -151,8 +151,8 @@ class VariantData:
     def get_variant_notation(self) -> str:
         """Get standard variant notation (chr:pos:ref>alt)."""
         if self.ref_allele and self.alt_allele:
-            return "{self.chromosome}:{self.position}:{self.ref_allele}>{self.alt_allele}"
-        return "{self.chromosome}:{self.position}"
+            return f"{self.chromosome}:{self.position}:{self.ref_allele}>{self.alt_allele}"
+        return f"{self.chromosome}:{self.position}"
 
     def is_protein_altering(self) -> bool:
         """Check if variant alters protein sequence."""
@@ -168,9 +168,9 @@ class VariantData:
         ]
         return any(alt in self.molecular_consequence.lower() for alt in protein_altering)
 
-    def summary_dict(self) -> dict:
+    def summary_dict(self) -> Dict[str, Any]:
         """Get dictionary summary for logging/export."""
-        summary = {
+        summary: Dict[str, Any] = {
             "rsid": self.rsid,
             "gene": self.gene,
             "genotype": self.genotype,
@@ -185,11 +185,11 @@ class VariantData:
             summary["variant_notation"] = self.get_variant_notation()
         return summary
 
-    def __str__(self):
-        " ({self.get_variant_notation()})" if self.ref_allele else ""
+    def __str__(self) -> str:
+        notation = f" ({self.get_variant_notation()})" if self.ref_allele else ""
         return (
-            "Variant({self.rsid} in {self.gene}{notation}: {self.genotype} -> "
-            "{self.acmg_classification} [{self.acmg_evidence.summary()}])"
+            f"Variant({self.rsid} in {self.gene}{notation}: {self.genotype} -> "
+            f"{self.acmg_classification} [{self.acmg_evidence.summary()}])"
         )
 
 
@@ -213,27 +213,27 @@ class PipelineState:
         return self._start_time
 
     @start_time.setter
-    def start_time(self, value: Optional[str]):
+    def start_time(self, value: Optional[str]) -> None:
         """Allow explicit timestamp setting."""
         self._start_time = value
 
-    def add_error(self, error: str):
+    def add_error(self, error: str) -> None:
         """Add error to state."""
-        self.errors.append("{datetime.now().isoformat()}: {error}")
+        self.errors.append(f"{datetime.now().isoformat()}: {error}")
 
-    def add_warning(self, warning: str):
+    def add_warning(self, warning: str) -> None:
         """Add warning to state."""
-        self.warnings.append("{datetime.now().isoformat()}: {warning}")
+        self.warnings.append(f"{datetime.now().isoformat()}: {warning}")
 
     def summary(self) -> str:
         """Get summary string."""
         return (
-            "Stage: {self.stage} | "
-            "Loaded: {self.variants_loaded} | "
-            "Matched: {self.variants_matched} | "
-            "Classified: {self.variants_classified} | "
-            "Errors: {len(self.errors)} | "
-            "Warnings: {len(self.warnings)}"
+            f"Stage: {self.stage} | "
+            f"Loaded: {self.variants_loaded} | "
+            f"Matched: {self.variants_matched} | "
+            f"Classified: {self.variants_classified} | "
+            f"Errors: {len(self.errors)} | "
+            f"Warnings: {len(self.warnings)}"
         )
 
 
@@ -250,18 +250,18 @@ if __name__ == "__main__":
     evidence.pp.add("PP3")
 
     print("\n✓ ACMGEvidenceSet created with sets")
-    print("  - Pathogenic codes: {evidence.all_pathogenic()}")
-    print("  - Summary: {evidence.summary()}")
-    print("  - Auto-deduplication: {len(evidence.pvs) == 1}")
+    print(f"  - Pathogenic codes: {evidence.all_pathogenic()}")
+    print(f"  - Summary: {evidence.summary()}")
+    print(f"  - Auto-deduplication: {len(evidence.pvs) == 1}")
     assert len(evidence.pvs) == 1, "PVS1 should be deduplicated"
 
     # Test optimized has_conflict
     print("\n✓ Testing optimized has_conflict()")
-    print("  - Initial: {evidence.has_conflict()}")
+    print(f"  - Initial: {evidence.has_conflict()}")
     assert not evidence.has_conflict(), "Should be False with only pathogenic"
 
     evidence.bp.add("BP1")
-    print("  - After adding BP1: {evidence.has_conflict()}")
+    print(f"  - After adding BP1: {evidence.has_conflict()}")
     assert evidence.has_conflict(), "Should be True with mixed evidence"
 
     print("\n✅ All optimized models validated successfully")
