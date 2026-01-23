@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""varidex/core/classifier/engine.py - ACMG Classifier Engine v6.3.1
+"""varidex/core/classifier/engine.py - ACMG Classifier Engine v6.4.0
 
 Production-grade ACMG 2015 variant classification.
 
@@ -11,44 +11,24 @@ Disabled Evidence (21 codes):
 
 Reference: Richards et al. 2015, PMID 25741868
 
-Optimizations v6.3.1:
-  - Fixed f-string bugs in all logger calls
-  - Fixed exception handling to capture variables
-  - Added mypy compliance
-  - Maintained Black formatting
+Refactoring v6.4.0:
+  - Utilities moved to evidence_utils.py
+  - Evidence assignment moved to evidence_assignment.py
+  - Core classification logic remains here
+  - All files now under 500 lines
 """
 
-from typing import Tuple, List, Dict, Optional, Set, Any
-from functools import lru_cache
-import pandas as pd
+from typing import Tuple, Dict, Optional, Any
 import logging
 import time
 
 from varidex.version import __version__
 from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES, CLINVAR_STAR_RATINGS
-from varidex.core.classifier.text_utils import normalize_text, split_delimited_value
+from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
 from varidex.core.classifier.config import ACMGConfig, ACMGMetrics
+from varidex.core.classifier.evidence_assignment import assign_evidence_codes
 
 logger = logging.getLogger(__name__)
-
-# LOF indicators
-LOF_INDICATORS = frozenset(
-    [
-        "frameshift",
-        "nonsense",
-        "stop-gain",
-        "stop-gained",
-        "canonical-splice",
-        "splice-donor",
-        "splice-acceptor",
-        "start-lost",
-        "stop-lost",
-        "initiator-codon",
-    ]
-)
-
-SORTED_STAR_RATINGS = sorted(CLINVAR_STAR_RATINGS.items(), key=lambda x: -len(x[0]))
 
 
 class ACMGClassifier:
@@ -61,6 +41,8 @@ class ACMGClassifier:
     - Feature flags
     - Input validation
     - Graceful degradation
+
+    Refactored in v6.4.0 for better modularity.
     """
 
     def __init__(self, config: Optional[ACMGConfig] = None) -> None:
@@ -82,236 +64,28 @@ class ACMGClassifier:
             f"BP7={self.config.enable_bp7}"
         )
 
-    @staticmethod
-    @lru_cache(maxsize=512)
-    def get_star_rating(review_status: str) -> int:
-        """Convert ClinVar review status to star rating (0-4) CACHED."""
-        try:
-            if pd.isna(review_status):
-                return 0
-
-            review_lower = normalize_text(review_status)
-
-            if review_lower in CLINVAR_STAR_RATINGS:
-                return CLINVAR_STAR_RATINGS[review_lower]
-
-            for key, stars in SORTED_STAR_RATINGS:
-                if key in review_lower:
-                    return stars
-
-            return 0
-
-        except Exception as e:
-            logger.warning(f"Failed to get star rating for '{review_status}': {e}")
-            return 0
-
-    @staticmethod
-    def validate_variant(variant: VariantData) -> Tuple[bool, List[str]]:
-        """Enhanced validation with detailed error reporting."""
-        errors: List[str] = []
-
-        try:
-            if not variant:
-                errors.append("Variant object is None")
-                return False, errors
-
-            required_fields: Dict[str, str] = {
-                "clinical_sig": "Clinical significance",
-                "gene": "Gene annotation",
-                "variant_type": "Variant type",
-                "molecular_consequence": "Molecular consequence",
-            }
-
-            for field, description in required_fields.items():
-                if not hasattr(variant, field):
-                    errors.append(f"Missing {field}: {description}")
-                elif pd.isna(getattr(variant, field)) or not getattr(variant, field):
-                    errors.append(f"Empty {field}: {description}")
-
-            if hasattr(variant, "star_rating"):
-                if variant.star_rating < 0 or variant.star_rating > 4:
-                    errors.append(f"Star rating out of bounds: {variant.star_rating}")
-
-            return len(errors) == 0, errors
-
-        except Exception as e:
-            logger.error(f"Validation exception: {e}")
-            errors.append(f"Validation exception: {str(e)}")
-            return False, errors
-
-    @staticmethod
-    def extract_genes(gene_field: str) -> Set[str]:
-        """Extract unique gene symbols from multi-gene field."""
-        try:
-            if pd.isna(gene_field):
-                return set()
-
-            return set(split_delimited_value(str(gene_field)))
-
-        except Exception as e:
-            logger.warning(f"Gene extraction failed for '{gene_field}': {e}")
-            return set()
-
-    @staticmethod
-    def check_lof(variant_consequence: str, sig: str) -> bool:
-        """Check if variant is loss-of-function."""
-        try:
-            cons_lower = normalize_text(variant_consequence)
-            sig_lower = normalize_text(sig)
-
-            return any(ind in cons_lower or ind in sig_lower for ind in LOF_INDICATORS)
-
-        except Exception as e:
-            logger.warning(f"LOF check failed: {e}")
-            return False
-
     def assign_evidence(self, variant: VariantData) -> ACMGEvidenceSet:
         """Assign ACMG evidence codes to variant.
 
-        Enabled codes:
-        - PVS1: LOF in LOF-intolerant genes (e.g., BRCA1 frameshift)
-        - PM4: Protein length changes (e.g., 3-bp deletion in CFTR)
-        - PP2: Missense in missense-rare genes (e.g., HBB missense)
-        - BA1: Common polymorphism (e.g., MAF > 5%)
-        - BS1: High population frequency (e.g., MAF > 1%)
-        - BP1: Missense in LOF genes (e.g., TP53 missense)
-        - BP3: In-frame indel in repetitive region
+        Delegates to evidence_assignment.assign_evidence_codes().
 
-        Disabled codes (metadata preserved):
-        - PM2: Absent/rare in population databases (requires gnomAD API)
-        - BP7: Synonymous variant (requires SpliceAI scores)
+        Args:
+            variant: VariantData object
+
+        Returns:
+            ACMGEvidenceSet with assigned evidence codes
         """
-        evidence = ACMGEvidenceSet()
-
-        try:
-            # Validate variant
-            is_valid, errors = self.validate_variant(variant)
-            if not is_valid:
-                if self.metrics:
-                    self.metrics.record_validation_error()
-                for error in errors:
-                    evidence.conflicts.add(f"Validation error: {error}")
-                logger.warning(f"Validation failed: {errors}")
-                return evidence
-
-            # Extract fields
-            sig_lower = normalize_text(variant.clinical_sig)
-            genes = self.extract_genes(variant.gene)
-            consequence = normalize_text(variant.molecular_consequence)
-
-            # Early exit optimization for empty molecular consequence
-            if not consequence:
-                logger.debug("Empty molecular consequence, skipping evidence assignment")
-                return evidence
-
-            # Check for conflicting interpretations
-            if "conflict" in sig_lower or "/" in variant.clinical_sig:
-                evidence.conflicts.add("ClinVar conflicting interpretations")
-
-            # === PATHOGENIC EVIDENCE ===
-
-            # PVS1: LOF in LOF-intolerant genes
-            if self.config.enable_pvs1:
-                try:
-                    if self.check_lof(consequence, sig_lower):
-                        matching_genes = genes.intersection(LOF_GENES)
-                        if matching_genes:
-                            evidence.pvs.add("PVS1")
-                            logger.debug(f"PVS1: LOF in {matching_genes}")
-                except Exception as e:
-                    logger.error(f"PVS1 assignment failed: {e}")
-
-            # PM4: Protein length changes
-            if self.config.enable_pm4:
-                try:
-                    if (
-                        "inframe" in consequence
-                        or "in-frame" in consequence
-                        or "stop-lost" in consequence
-                    ):
-                        if "deletion" in consequence or "insertion" in consequence:
-                            evidence.pm.add("PM4")
-                            logger.debug("PM4: Protein length change")
-                except Exception as e:
-                    logger.error(f"PM4 assignment failed: {e}")
-
-            # PP2: Missense in missense-rare genes
-            if self.config.enable_pp2:
-                try:
-                    if "missense" in consequence:
-                        matching_genes = genes.intersection(MISSENSE_RARE_GENES)
-                        if matching_genes and "pathogenic" in sig_lower:
-                            evidence.pp.add("PP2")
-                            logger.debug(f"PP2: Missense in {matching_genes}")
-                except Exception as e:
-                    logger.error(f"PP2 assignment failed: {e}")
-
-            # PM2 DISABLED - add to conflicts
-            if not self.config.enable_pm2:
-                evidence.conflicts.add("PM2 DISABLED: requires gnomAD API")
-
-            # === BENIGN EVIDENCE ===
-
-            # BA1: Common polymorphism
-            if self.config.enable_ba1:
-                try:
-                    if "common" in sig_lower and "polymorphism" in sig_lower:
-                        evidence.ba.add("BA1")
-                        logger.debug("BA1: Common polymorphism")
-                except Exception as e:
-                    logger.error(f"BA1 assignment failed: {e}")
-
-            # BS1: High population frequency
-            if self.config.enable_bs1:
-                try:
-                    if (
-                        "population" in sig_lower
-                        and "frequency" in sig_lower
-                        and "high" in sig_lower
-                    ) or ("common" in sig_lower and "pathogenic" not in sig_lower):
-                        evidence.bs.add("BS1")
-                        logger.debug("BS1: High population frequency")
-                except Exception as e:
-                    logger.error(f"BS1 assignment failed: {e}")
-
-            # BP1: Missense in LOF genes
-            if self.config.enable_bp1:
-                try:
-                    if "missense" in consequence:
-                        matching_genes = genes.intersection(LOF_GENES)
-                        if matching_genes and "benign" in sig_lower:
-                            evidence.bp.add("BP1")
-                            logger.debug(f"BP1: Missense in LOF gene {matching_genes}")
-                except Exception as e:
-                    logger.error(f"BP1 assignment failed: {e}")
-
-            # BP3: In-frame indel in repetitive region
-            if self.config.enable_bp3:
-                try:
-                    if "inframe" in consequence or "in-frame" in consequence:
-                        if "repeat" in sig_lower or "repetitive" in sig_lower:
-                            evidence.bp.add("BP3")
-                            logger.debug("BP3: In-frame indel in repeat")
-                except Exception as e:
-                    logger.error(f"BP3 assignment failed: {e}")
-
-            # BP7 DISABLED - add to conflicts
-            if not self.config.enable_bp7:
-                evidence.conflicts.add("BP7 DISABLED: requires SpliceAI scores")
-
-            # Convert sets to lists
-            for attr in ["pvs", "ps", "pm", "pp", "ba", "bs", "bp"]:
-                setattr(evidence, attr, list(getattr(evidence, attr)))
-
-            return evidence
-
-        except Exception as e:
-            logger.error(f"Evidence assignment failed: {e}", exc_info=True)
-            evidence.conflicts.add(f"Assignment error: {str(e)}")
-            return evidence
+        return assign_evidence_codes(variant, self.config, self.metrics)
 
     def calculate_evidence_score(self, evidence: ACMGEvidenceSet) -> Tuple[float, float]:
-        """Calculate numerical evidence scores."""
+        """Calculate numerical evidence scores.
+
+        Args:
+            evidence: ACMGEvidenceSet
+
+        Returns:
+            Tuple of (pathogenic_score, benign_score)
+        """
         try:
             weights = self.config.get_evidence_weights()
 
@@ -335,7 +109,14 @@ class ACMGClassifier:
             return 0.0, 0.0
 
     def combine_evidence(self, evidence: ACMGEvidenceSet) -> Tuple[str, str]:
-        """Apply ACMG 2015 combination rules (Richards et al. Table 5)."""
+        """Apply ACMG 2015 combination rules (Richards et al. Table 5).
+
+        Args:
+            evidence: ACMGEvidenceSet
+
+        Returns:
+            Tuple of (classification, confidence)
+        """
         try:
             pvs = len(evidence.pvs)
             ps = len(evidence.ps)
@@ -469,7 +250,14 @@ class ACMGClassifier:
     def classify_variant(
         self, variant: VariantData
     ) -> Tuple[str, str, ACMGEvidenceSet, float]:
-        """Complete classification pipeline with metrics."""
+        """Complete classification pipeline with metrics.
+
+        Args:
+            variant: VariantData object
+
+        Returns:
+            Tuple of (classification, confidence, evidence, duration)
+        """
         start_time = time.time()
 
         try:
@@ -506,7 +294,11 @@ class ACMGClassifier:
             )
 
     def health_check(self) -> Dict[str, Any]:
-        """Health check endpoint for production monitoring."""
+        """Health check endpoint for production monitoring.
+
+        Returns:
+            Dictionary with health status and metrics
+        """
         try:
             health: Dict[str, Any] = {
                 "status": "healthy",
@@ -533,10 +325,15 @@ class ACMGClassifier:
 
 if __name__ == "__main__":
     print("=" * 80)
-    print(f"ACMG Classifier {__version__} CORE - Use tests.py for testing")
+    print(f"ACMG Classifier {__version__} v6.4.0 - Use tests.py for testing")
     print("=" * 80)
+    print("\nRefactored for modularity:")
+    print("  - evidence_utils.py: Utility functions")
+    print("  - evidence_assignment.py: Evidence logic")
+    print("  - engine.py: Core classifier (this file)")
+    print("\nAll files now under 500-line limit!")
 else:
-    logger.info(f"ACMGClassifier {__version__} Production classifier loaded")
+    logger.info(f"ACMGClassifier {__version__} v6.4.0 Production classifier loaded")
     logger.info(
         f" - {len(LOF_GENES)} LOF genes, {len(MISSENSE_RARE_GENES)} missense-rare genes"
     )
@@ -544,3 +341,4 @@ else:
     logger.info(
         " - DISABLED: PM2 (gnomAD), BP7 (SpliceAI) - hallucination fixes maintained"
     )
+    logger.info(" - Modular: evidence_utils.py + evidence_assignment.py")
