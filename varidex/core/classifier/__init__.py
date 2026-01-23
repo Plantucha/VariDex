@@ -39,3 +39,6 @@ except ImportError:
 
     warnings.warn("Could not import classifier components: {e}")
     __all__ = []
+from .engine import ACMGClassifier
+from .config import ACMGConfig
+__all__ = ["ACMGClassifier", "ACMGConfig"]
