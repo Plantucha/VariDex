@@ -50,7 +50,7 @@ class ACMGClassifierV7(ACMGClassifier):
     Maintains backward compatibility and graceful degradation.
     """
 
-    VERSION = "7.0.0"
+    VERSION = "7.0.1"
 
     def __init__(
         self,
@@ -58,19 +58,21 @@ class ACMGClassifierV7(ACMGClassifier):
         enable_gnomad: bool = True,
         gnomad_client: Optional[GnomadClient] = None,
         frequency_thresholds: Optional[FrequencyThresholds] = None,
-    ):
+    ) -> None:
         """Initialize enhanced classifier with gnomAD integration."""
         # Initialize base classifier
         super().__init__(config)
 
         # Initialize frequency service
-        self.enable_gnomad = enable_gnomad
-        self.frequency_service = None
+        self.enable_gnomad: bool = enable_gnomad
+        self.frequency_service: Optional[PopulationFrequencyService] = None
 
         if enable_gnomad:
             try:
                 self.frequency_service = PopulationFrequencyService(
-                    gnomad_client=gnomad_client, thresholds=frequency_thresholds, enable_gnomad=True
+                    gnomad_client=gnomad_client,
+                    thresholds=frequency_thresholds,
+                    enable_gnomad=True,
                 )
                 logger.info(f"ACMGClassifierV7 {self.VERSION} initialized with gnomAD")
             except Exception as e:
@@ -91,7 +93,7 @@ class ACMGClassifierV7(ACMGClassifier):
             or None if required info missing
         """
         try:
-            coords = {}
+            coords: Dict[str, Any] = {}
 
             # Chromosome
             chrom = getattr(variant, "chromosome", None) or getattr(variant, "chrom", None)
@@ -160,7 +162,9 @@ class ACMGClassifierV7(ACMGClassifier):
                 coords = self._extract_variant_coordinates(variant)
 
                 if coords is None:
-                    logger.debug("No coordinates for gnomAD query, skipping frequency analysis")
+                    logger.debug(
+                        "No coordinates for gnomAD query, skipping frequency analysis"
+                    )
                     evidence.conflicts.add("Missing coordinates for gnomAD")
                     return evidence
 
@@ -188,7 +192,7 @@ class ACMGClassifierV7(ACMGClassifier):
                     logger.info(f"BS1: {freq_evidence.reasoning}")
 
                 if hasattr(evidence, "metadata"):
-                    evidence.metadata["gnomad_a"] = freq_evidence.max_af
+                    evidence.metadata["gnomad_af"] = freq_evidence.max_af
                     evidence.metadata["gnomad_population"] = freq_evidence.max_af_population
 
                 logger.debug(f"Frequency analysis: {freq_evidence.summary()}")
@@ -202,7 +206,9 @@ class ACMGClassifierV7(ACMGClassifier):
 
         return evidence
 
-    def classify_variant(self, variant: VariantData) -> Tuple[str, str, ACMGEvidenceSet, float]:
+    def classify_variant(
+        self, variant: VariantData
+    ) -> Tuple[str, str, ACMGEvidenceSet, float]:
         """Complete classification pipeline with gnomAD integration."""
         start_time = time.time()
 
@@ -227,7 +233,12 @@ class ACMGClassifierV7(ACMGClassifier):
                 self.metrics.record_failure()
 
             logger.error(f"Classification pipeline failed: {e}", exc_info=True)
-            return "Uncertain Significance", f"Error: {str(e)}", ACMGEvidenceSet(), duration
+            return (
+                "Uncertain Significance",
+                f"Error: {str(e)}",
+                ACMGEvidenceSet(),
+                duration,
+            )
 
     def health_check(self) -> Dict[str, Any]:
         """Health check with gnomAD service status."""
@@ -246,7 +257,10 @@ class ACMGClassifierV7(ACMGClassifier):
 
     def get_enabled_codes(self) -> Dict[str, list]:
         """Get list of enabled evidence codes."""
-        codes = {"pathogenic": ["PVS1", "PM4", "PP2"], "benign": ["BP1", "BP3"]}
+        codes: Dict[str, list] = {
+            "pathogenic": ["PVS1", "PM4", "PP2"],
+            "benign": ["BP1", "BP3"],
+        }
         if self.enable_gnomad:
             codes["pathogenic"].append("PM2")
             codes["benign"].extend(["BA1", "BS1"])
