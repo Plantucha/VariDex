@@ -41,4 +41,5 @@ except ImportError:
     __all__ = []
 from .engine import ACMGClassifier
 from .config import ACMGConfig
+
 __all__ = ["ACMGClassifier", "ACMGConfig"]

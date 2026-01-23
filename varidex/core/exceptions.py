@@ -53,6 +53,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Self-test failed: {e}")
 
+
 class ErrorCode(Enum):
     """Error codes for categorizing exceptions."""
 
@@ -132,7 +133,9 @@ def validate_not_empty(value: Any, name: str) -> None:
 def validate_type(value: Any, expected_type: type, name: str) -> None:
     """Raise ValidationError if value is not of expected type."""
     if not isinstance(value, expected_type):
-        raise ValidationError(f"{name} must be {expected_type.__name__}, got {type(value).__name__}")
+        raise ValidationError(
+            f"{name} must be {expected_type.__name__}, got {type(value).__name__}"
+        )
 
 
 # Self-test
@@ -191,4 +194,8 @@ if __name__ == "__main__":
         raise ACMGClassificationError("test")
     except ClassificationError:
         print("✓ Test 8: ACMGClassificationError alias works")
-        passe
+        passed += 1
+
+    print(f"\n{'='*70}")
+    print(f"PASSED: {passed}/{total} tests")
+    print("=" * 70)

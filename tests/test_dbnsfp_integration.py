@@ -142,7 +142,17 @@ class TestDbNSFPClient:
     def test_get_predictions_found(self, mock_get):
         mock_resp = Mock()
         mock_resp.json.return_value = [
-            {"transcript_consequences": [{"sift_score":0.01,"sift_prediction":"deleterious","polyphen_score":0.95,"polyphen_prediction":"probably_damaging","cadd_phred":28.5}]}
+            {
+                "transcript_consequences": [
+                    {
+                        "sift_score": 0.01,
+                        "sift_prediction": "deleterious",
+                        "polyphen_score": 0.95,
+                        "polyphen_prediction": "probably_damaging",
+                        "cadd_phred": 28.5,
+                    }
+                ]
+            }
         ]
         mock_resp.raise_for_status = Mock()
         mock_get.return_value = mock_resp
@@ -169,23 +179,39 @@ class TestComputationalPredictionService:
 
     def test_analyze_sift(self):
         service = ComputationalPredictionService(enable_predictions=False)
-        assert service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.01)) == "deleterious"
+        assert (
+            service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.01)) == "deleterious"
+        )
         assert service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.5)) == "benign"
 
     def test_analyze_polyphen(self):
         service = ComputationalPredictionService(enable_predictions=False)
-        assert service._analyze_polyphen(PredictionScore(variant_id="1", polyphen_score=0.9)) == "deleterious"
-        assert service._analyze_polyphen(PredictionScore(variant_id="1", polyphen_score=0.1)) == "benign"
+        assert (
+            service._analyze_polyphen(PredictionScore(variant_id="1", polyphen_score=0.9))
+            == "deleterious"
+        )
+        assert (
+            service._analyze_polyphen(PredictionScore(variant_id="1", polyphen_score=0.1))
+            == "benign"
+        )
 
     def test_analyze_cadd(self):
         service = ComputationalPredictionService(enable_predictions=False)
-        assert service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=25.0)) == "deleterious"
+        assert (
+            service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=25.0)) == "deleterious"
+        )
         assert service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=10.0)) == "benign"
 
     def test_check_pp3_sufficient(self):
         service = ComputationalPredictionService(enable_predictions=False)
-        evidence = ComputationalEvidence(deleterious_count=3, benign_count=0, total_predictions=3,
-                                         sift_result="deleterious", polyphen_result="deleterious", cadd_result="deleterious")
+        evidence = ComputationalEvidence(
+            deleterious_count=3,
+            benign_count=0,
+            total_predictions=3,
+            sift_result="deleterious",
+            polyphen_result="deleterious",
+            cadd_result="deleterious",
+        )
         applies, reason = service._check_pp3(evidence)
         assert applies is True
         assert "PP3" in reason
@@ -198,15 +224,23 @@ class TestComputationalPredictionService:
 
     def test_check_bp4_sufficient(self):
         service = ComputationalPredictionService(enable_predictions=False)
-        evidence = ComputationalEvidence(deleterious_count=0, benign_count=3, total_predictions=3,
-                                         sift_result="benign", polyphen_result="benign", cadd_result="benign")
+        evidence = ComputationalEvidence(
+            deleterious_count=0,
+            benign_count=3,
+            total_predictions=3,
+            sift_result="benign",
+            polyphen_result="benign",
+            cadd_result="benign",
+        )
         applies, reason = service._check_bp4(evidence)
         assert applies is True
         assert "BP4" in reason
 
     def test_check_bp4_deferred_to_pp3(self):
         service = ComputationalPredictionService(enable_predictions=False)
-        evidence = ComputationalEvidence(pp3=True, deleterious_count=3, benign_count=3, total_predictions=6)
+        evidence = ComputationalEvidence(
+            pp3=True, deleterious_count=3, benign_count=3, total_predictions=6
+        )
         applies, reason = service._check_bp4(evidence)
         assert applies is False
         assert "deferred" in reason.lower()
@@ -235,9 +269,17 @@ class TestACMGClassifierV8:
     def test_get_evidence_summary(self):
         classifier = ACMGClassifierV8(enable_gnomad=False, enable_predictions=False)
         variant = VariantData(
-            rsid="rs123", chromosome="17", position="43094692", genotype="AG",
-            gene="BRCA1", ref_allele="G", alt_allele="A", clinical_sig="Pathogenic",
-            review_status="reviewed by expert panel", variant_type="SNV", molecular_consequence="frameshift"
+            rsid="rs123",
+            chromosome="17",
+            position="43094692",
+            genotype="AG",
+            gene="BRCA1",
+            ref_allele="G",
+            alt_allele="A",
+            clinical_sig="Pathogenic",
+            review_status="reviewed by expert panel",
+            variant_type="SNV",
+            molecular_consequence="frameshift",
         )
         summary = classifier.get_evidence_summary(variant)
         assert "classification" in summary
