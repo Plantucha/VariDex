@@ -10,17 +10,17 @@ import gzip
 import re
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List, Any, Callable
 from varidex.version import __version__
 from varidex.exceptions import DataLoadError, ValidationError, FileProcessingError
 from varidex.io.normalization import normalize_dataframe_coordinates
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
-CLINVAR_FILE_TYPES = ["vcf", "vcf_tsv", "variant_summary"]
-REQUIRED_COORD_COLUMNS = ["chromosome", "position", "ref_allele", "alt_allele"]
-VALID_CHROMOSOMES = [str(i) for i in range(1, 23)] + ["X", "Y", "MT"]
-CHROMOSOME_MAX_POSITIONS = {
+CLINVAR_FILE_TYPES: List[str] = ["vcf", "vcf_tsv", "variant_summary"]
+REQUIRED_COORD_COLUMNS: List[str] = ["chromosome", "position", "ref_allele", "alt_allele"]
+VALID_CHROMOSOMES: List[str] = [str(i) for i in range(1, 23)] + ["X", "Y", "MT"]
+CHROMOSOME_MAX_POSITIONS: Dict[str, int] = {
     "1": 250_000_000,
     "2": 243_000_000,
     "3": 198_000_000,
@@ -47,7 +47,7 @@ CHROMOSOME_MAX_POSITIONS = {
     "Y": 57_000_000,
     "MT": 17_000,
 }
-CLINVAR_COLUMNS = {
+CLINVAR_COLUMNS: Dict[str, List[str]] = {
     "rsid": ["#AlleleID", "RS# (dbSNP)", "rsid"],
     "gene": ["GeneSymbol", "Gene(s)", "gene"],
     "clinical_sig": ["ClinicalSignificance", "clinical_significance"],
@@ -61,16 +61,18 @@ CLINVAR_COLUMNS = {
 def detect_clinvar_file_type(filepath: Path) -> str:
     """Auto-detect: vcf|vcf_tsv|variant_summary."""
     try:
-        opener = gzip.open(filepath, "rt") if str(filepath).endswith(".gz") else open(filepath, "r")
+        opener: Any = (
+            gzip.open(filepath, "rt") if str(filepath).endswith(".gz") else open(filepath, "r")
+        )
         with opener as f:
-            lines = [f.readline() for _ in range(5)]
+            lines: List[str] = [f.readline() for _ in range(5)]
         if not lines or not lines[0]:
             raise ValidationError("Empty file", context={"file": str(filepath)})
-        first_line = lines[0].strip()
+        first_line: str = lines[0].strip()
         if first_line.startswith("##fileformat=VCF") or first_line.startswith("#CHROM"):
             return "vcf"
-        header_lower = first_line.lower()
-        vcf_markers = sum(
+        header_lower: str = first_line.lower()
+        vcf_markers: int = sum(
             [
                 "chrom" in header_lower,
                 "pos" in header_lower or "position" in header_lower,
@@ -81,7 +83,7 @@ def detect_clinvar_file_type(filepath: Path) -> str:
         return "vcf_tsv" if vcf_markers >= 3 else "variant_summary"
     except Exception as e:
         raise FileProcessingError(
-            f"Failed to detect file type", context={"file": str(filepath), "error": str(e)}
+            "Failed to detect file type", context={"file": str(filepath), "error": str(e)}
         )
 
 
@@ -91,12 +93,12 @@ def validate_chromosome_consistency(df: pd.DataFrame) -> pd.DataFrame:
         return df
     df = df.copy()
     df["chromosome"] = df["chromosome"].str.replace("^chr", "", regex=True, case=False)
-    nc_pattern = re.compile(r"^NC_0000(0[1-9]|1[0-9]|2[0-2])")
+    nc_pattern: re.Pattern[str] = re.compile(r"^NC_0000(0[1-9]|1[0-9]|2[0-2])")
 
-    def map_nc(c):
+    def map_nc(c: Any) -> Any:
         if pd.isna(c):
             return c
-        m = nc_pattern.match(str(c))
+        m: Optional[re.Match[str]] = nc_pattern.match(str(c))
         return str(int(m.group(1))) if m else c
 
     df["chromosome"] = (
@@ -109,10 +111,10 @@ def validate_position_ranges(df: pd.DataFrame) -> pd.DataFrame:
     """VECTORIZED: Validate positions within chr bounds."""
     if "chromosome" not in df.columns or "position" not in df.columns:
         return df
-    orig_len = len(df)
-    invalid_mask = (df["position"] < 1) | df["position"].isna()
+    orig_len: int = len(df)
+    invalid_mask: pd.Series = (df["position"] < 1) | df["position"].isna()
     for chrom, max_pos in CHROMOSOME_MAX_POSITIONS.items():
-        chrom_mask = (df["chromosome"] == chrom) & (df["position"] > max_pos)
+        chrom_mask: pd.Series = (df["chromosome"] == chrom) & (df["position"] > max_pos)
         if chrom_mask.any():
             logger.warning(f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos}")
         invalid_mask |= chrom_mask
@@ -127,15 +129,16 @@ def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or len(df) == 0 or "ALT" not in df.columns:
         return df
     try:
-        multiallelic = df[df["ALT"].str.contains(",", na=False)]
+        multiallelic: pd.DataFrame = df[df["ALT"].str.contains(",", na=False)]
         if len(multiallelic) == 0:
             return df
-        biallelic = df[~df["ALT"].str.contains(",", na=False)].copy()
-        split_rows, failed = [], 0
+        biallelic: pd.DataFrame = df[~df["ALT"].str.contains(",", na=False)].copy()
+        split_rows: List[pd.Series] = []
+        failed: int = 0
         for idx, row in multiallelic.iterrows():
             try:
                 for alt in [a.strip() for a in str(row["ALT"]).split(",") if a.strip()]:
-                    new_row = row.copy()
+                    new_row: pd.Series = row.copy()
                     new_row["ALT"] = alt
                     new_row["alt_allele"] = alt.upper()
                     split_rows.append(new_row)
@@ -145,33 +148,38 @@ def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
         if failed > 0:
             logger.warning(f"{failed}/{len(multiallelic)} splits failed")
         if split_rows:
-            result = pd.concat([biallelic, pd.DataFrame(split_rows)], ignore_index=True)
+            result: pd.DataFrame = pd.concat(
+                [biallelic, pd.DataFrame(split_rows)], ignore_index=True
+            )
             print(
-                f"  ✓ Split {len(multiallelic):,} → {len(split_rows):,} biallelic ({failed} fails)"
+                f"  ✓ Split {len(multiallelic):,} → {len(split_rows):,} biallelic "
+                f"({failed} fails)"
             )
             return result
         return df
     except Exception as e:
-        raise FileProcessingError(f"Multiallelic split failed", context={"error": str(e)})
+        raise FileProcessingError("Multiallelic split failed", context={"error": str(e)})
 
 
-def extract_rsid_from_info(info_str):
+def extract_rsid_from_info(info_str: Any) -> Optional[str]:
     """Extract rsID from INFO field (RS=123456 -> rs123456)."""
     if pd.isna(info_str) or str(info_str) == "nan":
         return None
-    match = re.search(r"RS=([0-9,]+)", str(info_str))
+    match: Optional[re.Match[str]] = re.search(r"RS=([0-9,]+)", str(info_str))
     if match:
-        rsid_num = match.group(1).split(",")[0]
+        rsid_num: str = match.group(1).split(",")[0]
         return "rs" + rsid_num
     return None
 
 
-def load_clinvar_vcf(filepath: Path, checkpoint_dir: Optional[Path] = None) -> pd.DataFrame:
+def load_clinvar_vcf(
+    filepath: Path, checkpoint_dir: Optional[Path] = None
+) -> pd.DataFrame:
     """Load full ClinVar VCF."""
     filepath = Path(filepath)
     print(f"\n[VCF] {filepath.name}")
     try:
-        df = pd.read_csv(
+        df: pd.DataFrame = pd.read_csv(
             filepath,
             sep="\t",
             comment="#",
@@ -183,8 +191,8 @@ def load_clinvar_vcf(filepath: Path, checkpoint_dir: Optional[Path] = None) -> p
         if len(df) == 0:
             raise ValidationError("VCF empty", context={"file": str(filepath)})
 
-        def parse_info(info):
-            result = {"CLNSIG": "", "CLNREVSTAT": ""}
+        def parse_info(info: Any) -> Dict[str, str]:
+            result: Dict[str, str] = {"CLNSIG": "", "CLNREVSTAT": ""}
             if pd.isna(info):
                 return result
             for item in str(info).split(";"):
@@ -194,7 +202,7 @@ def load_clinvar_vcf(filepath: Path, checkpoint_dir: Optional[Path] = None) -> p
                         result[k] = v
             return result
 
-        info_parsed = df["INFO"].apply(parse_info)
+        info_parsed: pd.Series = df["INFO"].apply(parse_info)
         df["clinical_sig"] = info_parsed.apply(lambda x: x["CLNSIG"])
         df["review_status"] = info_parsed.apply(lambda x: x["CLNREVSTAT"])
         df["chromosome"] = df["CHROM"].str.replace("chr", "").str.upper()
@@ -207,41 +215,49 @@ def load_clinvar_vcf(filepath: Path, checkpoint_dir: Optional[Path] = None) -> p
         df = validate_position_ranges(df)
         df = normalize_dataframe_coordinates(df)
 
-        orig_len = len(df)
+        orig_len: int = len(df)
         df = df[df["chromosome"].isin(VALID_CHROMOSOMES)]
 
         # Extract rsIDs from INFO field
         if "INFO" in df.columns:
             df["rsid"] = df["INFO"].apply(extract_rsid_from_info)
-            rsid_count = df["rsid"].notna().sum()
+            rsid_count: int = df["rsid"].notna().sum()
             print(
-                f"  Extracted {rsid_count:,} rsIDs from INFO field ({100*rsid_count/len(df):.1f}%)"
+                f"  Extracted {rsid_count:,} rsIDs from INFO field "
+                f"({100*rsid_count/len(df):.1f}%)"
             )
 
         print(f"  Filtered: {orig_len:,} → {len(df):,}\n  ✓ {len(df):,} variants")
         return df
     except Exception as e:
-        raise DataLoadError(f"VCF load failed", context={"file": str(filepath), "error": str(e)})
+        raise DataLoadError(
+            "VCF load failed", context={"file": str(filepath), "error": str(e)}
+        )
 
 
-def load_clinvar_vcf_tsv(filepath: Path, checkpoint_dir: Optional[Path] = None) -> pd.DataFrame:
+def load_clinvar_vcf_tsv(
+    filepath: Path, checkpoint_dir: Optional[Path] = None
+) -> pd.DataFrame:
     """Load VCF-style TSV."""
     filepath = Path(filepath)
     print(f"\n[VCF-TSV] {filepath.name}")
     try:
-        df = pd.read_csv(filepath, sep="\t", low_memory=True, on_bad_lines="skip")
+        df: pd.DataFrame = pd.read_csv(
+            filepath, sep="\t", low_memory=True, on_bad_lines="skip"
+        )
         if len(df) == 0:
             raise ValidationError("TSV empty", context={"file": str(filepath)})
 
-        col_map = {}
-        for target, candidates in {
+        col_map: Dict[str, str] = {}
+        target_candidates: Dict[str, List[str]] = {
             "chromosome": ["chromosome", "chrom", "chr"],
             "position": ["position", "pos"],
             "ref_allele": ["ref", "ref_allele", "reference"],
             "alt_allele": ["alt", "alt_allele", "alternate"],
             "gene": ["gene", "gene_symbol"],
             "clinical_sig": ["clinical_significance", "clin_sig", "significance"],
-        }.items():
+        }
+        for target, candidates in target_candidates.items():
             for col in df.columns:
                 if any(cand in col.lower() for cand in candidates):
                     col_map[col] = target
@@ -252,7 +268,7 @@ def load_clinvar_vcf_tsv(filepath: Path, checkpoint_dir: Optional[Path] = None) 
         df = validate_position_ranges(df)
         df = normalize_dataframe_coordinates(df)
 
-        orig_len = len(df)
+        orig_len: int = len(df)
         df = df.reset_index(drop=True)
         if orig_len > len(df):
             print(f"  Deduped: {orig_len:,} → {len(df):,}")
@@ -260,36 +276,42 @@ def load_clinvar_vcf_tsv(filepath: Path, checkpoint_dir: Optional[Path] = None) 
         return df
     except Exception as e:
         raise DataLoadError(
-            f"VCF-TSV load failed", context={"file": str(filepath), "error": str(e)}
+            "VCF-TSV load failed", context={"file": str(filepath), "error": str(e)}
         )
 
 
-def load_variant_summary(filepath: Path, checkpoint_dir: Optional[Path] = None) -> pd.DataFrame:
+def load_variant_summary(
+    filepath: Path, checkpoint_dir: Optional[Path] = None
+) -> pd.DataFrame:
     """Load variant_summary.txt."""
     filepath = Path(filepath)
     print(f"\n[VARIANT_SUMMARY] {filepath.name}")
     try:
-        sep = None
+        sep: Optional[str] = None
         for test_sep in ["\t", ",", "|"]:
             try:
-                test_df = pd.read_csv(filepath, sep=test_sep, low_memory=False, nrows=5)
+                test_df: pd.DataFrame = pd.read_csv(
+                    filepath, sep=test_sep, low_memory=False, nrows=5
+                )
                 if len(test_df.columns) > 10:
                     sep = test_sep
                     break
-            except:
+            except Exception:
                 continue
 
         if sep is None:
             raise ValidationError("Unknown separator", context={"file": str(filepath)})
 
-        df = pd.read_csv(filepath, sep=sep, low_memory=False)
+        df: pd.DataFrame = pd.read_csv(filepath, sep=sep, low_memory=False)
         if len(df) == 0:
             raise ValidationError("Summary empty", context={"file": str(filepath)})
 
-        col_map = {}
+        col_map: Dict[str, str] = {}
         for target, candidates in CLINVAR_COLUMNS.items():
             for col in df.columns:
-                if col in candidates or any(cand.lower() in col.lower() for cand in candidates):
+                if col in candidates or any(
+                    cand.lower() in col.lower() for cand in candidates
+                ):
                     col_map[col] = target
                     break
 
@@ -297,19 +319,21 @@ def load_variant_summary(filepath: Path, checkpoint_dir: Optional[Path] = None) 
 
         if "rsid" in df.columns:
             df["rsid"] = df["rsid"].astype(str)
-            rsid_pattern = re.compile(r"^rs\d+$")
-            orig_len = len(df)
+            rsid_pattern: re.Pattern[str] = re.compile(r"^rs\d+$")
+            orig_len: int = len(df)
             df = df[df["rsid"].str.match(rsid_pattern, na=False)]
             if orig_len > len(df):
                 print(f"  Filtered rsIDs: {orig_len:,} → {len(df):,}")
 
         if "clinical_sig" in df.columns:
             df["has_conflict"] = df["clinical_sig"].apply(
-                lambda x: any(kw in str(x).lower() for kw in ["conflict", "conflicting", "|"])
+                lambda x: any(
+                    kw in str(x).lower() for kw in ["conflict", "conflicting", "|"]
+                )
             )
 
         if "rsid" in df.columns and df["rsid"].duplicated().any():
-            agg_dict = {
+            agg_dict: Dict[str, Callable[..., str]] = {
                 "clinical_sig": lambda x: " | ".join(x.dropna().astype(str).unique()),
                 "gene": lambda x: ";".join(x.dropna().astype(str).unique()),
             }
@@ -327,11 +351,11 @@ def load_variant_summary(filepath: Path, checkpoint_dir: Optional[Path] = None) 
         return df
     except Exception as e:
         raise DataLoadError(
-            f"variant_summary load failed", context={"file": str(filepath), "error": str(e)}
+            "variant_summary load failed", context={"file": str(filepath), "error": str(e)}
         )
 
 
-def load_clinvar_file(filepath, **kwargs) -> pd.DataFrame:
+def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
     """
     Auto-detect and load ClinVar file (main entry).
     Supports: VCF, VCF-TSV, variant_summary.txt
@@ -339,21 +363,21 @@ def load_clinvar_file(filepath, **kwargs) -> pd.DataFrame:
     """
     filepath = Path(filepath)
     try:
-        file_type = detect_clinvar_file_type(filepath)
+        file_type: str = detect_clinvar_file_type(filepath)
         print(f"\n{'='*70}\nLOADING {file_type.upper()}: {filepath.name}\n{'='*70}")
 
-        loaders = {
+        loaders: Dict[str, Callable[..., pd.DataFrame]] = {
             "vcf": load_clinvar_vcf,
             "vcf_tsv": load_clinvar_vcf_tsv,
             "variant_summary": load_variant_summary,
         }
 
-        loader = loaders.get(file_type)
+        loader: Optional[Callable[..., pd.DataFrame]] = loaders.get(file_type)
         if loader is None:
             raise ValueError(f"Unknown file type: {file_type}")
 
         return loader(filepath, **kwargs)
     except Exception as e:
         raise DataLoadError(
-            f"ClinVar load failed", context={"file": str(filepath), "error": str(e)}
+            "ClinVar load failed", context={"file": str(filepath), "error": str(e)}
         )
