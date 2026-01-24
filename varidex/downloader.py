@@ -3,7 +3,7 @@
 """
 ClinVar File Downloader with Space Management
 Updates: First Thursday of each month
-Version: 2026-01-17-v1
+Version: 2026-01-24-v2 (Bandit B310 security fix)
 """
 
 import os
@@ -13,6 +13,7 @@ import shutil
 import urllib.request
 from pathlib import Path
 from typing import List, Tuple, Optional
+from urllib.parse import urlparse
 
 # Configuration
 FTP_BASE: str = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar"
@@ -88,9 +89,30 @@ def get_available_space_mb(path: Path) -> int:
     return stat.free // (1024 * 1024)
 
 
+def _validate_url(url: str) -> None:
+    """Validate URL scheme to prevent security issues.
+    
+    Only allows HTTPS/HTTP URLs to prevent file:// or custom scheme exploitation.
+    Raises ValueError if URL scheme is not allowed.
+    
+    This addresses Bandit B310: URL scheme validation for urllib.urlretrieve.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ["https", "http"]:
+        raise ValueError(
+            f"Invalid URL scheme '{parsed.scheme}'. Only HTTPS/HTTP URLs are allowed."
+        )
+
+
 def download_file(url: str, filepath: Path) -> bool:
-    """Download a file with progress indication."""
+    """Download a file with progress indication.
+    
+    Validates URL scheme before downloading to prevent security issues.
+    """
     try:
+        # Validate URL scheme (Bandit B310 fix)
+        _validate_url(url)
+        
         print(f"  URL: {url}")
 
         def reporthook(block_num: int, block_size: int, total_size: int) -> None:
@@ -102,6 +124,9 @@ def download_file(url: str, filepath: Path) -> bool:
         urllib.request.urlretrieve(url, filepath, reporthook)
         print()  # New line after progress
         return True
+    except ValueError as e:
+        print(f"\n  Security Error: {e}")
+        return False
     except Exception as e:
         print(f"\n  Error: {e}")
         return False
