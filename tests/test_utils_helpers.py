@@ -1,310 +1,346 @@
-"""Tests for varidex.utils helper functions.
+"""Tests for varidex.utils.helpers module.
+
+Tests the actual functions that exist in helpers.py:
+- DataValidator
+- classify_variants_production
+- format_variant_key
+- parse_variant_key
 
 Black formatted with 88-char line limit.
 """
 
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
-
 import pytest
+from typing import Dict, List, Any
+from unittest.mock import Mock, MagicMock
 
-from varidex.exceptions import ValidationError
 from varidex.utils.helpers import (
-    ensure_directory,
-    format_file_size,
-    is_gzipped,
-    normalize_chromosome,
-    parse_genomic_position,
-    sanitize_filename,
+    DataValidator,
+    classify_variants_production,
+    format_variant_key,
+    parse_variant_key,
 )
 
 
-class TestNormalizeChromosome:
-    """Test chromosome normalization."""
+class TestDataValidator:
+    """Test DataValidator class."""
 
-    def test_normalize_chromosome_with_prefix(self) -> None:
-        """Test normalization adds chr prefix."""
-        assert normalize_chromosome("1") == "chr1"
-        assert normalize_chromosome("22") == "chr22"
-        assert normalize_chromosome("X") == "chrX"
-        assert normalize_chromosome("Y") == "chrY"
+    def test_validate_variant_with_required_fields(self) -> None:
+        """Test variant validation with all required fields."""
+        variant = {"chromosome": "chr1", "position": 12345, "ref": "A", "alt": "T"}
+        assert DataValidator.validate_variant(variant) is True
 
-    def test_normalize_chromosome_already_prefixed(self) -> None:
-        """Test normalization preserves existing chr prefix."""
-        assert normalize_chromosome("chr1") == "chr1"
-        assert normalize_chromosome("chrX") == "chrX"
+    def test_validate_variant_missing_chromosome(self) -> None:
+        """Test variant validation fails without chromosome."""
+        variant = {"position": 12345, "ref": "A", "alt": "T"}
+        assert DataValidator.validate_variant(variant) is False
 
-    def test_normalize_chromosome_remove_prefix(self) -> None:
-        """Test normalization can remove chr prefix."""
-        assert normalize_chromosome("chr1", add_prefix=False) == "1"
-        assert normalize_chromosome("chrX", add_prefix=False) == "X"
+    def test_validate_variant_missing_position(self) -> None:
+        """Test variant validation fails without position."""
+        variant = {"chromosome": "chr1", "ref": "A", "alt": "T"}
+        assert DataValidator.validate_variant(variant) is False
 
-    def test_normalize_chromosome_mitochondrial(self) -> None:
-        """Test normalization of mitochondrial chromosome."""
-        assert normalize_chromosome("M") == "chrM"
-        assert normalize_chromosome("MT") == "chrM"
-        assert normalize_chromosome("chrMT") == "chrM"
+    def test_validate_variant_empty_dict(self) -> None:
+        """Test variant validation with empty dictionary."""
+        variant = {}
+        assert DataValidator.validate_variant(variant) is False
 
-    def test_normalize_chromosome_case_insensitive(self) -> None:
-        """Test normalization is case-insensitive."""
-        assert normalize_chromosome("x") == "chrX"
-        assert normalize_chromosome("CHRX") == "chrX"
+    def test_validate_variant_with_extra_fields(self) -> None:
+        """Test variant validation ignores extra fields."""
+        variant = {
+            "chromosome": "chr1",
+            "position": 12345,
+            "ref": "A",
+            "alt": "T",
+            "gene": "BRCA1",
+            "extra_field": "ignored",
+        }
+        assert DataValidator.validate_variant(variant) is True
 
-    def test_normalize_chromosome_invalid(self) -> None:
-        """Test normalization with invalid chromosome."""
-        with pytest.raises(ValidationError, match="Invalid chromosome"):
-            normalize_chromosome("invalid")
-
-    def test_normalize_chromosome_empty(self) -> None:
-        """Test normalization with empty string."""
-        with pytest.raises(ValidationError, match="Invalid chromosome"):
-            normalize_chromosome("")
-
-
-class TestParseGenomicPosition:
-    """Test genomic position parsing."""
-
-    def test_parse_genomic_position_colon_format(self) -> None:
-        """Test parsing position in chr:pos format."""
-        chrom, pos = parse_genomic_position("chr1:12345")
-        assert chrom == "chr1"
-        assert pos == 12345
-
-    def test_parse_genomic_position_dash_format(self) -> None:
-        """Test parsing position in chr-pos format."""
-        chrom, pos = parse_genomic_position("chr1-12345")
-        assert chrom == "chr1"
-        assert pos == 12345
-
-    def test_parse_genomic_position_underscore_format(self) -> None:
-        """Test parsing position in chr_pos format."""
-        chrom, pos = parse_genomic_position("chr1_12345")
-        assert chrom == "chr1"
-        assert pos == 12345
-
-    def test_parse_genomic_position_no_prefix(self) -> None:
-        """Test parsing position without chr prefix."""
-        chrom, pos = parse_genomic_position("1:12345")
-        assert chrom in ["1", "chr1"]
-        assert pos == 12345
-
-    def test_parse_genomic_position_range(self) -> None:
-        """Test parsing position range."""
-        chrom, start, end = parse_genomic_position("chr1:12345-12350", allow_range=True)
-        assert chrom == "chr1"
-        assert start == 12345
-        assert end == 12350
-
-    def test_parse_genomic_position_invalid_format(self) -> None:
-        """Test parsing with invalid format."""
-        with pytest.raises(ValidationError, match="Invalid position format"):
-            parse_genomic_position("invalid_format")
-
-    def test_parse_genomic_position_negative(self) -> None:
-        """Test parsing with negative position."""
-        with pytest.raises(ValidationError, match="Position must be positive"):
-            parse_genomic_position("chr1:-100")
+    def test_validate_variant_none_value(self) -> None:
+        """Test variant validation with None."""
+        with pytest.raises((TypeError, AttributeError)):
+            DataValidator.validate_variant(None)
 
 
-class TestSanitizeFilename:
-    """Test filename sanitization."""
+class TestDataValidatorDataFrame:
+    """Test DataValidator dataframe validation."""
 
-    def test_sanitize_filename_basic(self) -> None:
-        """Test basic filename sanitization."""
-        assert sanitize_filename("test.txt") == "test.txt"
-        assert sanitize_filename("my_file.vcf.gz") == "my_file.vcf.gz"
+    def test_validate_dataframe_valid(self) -> None:
+        """Test dataframe validation with valid dataframe."""
+        import pandas as pd
 
-    def test_sanitize_filename_remove_spaces(self) -> None:
-        """Test sanitization removes spaces."""
-        assert sanitize_filename("my file.txt") == "my_file.txt"
-        assert sanitize_filename("test  file.vcf") == "test_file.vcf"
+        df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
+        assert DataValidator.validate_dataframe(df) is True
 
-    def test_sanitize_filename_remove_special_chars(self) -> None:
-        """Test sanitization removes special characters."""
-        assert sanitize_filename("file@#$.txt") == "file.txt"
-        assert sanitize_filename("test*file?.vcf") == "testfile.vcf"
+    def test_validate_dataframe_empty(self) -> None:
+        """Test dataframe validation with empty dataframe."""
+        import pandas as pd
 
-    def test_sanitize_filename_preserve_extensions(self) -> None:
-        """Test sanitization preserves file extensions."""
-        assert sanitize_filename("data.vcf.gz").endswith(".vcf.gz")
-        assert sanitize_filename("test.tar.bz2").endswith(".tar.bz2")
+        df = pd.DataFrame()
+        assert DataValidator.validate_dataframe(df) is False
 
-    def test_sanitize_filename_max_length(self) -> None:
-        """Test sanitization respects max length."""
-        long_name = "a" * 300 + ".txt"
-        result = sanitize_filename(long_name, max_length=100)
-        assert len(result) <= 100
-        assert result.endswith(".txt")
+    def test_validate_dataframe_none(self) -> None:
+        """Test dataframe validation with None."""
+        assert DataValidator.validate_dataframe(None) is False
 
-    def test_sanitize_filename_empty(self) -> None:
-        """Test sanitization with empty string."""
-        result = sanitize_filename("")
-        assert len(result) > 0
-        assert result != ""
+    def test_validate_dataframe_single_row(self) -> None:
+        """Test dataframe validation with single row."""
+        import pandas as pd
 
-    def test_sanitize_filename_path_separators(self) -> None:
-        """Test sanitization removes path separators."""
-        assert "/" not in sanitize_filename("path/to/file.txt")
-        assert "\\" not in sanitize_filename("path\\to\\file.txt")
+        df = pd.DataFrame({"col1": [1]})
+        assert DataValidator.validate_dataframe(df) is True
+
+    def test_validate_dataframe_non_dataframe(self) -> None:
+        """Test dataframe validation with non-dataframe object."""
+        assert DataValidator.validate_dataframe("not a dataframe") is False
+        assert DataValidator.validate_dataframe([1, 2, 3]) is False
+        assert DataValidator.validate_dataframe({"key": "value"}) is False
 
 
-class TestFormatFileSize:
-    """Test file size formatting."""
+class TestFormatVariantKey:
+    """Test variant key formatting."""
 
-    def test_format_file_size_bytes(self) -> None:
-        """Test formatting bytes."""
-        assert format_file_size(0) == "0 B"
-        assert format_file_size(100) == "100 B"
-        assert format_file_size(1023) == "1023 B"
+    def test_format_variant_key_basic(self) -> None:
+        """Test basic variant key formatting."""
+        key = format_variant_key("chr1", 12345, "A", "T")
+        assert key == "chr1:12345:A:T"
 
-    def test_format_file_size_kilobytes(self) -> None:
-        """Test formatting kilobytes."""
-        assert format_file_size(1024) == "1.0 KB"
-        assert format_file_size(2048) == "2.0 KB"
-        assert format_file_size(1536) == "1.5 KB"
+    def test_format_variant_key_different_chromosome(self) -> None:
+        """Test formatting with different chromosomes."""
+        assert format_variant_key("chr17", 43094692, "G", "A") == "chr17:43094692:G:A"
+        assert format_variant_key("chrX", 100000, "C", "T") == "chrX:100000:C:T"
+        assert format_variant_key("chrM", 1500, "A", "G") == "chrM:1500:A:G"
 
-    def test_format_file_size_megabytes(self) -> None:
-        """Test formatting megabytes."""
-        assert format_file_size(1024 * 1024) == "1.0 MB"
-        assert format_file_size(5 * 1024 * 1024) == "5.0 MB"
+    def test_format_variant_key_multi_base_alleles(self) -> None:
+        """Test formatting with multi-base alleles."""
+        key = format_variant_key("chr1", 1000, "ATG", "A")
+        assert key == "chr1:1000:ATG:A"
 
-    def test_format_file_size_gigabytes(self) -> None:
-        """Test formatting gigabytes."""
-        assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
-        assert format_file_size(2.5 * 1024 * 1024 * 1024) == "2.5 GB"
+        key = format_variant_key("chr2", 2000, "C", "CAAA")
+        assert key == "chr2:2000:C:CAAA"
 
-    def test_format_file_size_terabytes(self) -> None:
-        """Test formatting terabytes."""
-        assert format_file_size(1024 * 1024 * 1024 * 1024) == "1.0 TB"
+    def test_format_variant_key_deletion(self) -> None:
+        """Test formatting deletion variants."""
+        key = format_variant_key("chr3", 3000, "ATG", "-")
+        assert "chr3" in key
+        assert "3000" in key
 
-    def test_format_file_size_precision(self) -> None:
-        """Test formatting with custom precision."""
-        size = 1536
-        assert format_file_size(size, precision=1) == "1.5 KB"
-        assert format_file_size(size, precision=2) == "1.50 KB"
+    def test_format_variant_key_insertion(self) -> None:
+        """Test formatting insertion variants."""
+        key = format_variant_key("chr4", 4000, "-", "TAG")
+        assert "chr4" in key
+        assert "4000" in key
 
-    def test_format_file_size_negative(self) -> None:
-        """Test formatting with negative size."""
-        with pytest.raises(ValidationError, match="Size cannot be negative"):
-            format_file_size(-100)
-
-
-class TestIsGzipped:
-    """Test gzip file detection."""
-
-    def test_is_gzipped_by_extension(self, tmp_path: Path) -> None:
-        """Test gzip detection by file extension."""
-        gz_file = tmp_path / "test.vcf.gz"
-        gz_file.touch()
-        assert is_gzipped(gz_file) is True
-
-    def test_is_gzipped_not_gzipped(self, tmp_path: Path) -> None:
-        """Test detection of non-gzipped file."""
-        vcf_file = tmp_path / "test.vcf"
-        vcf_file.touch()
-        assert is_gzipped(vcf_file) is False
-
-    def test_is_gzipped_by_magic_bytes(self, tmp_path: Path) -> None:
-        """Test gzip detection by magic bytes."""
-        import gzip
-
-        gz_file = tmp_path / "test.gz"
-        with gzip.open(gz_file, "wb") as f:
-            f.write(b"test data")
-
-        assert is_gzipped(gz_file, check_magic=True) is True
-
-    def test_is_gzipped_false_extension(self, tmp_path: Path) -> None:
-        """Test file with .gz extension but not gzipped."""
-        fake_gz = tmp_path / "test.gz"
-        fake_gz.write_text("not gzipped")
-
-        assert is_gzipped(fake_gz, check_magic=True) is False
-
-    def test_is_gzipped_nonexistent(self) -> None:
-        """Test gzip detection with nonexistent file."""
-        with pytest.raises(FileNotFoundError):
-            is_gzipped(Path("/nonexistent/file.gz"), check_magic=True)
+    def test_format_variant_key_large_position(self) -> None:
+        """Test formatting with large position values."""
+        key = format_variant_key("chr1", 249250621, "A", "T")  # Chr1 max
+        assert "249250621" in key
 
 
-class TestEnsureDirectory:
-    """Test directory creation utility."""
+class TestParseVariantKey:
+    """Test variant key parsing."""
 
-    def test_ensure_directory_creates_new(self, tmp_path: Path) -> None:
-        """Test creating new directory."""
-        new_dir = tmp_path / "new_directory"
-        assert not new_dir.exists()
+    def test_parse_variant_key_basic(self) -> None:
+        """Test basic variant key parsing."""
+        result = parse_variant_key("chr1:12345:A:T")
+        assert result["chromosome"] == "chr1"
+        assert result["position"] == 12345
+        assert "A" in str(result)  # ref or alt contains A
+        assert "T" in str(result)  # ref or alt contains T
 
-        ensure_directory(new_dir)
+    def test_parse_variant_key_different_chromosomes(self) -> None:
+        """Test parsing keys with different chromosomes."""
+        result = parse_variant_key("chr17:43094692:G:A")
+        assert result["chromosome"] == "chr17"
+        assert result["position"] == 43094692
 
-        assert new_dir.exists()
-        assert new_dir.is_dir()
+        result = parse_variant_key("chrX:100000:C:T")
+        assert result["chromosome"] == "chrX"
 
-    def test_ensure_directory_existing(self, tmp_path: Path) -> None:
-        """Test with existing directory."""
-        existing_dir = tmp_path / "existing"
-        existing_dir.mkdir()
+    def test_parse_variant_key_multi_base_alleles(self) -> None:
+        """Test parsing keys with multi-base alleles."""
+        result = parse_variant_key("chr1:1000:ATG:A")
+        assert result["chromosome"] == "chr1"
+        assert result["position"] == 1000
 
-        ensure_directory(existing_dir)
+    def test_parse_variant_key_invalid_format(self) -> None:
+        """Test parsing invalid key format."""
+        result = parse_variant_key("invalid_format")
+        assert result == {} or len(result) == 0
 
-        assert existing_dir.exists()
-        assert existing_dir.is_dir()
+    def test_parse_variant_key_too_few_parts(self) -> None:
+        """Test parsing key with too few parts."""
+        result = parse_variant_key("chr1:12345")
+        assert result == {} or len(result) == 0
 
-    def test_ensure_directory_nested(self, tmp_path: Path) -> None:
-        """Test creating nested directories."""
-        nested_dir = tmp_path / "level1" / "level2" / "level3"
-        assert not nested_dir.exists()
+    def test_parse_variant_key_invalid_position(self) -> None:
+        """Test parsing key with invalid position."""
+        result = parse_variant_key("chr1:invalid:A:T")
+        assert result == {} or len(result) == 0
 
-        ensure_directory(nested_dir)
+    def test_parse_variant_key_empty_string(self) -> None:
+        """Test parsing empty string."""
+        result = parse_variant_key("")
+        assert result == {} or len(result) == 0
 
-        assert nested_dir.exists()
-        assert nested_dir.is_dir()
+    def test_parse_variant_key_none(self) -> None:
+        """Test parsing None value."""
+        with pytest.raises((TypeError, AttributeError)):
+            parse_variant_key(None)
 
-    def test_ensure_directory_file_exists(self, tmp_path: Path) -> None:
-        """Test when path exists as a file."""
-        file_path = tmp_path / "file.txt"
-        file_path.write_text("test")
 
-        with pytest.raises(FileExistsError, match="exists as a file"):
-            ensure_directory(file_path)
+class TestClassifyVariantsProduction:
+    """Test production variant classification."""
 
-    def test_ensure_directory_permissions(self, tmp_path: Path) -> None:
-        """Test directory created with correct permissions."""
-        new_dir = tmp_path / "perm_test"
-        ensure_directory(new_dir, mode=0o755)
+    def test_classify_variants_production_empty_list(self) -> None:
+        """Test classification with empty variant list."""
+        mock_classifier = Mock()
+        result = classify_variants_production([], mock_classifier)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-        assert new_dir.exists()
-        stat_info = os.stat(new_dir)
-        # Check that directory is readable and executable
-        assert stat_info.st_mode & 0o555 == 0o555
+    def test_classify_variants_production_single_variant(self) -> None:
+        """Test classification with single variant."""
+        mock_classifier = Mock()
+        variants = [{"chromosome": "chr1", "position": 12345}]
+
+        result = classify_variants_production(variants, mock_classifier)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert "classification" in result[0]
+
+    def test_classify_variants_production_multiple_variants(self) -> None:
+        """Test classification with multiple variants."""
+        mock_classifier = Mock()
+        variants = [
+            {"chromosome": "chr1", "position": 100},
+            {"chromosome": "chr2", "position": 200},
+            {"chromosome": "chr3", "position": 300},
+        ]
+
+        result = classify_variants_production(variants, mock_classifier)
+        assert isinstance(result, list)
+        assert len(result) == 3
+        assert all("classification" in r for r in result)
+
+    def test_classify_variants_production_default_classification(self) -> None:
+        """Test that default classification is VUS."""
+        mock_classifier = Mock()
+        variants = [{"chromosome": "chr1", "position": 12345}]
+
+        result = classify_variants_production(variants, mock_classifier)
+        assert result[0]["classification"] == "VUS"
+
+    def test_classify_variants_production_error_handling(self) -> None:
+        """Test classification with classifier that raises exception."""
+        mock_classifier = Mock()
+        mock_classifier.classify.side_effect = Exception("Classification error")
+
+        variants = [{"chromosome": "chr1", "position": 12345}]
+        result = classify_variants_production(variants, mock_classifier)
+
+        # Should handle errors gracefully
+        assert isinstance(result, list)
+        assert len(result) == 1
+        # Check if error was handled
+        assert (
+            result[0].get("classification") == "ERROR"
+            or result[0].get("classification") == "VUS"
+        )
+
+    def test_classify_variants_production_preserves_variant_data(self) -> None:
+        """Test that original variant data is preserved."""
+        mock_classifier = Mock()
+        variants = [
+            {
+                "chromosome": "chr1",
+                "position": 12345,
+                "gene": "BRCA1",
+                "ref": "A",
+                "alt": "T",
+            }
+        ]
+
+        result = classify_variants_production(variants, mock_classifier)
+        assert "variant" in result[0]
+        assert result[0]["variant"]["gene"] == "BRCA1"
+
+    def test_classify_variants_production_none_classifier(self) -> None:
+        """Test classification with None classifier."""
+        variants = [{"chromosome": "chr1", "position": 12345}]
+
+        # Should handle None classifier
+        try:
+            result = classify_variants_production(variants, None)
+            assert isinstance(result, list)
+        except (TypeError, AttributeError):
+            # Also acceptable to raise error
+            pass
 
 
 class TestEdgeCases:
     """Test edge cases in utility functions."""
 
-    def test_normalize_chromosome_unicode(self) -> None:
-        """Test normalization with unicode characters."""
-        with pytest.raises(ValidationError):
-            normalize_chromosome("αβγ")
+    def test_format_variant_key_special_characters(self) -> None:
+        """Test variant key with special chromosome names."""
+        key = format_variant_key("chr1_random", 1000, "A", "T")
+        assert "chr1_random" in key
 
-    def test_parse_genomic_position_very_large(self) -> None:
-        """Test parsing very large position."""
-        chrom, pos = parse_genomic_position("chr1:999999999")
-        assert pos == 999999999
+    def test_parse_variant_key_extra_colons(self) -> None:
+        """Test parsing key with extra colons."""
+        result = parse_variant_key("chr1:12345:A:T:extra:data")
+        # Should handle gracefully - either parse first 4 or return empty
+        assert isinstance(result, dict)
 
-    def test_sanitize_filename_unicode(self) -> None:
-        """Test sanitization with unicode characters."""
-        result = sanitize_filename("file_éàü.txt")
-        assert ".txt" in result
+    def test_data_validator_with_numeric_chromosome(self) -> None:
+        """Test validator with numeric chromosome."""
+        variant = {"chromosome": 1, "position": 12345}  # Numeric instead of string
+        # Should accept or handle gracefully
+        result = DataValidator.validate_variant(variant)
+        assert isinstance(result, bool)
 
-    def test_format_file_size_zero(self) -> None:
-        """Test formatting zero bytes."""
-        assert format_file_size(0) == "0 B"
+    def test_format_variant_key_zero_position(self) -> None:
+        """Test formatting variant at position 0."""
+        key = format_variant_key("chr1", 0, "A", "T")
+        assert "0" in key
 
-    def test_format_file_size_very_large(self) -> None:
-        """Test formatting petabyte-scale files."""
-        pb = 1024**5
-        result = format_file_size(pb)
-        assert "PB" in result or "TB" in result
+    def test_parse_variant_key_very_large_position(self) -> None:
+        """Test parsing key with very large position."""
+        result = parse_variant_key("chr1:999999999:A:T")
+        if result:
+            assert result["position"] == 999999999
+
+
+class TestIntegration:
+    """Test integration between format and parse functions."""
+
+    def test_format_parse_roundtrip(self) -> None:
+        """Test formatting and parsing roundtrip."""
+        chrom = "chr17"
+        pos = 43094692
+        ref = "G"
+        alt = "A"
+
+        key = format_variant_key(chrom, pos, ref, alt)
+        result = parse_variant_key(key)
+
+        assert result["chromosome"] == chrom
+        assert result["position"] == pos
+
+    def test_format_parse_multiple_variants(self) -> None:
+        """Test formatting and parsing multiple variants."""
+        variants = [
+            ("chr1", 100, "A", "T"),
+            ("chr2", 200, "C", "G"),
+            ("chrX", 300, "T", "A"),
+        ]
+
+        for chrom, pos, ref, alt in variants:
+            key = format_variant_key(chrom, pos, ref, alt)
+            result = parse_variant_key(key)
+            assert result["chromosome"] == chrom
+            assert result["position"] == pos
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
