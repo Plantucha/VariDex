@@ -401,7 +401,7 @@ See: [LICENSE](LICENSE)
 - ❌ Proprietary products
 - ❌ Keeping modifications private
 
-**Contact:** licensing@varidex.com
+**Contact:** plantucha@gmail.com
 
 ---
 
