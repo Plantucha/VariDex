@@ -14,6 +14,8 @@ __all__: List[str] = [
     "VariDexError",
     "ValidationError",
     "DataLoadError",
+    "DataIntegrityError",
+    "MatchingError",
     "ClassificationError",
     "ReportError",
     "FileProcessingError",
@@ -32,6 +34,8 @@ class ErrorCode(Enum):
 
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
+    DATA_INTEGRITY = "DATA_INTEGRITY"
+    MATCHING = "MATCHING"
     CLASSIFICATION = "CLASSIFICATION"
     REPORT = "REPORT"
     CONFIG = "CONFIG"
@@ -68,6 +72,36 @@ class DataLoadError(VaridexError):
 
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.DATA_LOAD, context)
+
+
+class DataIntegrityError(VaridexError):
+    """
+    Raised when data integrity checks fail.
+
+    This includes issues like:
+    - Duplicate records
+    - Missing required fields
+    - Data corruption
+    - Inconsistent data relationships
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.DATA_INTEGRITY, context)
+
+
+class MatchingError(VaridexError):
+    """
+    Raised when variant matching operations fail.
+
+    This includes issues like:
+    - No matching variants found
+    - Ambiguous matches
+    - Invalid matching criteria
+    - Coordinate system mismatches
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.MATCHING, context)
 
 
 class ClassificationError(VaridexError):
@@ -130,6 +164,8 @@ if __name__ == "__main__":
         (VariDexError, "Base error (CamelCase alias)"),
         (ValidationError, "Validation failed"),
         (DataLoadError, "Data load failed"),
+        (DataIntegrityError, "Data integrity check failed"),
+        (MatchingError, "Variant matching failed"),
         (ClassificationError, "Classification failed"),
         (ReportError, "Report generation failed"),
         (FileProcessingError, "File processing failed"),
@@ -147,6 +183,17 @@ if __name__ == "__main__":
 
         # Verify alias works
         assert VariDexError is VaridexError, "VariDexError alias broken"
+
+        # Test new exception classes
+        try:
+            raise DataIntegrityError("Test integrity error")
+        except DataIntegrityError as e:
+            assert e.code == ErrorCode.DATA_INTEGRITY
+
+        try:
+            raise MatchingError("Test matching error")
+        except MatchingError as e:
+            assert e.code == ErrorCode.MATCHING
 
         # Test validation helpers
         try:
