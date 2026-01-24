@@ -3,7 +3,7 @@
 """
 ClinVar File Downloader with Space Management
 Updates: First Thursday of each month
-Version: 2026-01-24-v2 (Bandit B310 security fix)
+Version: 2026-01-24-v2 (Bandit B310 security fix + ResourceDownloader class)
 """
 
 import os
@@ -21,14 +21,26 @@ SAFETY_MARGIN_GB: int = 5  # Keep 5GB free space buffer
 
 # Define files to download (filename, URL, approx_unzipped_size_MB)
 FILES: List[Tuple[str, str, int]] = [
-    ("variant_summary.txt.gz", f"{FTP_BASE}/tab_delimited/variant_summary.txt.gz", 3000),
+    (
+        "variant_summary.txt.gz",
+        f"{FTP_BASE}/tab_delimited/variant_summary.txt.gz",
+        3000,
+    ),
     ("var_citations.txt", f"{FTP_BASE}/tab_delimited/var_citations.txt", 50),
     ("cross_references.txt", f"{FTP_BASE}/tab_delimited/cross_references.txt", 100),
-    ("organization_summary.txt", f"{FTP_BASE}/tab_delimited/organization_summary.txt", 5),
+    (
+        "organization_summary.txt",
+        f"{FTP_BASE}/tab_delimited/organization_summary.txt",
+        5,
+    ),
     ("submission_summary.txt", f"{FTP_BASE}/tab_delimited/submission_summary.txt", 500),
     ("clinvar_GRCh37.vcf.gz", f"{FTP_BASE}/vcf_GRCh37/clinvar.vcf.gz", 1500),
     ("clinvar_GRCh38.vcf.gz", f"{FTP_BASE}/vcf_GRCh38/clinvar.vcf.gz", 1500),
-    ("ClinVarVCVRelease.xml.gz", f"{FTP_BASE}/xml/ClinVarVCVRelease_00-latest.xml.gz", 8000),
+    (
+        "ClinVarVCVRelease.xml.gz",
+        f"{FTP_BASE}/xml/ClinVarVCVRelease_00-latest.xml.gz",
+        8000,
+    ),
     (
         "ClinVarRCVRelease.xml.gz",
         f"{FTP_BASE}/xml/RCV_release/ClinVarRCVRelease_00-latest.xml.gz",
@@ -91,10 +103,10 @@ def get_available_space_mb(path: Path) -> int:
 
 def _validate_url(url: str) -> None:
     """Validate URL scheme to prevent security issues.
-    
+
     Only allows HTTPS/HTTP URLs to prevent file:// or custom scheme exploitation.
     Raises ValueError if URL scheme is not allowed.
-    
+
     This addresses Bandit B310: URL scheme validation for urllib.urlretrieve.
     """
     parsed = urlparse(url)
@@ -106,13 +118,13 @@ def _validate_url(url: str) -> None:
 
 def download_file(url: str, filepath: Path) -> bool:
     """Download a file with progress indication.
-    
+
     Validates URL scheme before downloading to prevent security issues.
     """
     try:
         # Validate URL scheme (Bandit B310 fix)
         _validate_url(url)
-        
+
         print(f"  URL: {url}")
 
         def reporthook(block_num: int, block_size: int, total_size: int) -> None:
@@ -130,6 +142,78 @@ def download_file(url: str, filepath: Path) -> bool:
     except Exception as e:
         print(f"\n  Error: {e}")
         return False
+
+
+# ===================================================================
+# SECTION: RESOURCE DOWNLOADER CLASS (for test compatibility)
+# ===================================================================
+
+
+class ResourceDownloader:
+    """
+    Object-oriented interface for downloading ClinVar resources.
+
+    This class provides a testable interface to the downloader functionality
+    while maintaining backward compatibility with the existing script-based
+    approach.
+    """
+
+    def __init__(self, download_dir: Optional[Path] = None):
+        """
+        Initialize the ResourceDownloader.
+
+        Args:
+            download_dir: Directory for downloads. Defaults to ./clinvar_data
+        """
+        self.download_dir = download_dir or Path("./clinvar_data")
+        self.download_dir.mkdir(parents=True, exist_ok=True)
+        self.safety_margin_gb = SAFETY_MARGIN_GB
+        self.files = FILES.copy()
+
+    def get_expected_update_date(self) -> datetime.date:
+        """Get the most recent first Thursday (current or previous month)."""
+        return get_expected_update_date()
+
+    def check_file_status(self, filename: str) -> Tuple[bool, str]:
+        """Check if a specific file needs updating."""
+        filepath = self.download_dir / filename
+        expected_date = self.get_expected_update_date()
+        return needs_update(filepath, expected_date)
+
+    def get_available_space_mb(self) -> int:
+        """Get available disk space in MB."""
+        return get_available_space_mb(self.download_dir)
+
+    def download(self, url: str, filename: str) -> bool:
+        """Download a single file."""
+        filepath = self.download_dir / filename
+        return download_file(url, filepath)
+
+    def download_all(self, force: bool = False) -> List[str]:
+        """
+        Download all ClinVar files that need updating.
+
+        Args:
+            force: If True, download all files regardless of current status
+
+        Returns:
+            List of successfully downloaded filenames
+        """
+        expected_date = self.get_expected_update_date()
+        downloaded = []
+
+        for filename, url, size_mb in self.files:
+            filepath = self.download_dir / filename
+            needs_dl, status = needs_update(filepath, expected_date)
+
+            if force or needs_dl:
+                print(f"Downloading: {filename}")
+                if self.download(url, filename):
+                    downloaded.append(filename)
+                else:
+                    print(f"  Warning: Download failed for {filename}")
+
+        return downloaded
 
 
 def main() -> int:
@@ -207,7 +291,9 @@ def main() -> int:
             print()
         print("All downloads complete.")
     else:
-        print("Insufficient space for all files. Downloading what fits (smallest first)...")
+        print(
+            "Insufficient space for all files. Downloading what fits (smallest first)..."
+        )
         print()
         space_used = 0
         for filename, url, size_mb in to_download:
@@ -228,6 +314,49 @@ def main() -> int:
     print("Download process complete.")
     print(f"Files location: {clinvar_dir.absolute()}")
     return 0
+
+
+def verify_checksum(
+    filepath: str, expected_checksum: str, algorithm: str = "sha256"
+) -> bool:
+    """
+    Verify file checksum matches expected value.
+
+    Args:
+        filepath: Path to the file
+        expected_checksum: Expected checksum value
+        algorithm: Hash algorithm to use
+
+    Returns:
+        True if checksums match, False otherwise
+    """
+    actual_checksum = calculate_checksum(filepath, algorithm)
+    return actual_checksum.lower() == expected_checksum.lower()
+
+
+def calculate_checksum(filepath: str, algorithm: str = "sha256") -> str:
+    """
+    Calculate checksum for a file.
+
+    Args:
+        filepath: Path to the file
+        algorithm: Hash algorithm (sha256, md5, sha1, etc.)
+
+    Returns:
+        Hexadecimal digest string
+    """
+    import hashlib
+
+    if algorithm not in hashlib.algorithms_available:
+        raise ValueError(f"Unsupported algorithm: {algorithm}")
+
+    hasher = getattr(hashlib, algorithm)()
+
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
 
 
 if __name__ == "__main__":

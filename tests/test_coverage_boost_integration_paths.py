@@ -87,9 +87,7 @@ class TestFileReadingEdgeCases:
     def test_file_with_blank_lines(self, tmp_path: Path) -> None:
         """Test file with blank lines."""
         with_blanks = tmp_path / "blanks.vcf"
-        with_blanks.write_text(
-            "##fileformat=VCFv4.2\n\n\n#CHROM\tPOS\n\nchr1\t100\n\n"
-        )
+        with_blanks.write_text("##fileformat=VCFv4.2\n\n\n#CHROM\tPOS\n\nchr1\t100\n\n")
         content = with_blanks.read_text()
         assert "\n\n" in content
 

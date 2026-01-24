@@ -78,7 +78,13 @@ def sample_user_variants() -> pd.DataFrame:
     """Sample user genome data for testing."""
     return pd.DataFrame(
         {
-            "rsid": ["rs80357906", "rs28934576", "rs121913530", "rs397509247", "rs999999"],
+            "rsid": [
+                "rs80357906",
+                "rs28934576",
+                "rs121913530",
+                "rs397509247",
+                "rs999999",
+            ],
             "chromosome": ["17", "17", "13", "19", "1"],
             "position": ["43094692", "43082434", "32340302", "50378563", "12345678"],
             "genotype": ["AG", "GA", "CT", "CC", "TT"],
@@ -91,7 +97,9 @@ def variant_data_builder() -> Callable:
     """Factory fixture for building VariantData instances."""
     from varidex.core.models import VariantData, ACMGEvidenceSet
 
-    def builder(rsid="rs80357906", chromosome="17", position="43094692", genotype="AG", **kwargs):
+    def builder(
+        rsid="rs80357906", chromosome="17", position="43094692", genotype="AG", **kwargs
+    ):
         defaults = {
             "rsid": rsid,
             "chromosome": chromosome,
@@ -154,7 +162,9 @@ def evidence_builder() -> Callable:
 def sample_variant_data(variant_data_builder, evidence_builder):
     """Pre-built VariantData instance for common test scenarios."""
     evidence = evidence_builder(pathogenic=["PVS1", "PM2"])
-    return variant_data_builder(acmg_evidence=evidence, acmg_classification="Pathogenic")
+    return variant_data_builder(
+        acmg_evidence=evidence, acmg_classification="Pathogenic"
+    )
 
 
 # ============================================================================

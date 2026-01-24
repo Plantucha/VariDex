@@ -128,9 +128,7 @@ class TestVariDexConfigSerialization:
 
     def test_save_and_load_config(self) -> None:
         """Test configuration can be saved and loaded from file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
             config_path = tmp.name
 
         try:
@@ -167,9 +165,7 @@ class TestVariDexConfigUpdate:
     def test_update_multiple_parameters(self) -> None:
         """Test updating multiple configuration parameters."""
         config = VariDexConfig()
-        config.update(
-            min_quality_score=25.0, max_population_af=0.002, num_threads=8
-        )
+        config.update(min_quality_score=25.0, max_population_af=0.002, num_threads=8)
         assert config.min_quality_score == 25.0
         assert config.max_population_af == 0.002
         assert config.num_threads == 8
@@ -192,12 +188,8 @@ class TestVariDexConfigComparison:
 
     def test_equal_configs(self) -> None:
         """Test two identical configs are equal."""
-        config1 = VariDexConfig(
-            reference_genome="hg38", min_quality_score=30.0
-        )
-        config2 = VariDexConfig(
-            reference_genome="hg38", min_quality_score=30.0
-        )
+        config1 = VariDexConfig(reference_genome="hg38", min_quality_score=30.0)
+        config2 = VariDexConfig(reference_genome="hg38", min_quality_score=30.0)
         assert config1 == config2
 
     def test_different_configs(self) -> None:

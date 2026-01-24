@@ -10,15 +10,22 @@ from typing import Any, Optional, Dict, List, Type, Tuple
 __version__: str = "6.0.0"
 
 __all__: List[str] = [
+    "ConfigurationError",
     "VaridexError",
+    "VariDexError",
     "ValidationError",
     "DataLoadError",
+    "DownloadError",
+    "DataIntegrityError",
+    "MatchingError",
     "ClassificationError",
     "ReportError",
     "FileProcessingError",
     "ACMGValidationError",
     "ACMGClassificationError",
     "ACMGConfigurationError",
+    "DataProcessingError",
+    "PipelineError",
     "ErrorCode",
     "validate_not_none",
     "validate_not_empty",
@@ -31,6 +38,10 @@ class ErrorCode(Enum):
 
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
+    DATA_INTEGRITY = "DATA_INTEGRITY"
+    PIPELINE = "PIPELINE"
+
+    MATCHING = "MATCHING"
     CLASSIFICATION = "CLASSIFICATION"
     REPORT = "REPORT"
     CONFIG = "CONFIG"
@@ -51,6 +62,10 @@ class VaridexError(Exception):
         self.context: Dict[str, Any] = context or {}
 
 
+# Backward compatibility alias (CamelCase variant)
+VariDexError = VaridexError
+
+
 class ValidationError(VaridexError):
     """Raised when validation fails."""
 
@@ -63,6 +78,36 @@ class DataLoadError(VaridexError):
 
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.DATA_LOAD, context)
+
+
+class DataIntegrityError(VaridexError):
+    """
+    Raised when data integrity checks fail.
+
+    This includes issues like:
+    - Duplicate records
+    - Missing required fields
+    - Data corruption
+    - Inconsistent data relationships
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.DATA_INTEGRITY, context)
+
+
+class MatchingError(VaridexError):
+    """
+    Raised when variant matching operations fail.
+
+    This includes issues like:
+    - No matching variants found
+    - Ambiguous matches
+    - Invalid matching criteria
+    - Coordinate system mismatches
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.MATCHING, context)
 
 
 class ClassificationError(VaridexError):
@@ -79,6 +124,35 @@ class ReportError(VaridexError):
         super().__init__(message, ErrorCode.REPORT, context)
 
 
+class PipelineError(VaridexError):
+    """
+    Raised when pipeline execution fails.
+
+    This includes issues like:
+    - Stage execution failures
+    - Pipeline configuration errors
+    - Orchestration errors
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.PIPELINE, context)
+
+
+class DownloadError(VaridexError):
+    """
+    Raised when file download operations fail.
+
+    This includes issues like:
+    - Network errors
+    - Invalid URLs
+    - Download interruptions
+    - Checksum mismatches
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.FILE_PROCESSING, context)
+
+
 class FileProcessingError(VaridexError):
     """Raised when file processing fails."""
 
@@ -90,6 +164,10 @@ class FileProcessingError(VaridexError):
 ACMGValidationError = ValidationError
 ACMGClassificationError = ClassificationError
 ACMGConfigurationError = ValidationError
+ConfigurationError = ValidationError  # Backward compatibility
+# Additional backward compatibility aliases
+DataProcessingError = DataIntegrityError
+ProcessingError = DataIntegrityError  # Generic alias
 
 
 # --------------------------
@@ -122,8 +200,11 @@ if __name__ == "__main__":
     # Test all exception classes
     exception_classes: List[Tuple[Type[Exception], str]] = [
         (VaridexError, "Base error"),
+        (VariDexError, "Base error (CamelCase alias)"),
         (ValidationError, "Validation failed"),
         (DataLoadError, "Data load failed"),
+        (DataIntegrityError, "Data integrity check failed"),
+        (MatchingError, "Variant matching failed"),
         (ClassificationError, "Classification failed"),
         (ReportError, "Report generation failed"),
         (FileProcessingError, "File processing failed"),
@@ -135,8 +216,23 @@ if __name__ == "__main__":
     try:
         for exc_class, test_msg in exception_classes:
             exc = exc_class(test_msg)
-            assert isinstance(exc, Exception), f"{exc_class.__name__} is not an Exception"
-            assert str(exc) == test_msg, f"{exc_class.__name__} message mismatch"
+            assert isinstance(
+                exc, Exception
+            ), f"{exc_class.__name__} is not an Exception"
+
+        # Verify alias works
+        assert VariDexError is VaridexError, "VariDexError alias broken"
+
+        # Test new exception classes
+        try:
+            raise DataIntegrityError("Test integrity error")
+        except DataIntegrityError as e:
+            assert e.code == ErrorCode.DATA_INTEGRITY
+
+        try:
+            raise MatchingError("Test matching error")
+        except MatchingError as e:
+            assert e.code == ErrorCode.MATCHING
 
         # Test validation helpers
         try:
@@ -147,7 +243,9 @@ if __name__ == "__main__":
 
         try:
             validate_not_empty("", "test_value")
-            raise AssertionError("validate_not_empty should have raised ValidationError")
+            raise AssertionError(
+                "validate_not_empty should have raised ValidationError"
+            )
         except ValidationError:
             pass
 

@@ -40,9 +40,7 @@ class TestExceptionHierarchy:
     def test_exception_with_context(self):
         """Test exception with additional context."""
         try:
-            raise ValidationError("Validation failed") from ValueError(
-                "Invalid value"
-            )
+            raise ValidationError("Validation failed") from ValueError("Invalid value")
         except ValidationError as e:
             assert e.__cause__ is not None
             assert isinstance(e.__cause__, ValueError)
@@ -128,9 +126,7 @@ class TestNetworkErrorHandling:
         """Test handling of connection refused."""
         import requests
 
-        mock_get.side_effect = requests.exceptions.ConnectionError(
-            "Connection refused"
-        )
+        mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
         with pytest.raises(requests.exceptions.ConnectionError):
             mock_get("https://example.com")

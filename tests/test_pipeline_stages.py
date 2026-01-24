@@ -146,9 +146,7 @@ class TestAnnotationStage:
 
     def test_annotate_with_gnomad(self, annotation_stage, sample_variants):
         """Test annotation with gnomAD data."""
-        with patch.object(
-            annotation_stage, "_fetch_gnomad_data"
-        ) as mock_gnomad:
+        with patch.object(annotation_stage, "_fetch_gnomad_data") as mock_gnomad:
             mock_gnomad.return_value = {"af": 0.001, "ac": 10}
 
             result = annotation_stage.annotate_variant(
@@ -160,12 +158,8 @@ class TestAnnotationStage:
 
     def test_annotate_with_clinvar(self, annotation_stage, sample_variants):
         """Test annotation with ClinVar data."""
-        with patch.object(
-            annotation_stage, "_fetch_clinvar_data"
-        ) as mock_clinvar:
-            mock_clinvar.return_value = {
-                "clinical_significance": "Pathogenic"
-            }
+        with patch.object(annotation_stage, "_fetch_clinvar_data") as mock_clinvar:
+            mock_clinvar.return_value = {"clinical_significance": "Pathogenic"}
 
             result = annotation_stage.annotate_variant(
                 sample_variants[0], sources=["clinvar"]
@@ -176,9 +170,7 @@ class TestAnnotationStage:
 
     def test_annotate_with_dbnsfp(self, annotation_stage, sample_variants):
         """Test annotation with dbNSFP data."""
-        with patch.object(
-            annotation_stage, "_fetch_dbnsfp_data"
-        ) as mock_dbnsfp:
+        with patch.object(annotation_stage, "_fetch_dbnsfp_data") as mock_dbnsfp:
             mock_dbnsfp.return_value = {"sift_score": 0.05}
 
             result = annotation_stage.annotate_variant(
@@ -190,12 +182,8 @@ class TestAnnotationStage:
 
     def test_annotate_multiple_sources(self, annotation_stage, sample_variants):
         """Test annotation with multiple sources."""
-        with patch.object(
-            annotation_stage, "_fetch_gnomad_data"
-        ) as mock_gnomad:
-            with patch.object(
-                annotation_stage, "_fetch_clinvar_data"
-            ) as mock_clinvar:
+        with patch.object(annotation_stage, "_fetch_gnomad_data") as mock_gnomad:
+            with patch.object(annotation_stage, "_fetch_clinvar_data") as mock_clinvar:
                 mock_gnomad.return_value = {"af": 0.001}
                 mock_clinvar.return_value = {"clinsig": "Benign"}
 
@@ -209,9 +197,7 @@ class TestAnnotationStage:
 
     def test_annotation_handles_missing_data(self, annotation_stage, sample_variants):
         """Test annotation handles missing annotation data."""
-        with patch.object(
-            annotation_stage, "_fetch_gnomad_data"
-        ) as mock_gnomad:
+        with patch.object(annotation_stage, "_fetch_gnomad_data") as mock_gnomad:
             mock_gnomad.return_value = None
 
             result = annotation_stage.annotate_variant(
@@ -222,9 +208,7 @@ class TestAnnotationStage:
 
     def test_batch_annotation(self, annotation_stage, sample_variants):
         """Test batch annotation of multiple variants."""
-        with patch.object(
-            annotation_stage, "annotate_variant"
-        ) as mock_annotate:
+        with patch.object(annotation_stage, "annotate_variant") as mock_annotate:
             mock_annotate.return_value = sample_variants[0]
 
             results = annotation_stage.annotate_batch(sample_variants)
@@ -234,9 +218,7 @@ class TestAnnotationStage:
 
     def test_execute_annotation_stage(self, annotation_stage, sample_variants):
         """Test complete annotation stage execution."""
-        with patch.object(
-            annotation_stage, "_load_variants"
-        ) as mock_load:
+        with patch.object(annotation_stage, "_load_variants") as mock_load:
             mock_load.return_value = sample_variants
 
             result = annotation_stage.execute()
@@ -279,18 +261,14 @@ class TestFilteringStage:
 
     def test_filter_by_quality(self, filtering_stage, annotated_variants):
         """Test filtering by quality score."""
-        filtered = filtering_stage.filter_by_quality(
-            annotated_variants, min_quality=20
-        )
+        filtered = filtering_stage.filter_by_quality(annotated_variants, min_quality=20)
 
         assert len(filtered) == 1
         assert filtered[0].annotations["quality"] >= 20
 
     def test_filter_by_frequency(self, filtering_stage, annotated_variants):
         """Test filtering by allele frequency."""
-        filtered = filtering_stage.filter_by_frequency(
-            annotated_variants, max_af=0.05
-        )
+        filtered = filtering_stage.filter_by_frequency(annotated_variants, max_af=0.05)
 
         assert len(filtered) == 1
         assert filtered[0].annotations["gnomad_af"] <= 0.05
@@ -311,9 +289,7 @@ class TestFilteringStage:
         annotated_variants[0].annotations["gene"] = "BRCA1"
         annotated_variants[1].annotations["gene"] = "TP53"
 
-        filtered = filtering_stage.filter_by_gene(
-            annotated_variants, genes=["BRCA1"]
-        )
+        filtered = filtering_stage.filter_by_gene(annotated_variants, genes=["BRCA1"])
 
         assert len(filtered) == 1
         assert filtered[0].annotations["gene"] == "BRCA1"
@@ -342,9 +318,7 @@ class TestFilteringStage:
 
     def test_execute_filtering_stage(self, filtering_stage, annotated_variants):
         """Test complete filtering stage execution."""
-        with patch.object(
-            filtering_stage, "_load_variants"
-        ) as mock_load:
+        with patch.object(filtering_stage, "_load_variants") as mock_load:
             mock_load.return_value = annotated_variants
 
             result = filtering_stage.execute()
@@ -450,16 +424,12 @@ class TestStageDataFlow:
         annotation_stage = AnnotationStage(config)
 
         # Mock validation output
-        with patch.object(
-            validation_stage, "execute"
-        ) as mock_validation:
+        with patch.object(validation_stage, "execute") as mock_validation:
             validated_data = [Variant("chr1", 12345, "A", "G")]
             mock_validation.return_value = validated_data
 
             # Should be able to use validated data in annotation
-            with patch.object(
-                annotation_stage, "_load_variants"
-            ) as mock_load:
+            with patch.object(annotation_stage, "_load_variants") as mock_load:
                 mock_load.return_value = validated_data
                 result = annotation_stage.execute()
 
@@ -476,13 +446,9 @@ class TestStageDataFlow:
         annotation_stage = AnnotationStage(config)
         filtering_stage = FilteringStage(config)
 
-        annotated_data = [
-            Variant("chr1", 12345, "A", "G", annotations={"af": 0.001})
-        ]
+        annotated_data = [Variant("chr1", 12345, "A", "G", annotations={"af": 0.001})]
 
-        with patch.object(
-            filtering_stage, "_load_variants"
-        ) as mock_load:
+        with patch.object(filtering_stage, "_load_variants") as mock_load:
             mock_load.return_value = annotated_data
             result = filtering_stage.execute()
 

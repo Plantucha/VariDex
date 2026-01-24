@@ -25,7 +25,6 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 import sys
 
-
 # ============================================================================
 # PIPELINE STAGES COVERAGE GAPS
 # ============================================================================
@@ -280,9 +279,7 @@ class TestIOCoverage:
     def test_load_empty_file(self):
         """Test loading empty file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".vcf", delete=False) as f:
-            f.write(
-                "##fileformat=VCFv4.2\n"
-            )  # Just header
+            f.write("##fileformat=VCFv4.2\n")  # Just header
             f.write("#CHROM\tPOS\tID\tREF\tALT\n")
             temp_file = f.name
 

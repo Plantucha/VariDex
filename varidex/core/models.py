@@ -127,7 +127,9 @@ class VariantData:
     @property
     def has_conflicts(self) -> bool:
         """Check for conflicts in ACMG evidence or manual conflict details."""
-        acmg_conflict = self.acmg_evidence.has_conflict() if self.acmg_evidence else False
+        acmg_conflict = (
+            self.acmg_evidence.has_conflict() if self.acmg_evidence else False
+        )
         manual_conflict = len(self.conflict_details) > 0
         return acmg_conflict or manual_conflict
 
@@ -140,7 +142,10 @@ class VariantData:
         return (
             self.is_pathogenic()
             or self.has_conflicts
-            or (self.acmg_classification == "Uncertain Significance" and self.star_rating >= 2)
+            or (
+                self.acmg_classification == "Uncertain Significance"
+                and self.star_rating >= 2
+            )
         )
 
     def add_conflict(self, detail: str) -> None:
@@ -151,7 +156,10 @@ class VariantData:
     def get_variant_notation(self) -> str:
         """Get standard variant notation (chr:pos:ref>alt)."""
         if self.ref_allele and self.alt_allele:
-            return f"{self.chromosome}:{self.position}:" f"{self.ref_allele}>{self.alt_allele}"
+            return (
+                f"{self.chromosome}:{self.position}:"
+                f"{self.ref_allele}>{self.alt_allele}"
+            )
         return f"{self.chromosome}:{self.position}"
 
     def is_protein_altering(self) -> bool:
@@ -166,7 +174,9 @@ class VariantData:
             "stop_lost",
             "stop_gained",
         ]
-        return any(alt in self.molecular_consequence.lower() for alt in protein_altering)
+        return any(
+            alt in self.molecular_consequence.lower() for alt in protein_altering
+        )
 
     def summary_dict(self) -> Dict[str, Any]:
         """Get dictionary summary for logging/export."""
@@ -191,6 +201,113 @@ class VariantData:
             f"Variant({self.rsid} in {self.gene}{notation}: {self.genotype} -> "
             f"{self.acmg_classification} [{self.acmg_evidence.summary()}])"
         )
+
+
+@dataclass
+class VariantAnnotation:
+    """
+    Annotation data for a variant from external databases.
+
+    This class stores annotation information separate from the core
+    variant data, allowing for flexible annotation sources.
+    """
+
+    # Population frequencies
+    gnomad_af: Optional[float] = None
+    gnomad_ac: Optional[int] = None
+    gnomad_an: Optional[int] = None
+
+    # Clinical databases
+    clinvar_significance: Optional[str] = None
+    clinvar_review_status: Optional[str] = None
+    clinvar_stars: Optional[int] = None
+
+    # Computational predictions
+    sift_score: Optional[float] = None
+    sift_prediction: Optional[str] = None
+    polyphen_score: Optional[float] = None
+    polyphen_prediction: Optional[str] = None
+    cadd_score: Optional[float] = None
+
+    # Functional annotations
+    gene_symbol: Optional[str] = None
+    consequence: Optional[str] = None
+    impact: Optional[str] = None
+    transcript_id: Optional[str] = None
+    protein_change: Optional[str] = None
+
+    # Additional metadata
+    annotation_source: str = "unknown"
+    annotation_date: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert annotation to dictionary."""
+        return {k: v for k, v in self.__dict__.items() if v is not None}
+
+    def has_frequency_data(self) -> bool:
+        """Check if frequency data is available."""
+        return self.gnomad_af is not None
+
+    def has_clinical_data(self) -> bool:
+        """Check if clinical data is available."""
+        return self.clinvar_significance is not None
+
+    def has_prediction_data(self) -> bool:
+        """Check if computational prediction data is available."""
+        return any(
+            [
+                self.sift_score is not None,
+                self.polyphen_score is not None,
+                self.cadd_score is not None,
+            ]
+        )
+
+
+@dataclass
+class AnnotatedVariant:
+    """
+    Variant with its annotation data.
+
+    Combines core variant information with external annotations.
+    """
+
+    variant: VariantData
+    annotation: VariantAnnotation = field(default_factory=VariantAnnotation)
+
+    @property
+    def rsid(self) -> str:
+        """Convenience accessor for variant rsid."""
+        return self.variant.rsid
+
+    @property
+    def chromosome(self) -> str:
+        """Convenience accessor for chromosome."""
+        return self.variant.chromosome
+
+    @property
+    def position(self) -> str:
+        """Convenience accessor for position."""
+        return self.variant.position
+
+    @property
+    def gene(self) -> str:
+        """Get gene from variant or annotation."""
+        return self.variant.gene or self.annotation.gene_symbol or ""
+
+    def has_complete_annotation(self) -> bool:
+        """Check if variant has complete annotation."""
+        return (
+            self.annotation.has_frequency_data()
+            and self.annotation.has_clinical_data()
+            and self.annotation.has_prediction_data()
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "variant": self.variant.summary_dict(),
+            "annotation": self.annotation.to_dict(),
+        }
 
 
 @dataclass
@@ -237,6 +354,59 @@ class PipelineState:
         )
 
 
+# ===================================================================
+# BACKWARD COMPATIBILITY ALIASES
+# ===================================================================
+# These aliases maintain backward compatibility with existing tests
+# while the codebase transitions to the new class names.
+
+# Primary alias: Variant -> VariantData
+Variant = VariantData
+
+# GenomicVariant alias for position-based variant representation
+GenomicVariant = VariantData
+
+# ACMG-related aliases
+ACMGCriteria = ACMGEvidenceSet  # Alias for test compatibility
+
+
+@dataclass
+class VariantClassification:
+    """
+    Complete classification result for a variant.
+
+    Combines ACMG classification with evidence and metadata.
+    """
+
+    classification: str
+    evidence: ACMGEvidenceSet = field(default_factory=ACMGEvidenceSet)
+    confidence: str = ""
+    timestamp: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "classification": self.classification,
+            "evidence": self.evidence.summary(),
+            "confidence": self.confidence,
+            "timestamp": self.timestamp or datetime.now().isoformat(),
+        }
+
+
+# Pathogenicity classification enum (for test compatibility)
+from enum import Enum
+
+
+class PathogenicityClass(Enum):
+    """ACMG pathogenicity classifications."""
+
+    PATHOGENIC = "Pathogenic"
+    LIKELY_PATHOGENIC = "Likely Pathogenic"
+    UNCERTAIN_SIGNIFICANCE = "Uncertain Significance"
+    LIKELY_BENIGN = "Likely Benign"
+    BENIGN = "Benign"
+
+
 if __name__ == "__main__":
     print("=" * 80)
     print("MODELS MODULE - VERIFICATION")
@@ -263,6 +433,35 @@ if __name__ == "__main__":
     evidence.bp.add("BP1")
     print(f"  - After adding BP1: {evidence.has_conflict()}")
     assert evidence.has_conflict(), "Should be True with mixed evidence"
+
+    # Test new annotation classes
+    print("\n✓ Testing VariantAnnotation and AnnotatedVariant")
+    annotation = VariantAnnotation(
+        gnomad_af=0.001,
+        clinvar_significance="Pathogenic",
+        sift_score=0.01,
+    )
+    print(f"  - Has frequency data: {annotation.has_frequency_data()}")
+    print(f"  - Has clinical data: {annotation.has_clinical_data()}")
+    print(f"  - Has prediction data: {annotation.has_prediction_data()}")
+
+    variant = VariantData(
+        rsid="rs123",
+        chromosome="1",
+        position="12345",
+        genotype="AG",
+        gene="BRCA1",
+    )
+    annotated = AnnotatedVariant(variant=variant, annotation=annotation)
+    print(f"  - AnnotatedVariant rsid: {annotated.rsid}")
+    print(f"  - Has complete annotation: {annotated.has_complete_annotation()}")
+
+    # Test aliases
+    print("\n✓ Testing backward compatibility aliases")
+    print(f"  - Variant == VariantData: {Variant is VariantData}")
+    print(f"  - GenomicVariant == VariantData: {GenomicVariant is VariantData}")
+    print(f"  - ACMGCriteria == ACMGEvidenceSet: {ACMGCriteria is ACMGEvidenceSet}")
+    print(f"  - PathogenicityClass enum: {PathogenicityClass.PATHOGENIC.value}")
 
     print("\n✅ All optimized models validated successfully")
     print("=" * 80)

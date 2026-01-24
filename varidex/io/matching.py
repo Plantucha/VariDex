@@ -34,7 +34,12 @@ def normalize_column_names(df: pd.DataFrame, source: str = "unknown") -> pd.Data
 
 
 logger = logging.getLogger(__name__)
-REQUIRED_COORD_COLUMNS: List[str] = ["chromosome", "position", "ref_allele", "alt_allele"]
+REQUIRED_COORD_COLUMNS: List[str] = [
+    "chromosome",
+    "position",
+    "ref_allele",
+    "alt_allele",
+]
 
 
 def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
@@ -49,12 +54,16 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
     if "rsid" not in user_df.columns or "rsid" not in clinvar_df.columns:
         logger.warning("rsID column missing, returning empty DataFrame")
         return pd.DataFrame()
-    matched = user_df.merge(clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar"))
+    matched = user_df.merge(
+        clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar")
+    )
     logger.info("rsID matches: {len(matched):,}")
     return matched
 
 
-def match_by_coordinates(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
+def match_by_coordinates(
+    user_df: pd.DataFrame, clinvar_df: pd.DataFrame
+) -> pd.DataFrame:
     """Match variants by coordinates (chr:pos:ref:alt).
 
     BUGFIX v6.0.1: Explicitly assign normalized DataFrames.
@@ -85,7 +94,9 @@ def match_by_coordinates(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.
     if "coord_key" not in clinvar_df.columns:
         clinvar_df = normalize_dataframe_coordinates(clinvar_df)
 
-    matched = user_df.merge(clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar"))
+    matched = user_df.merge(
+        clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar")
+    )
     logger.info("Coordinate matches: {len(matched):,}")
     return matched
 
@@ -171,7 +182,10 @@ def match_variants_hybrid(
     logger.info("{'='*60}")
 
     # Reconcile column names for classification
-    if "chromosome_clinvar" in combined.columns and "chromosome" not in combined.columns:
+    if (
+        "chromosome_clinvar" in combined.columns
+        and "chromosome" not in combined.columns
+    ):
         combined["chromosome"] = combined["chromosome_clinvar"]
 
     if "position_clinvar" in combined.columns and "position" not in combined.columns:
@@ -206,8 +220,138 @@ def match_variants_hybrid(
             if pd.isna(info_str):
                 return "single_nucleotide_variant"
             match = re.search(r"CLNVC=([^;]+)", str(info_str))
-            return match.group(1).replace("_", " ") if match else "single_nucleotide_variant"
+            return (
+                match.group(1).replace("_", " ")
+                if match
+                else "single_nucleotide_variant"
+            )
 
         combined["variant_type"] = combined["INFO"].apply(extract_variant_type)
 
     return combined, rsid_count, coord_count
+
+
+def match_by_variant_id(
+    user_variants: pd.DataFrame, clinvar_data: pd.DataFrame, id_column: str = "rsid"
+) -> pd.DataFrame:
+    """
+    Match user variants to ClinVar data by variant ID.
+
+    Args:
+        user_variants: DataFrame with user variants
+        clinvar_data: DataFrame with ClinVar data
+        id_column: Column name containing variant IDs
+
+    Returns:
+        DataFrame with matched variants
+    """
+    if id_column not in user_variants.columns:
+        raise MatchingError(f"Column '{id_column}' not found in user variants")
+
+    if id_column not in clinvar_data.columns:
+        raise MatchingError(f"Column '{id_column}' not found in ClinVar data")
+
+    matched = user_variants.merge(
+        clinvar_data, on=id_column, how="left", suffixes=("_user", "_clinvar")
+    )
+
+    return matched
+
+
+def match_variants(
+    user_df: pd.DataFrame,
+    clinvar_df: pd.DataFrame,
+    match_columns: list = None,
+    how: str = "left",
+) -> pd.DataFrame:
+    """
+    Match user variants with ClinVar database.
+
+    Args:
+        user_df: User variants DataFrame
+        clinvar_df: ClinVar data DataFrame
+        match_columns: Columns to match on (default: ["chromosome", "position"])
+        how: Merge type (default: "left")
+
+    Returns:
+        Merged DataFrame with matched variants
+    """
+    if match_columns is None:
+        match_columns = ["chromosome", "position"]
+
+    # Verify columns exist
+    for col in match_columns:
+        if col not in user_df.columns:
+            raise MatchingError(f"Column '{col}' not found in user variants")
+        if col not in clinvar_df.columns:
+            raise MatchingError(f"Column '{col}' not found in ClinVar data")
+
+    matched = user_df.merge(
+        clinvar_df, on=match_columns, how=how, suffixes=("_user", "_clinvar")
+    )
+
+    return matched
+
+
+def create_variant_key(
+    chromosome: str, position: int, ref: str = "", alt: str = ""
+) -> str:
+    """
+    Create unique variant key for matching.
+
+    Args:
+        chromosome: Chromosome identifier
+        position: Genomic position
+        ref: Reference allele (optional)
+        alt: Alternate allele (optional)
+
+    Returns:
+        String key in format "chr:pos" or "chr:pos:ref:alt"
+    """
+    # Normalize chromosome format
+    if not chromosome.startswith("chr"):
+        chromosome = f"chr{chromosome}"
+
+    if ref and alt:
+        return f"{chromosome}:{position}:{ref}:{alt}"
+    return f"{chromosome}:{position}"
+
+
+def find_exact_matches(
+    variants_df: pd.DataFrame, reference_df: pd.DataFrame, match_cols: list = None
+) -> pd.DataFrame:
+    """
+    Find exact matches between variant datasets.
+
+    Args:
+        variants_df: Variants to match
+        reference_df: Reference dataset
+        match_cols: Columns to match on (default: chr, pos, ref, alt)
+
+    Returns:
+        DataFrame with matched variants
+    """
+    if match_cols is None:
+        match_cols = ["chromosome", "position", "ref", "alt"]
+
+    matched = variants_df.merge(reference_df, on=match_cols, how="inner")
+
+    return matched
+
+
+def find_fuzzy_matches(
+    variants_df: pd.DataFrame, reference_df: pd.DataFrame, tolerance: int = 5
+) -> pd.DataFrame:
+    """
+    Find fuzzy matches with position tolerance.
+
+    Args:
+        variants_df: Variants to match
+        reference_df: Reference dataset
+        tolerance: Position tolerance in base pairs
+
+    Returns:
+        DataFrame with fuzzy matched variants
+    """
+    # Stub implementation - returns exact matches for now
+    return find_exact_matches(variants_df, reference_df)

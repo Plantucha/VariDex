@@ -132,7 +132,9 @@ def _generate_stratified_json(
 ) -> Path:
     """Generate stratified JSON files for large datasets."""
     stratified = {
-        "pathogenic": df[df["acmg_classification"].isin(["Pathogenic", "Likely Pathogenic"])],
+        "pathogenic": df[
+            df["acmg_classification"].isin(["Pathogenic", "Likely Pathogenic"])
+        ],
         "benign": df[df["acmg_classification"].isin(["Benign", "Likely Benign"])],
         "vus": df[df["acmg_classification"] == "Uncertain Significance"],
     }
@@ -236,7 +238,9 @@ def generate_html_report(
 # ==================== CONFLICT REPORT ====================
 
 
-def generate_conflict_report(df: pd.DataFrame, output_dir: Path, timestamp: str) -> Optional[Path]:
+def generate_conflict_report(
+    df: pd.DataFrame, output_dir: Path, timestamp: str
+) -> Optional[Path]:
     """Generate summary report of conflicting interpretations."""
     if len(df) == 0:
         logger.warning("Cannot generate conflict report: DataFrame is empty")
@@ -267,3 +271,99 @@ def generate_conflict_report(df: pd.DataFrame, output_dir: Path, timestamp: str)
 
     logger.info("Conflict report generated: {output_path.name}")
     return output_path
+
+
+class HTMLFormatter:
+    """
+    Format variant analysis reports as HTML.
+
+    This is a stub implementation for test compatibility.
+    Full implementation should be added in development branch.
+    """
+
+    def __init__(self, template: str = None):
+        """Initialize HTML formatter with optional template."""
+        self.template = template
+
+    def format(self, data: dict) -> str:
+        """
+        Format data as HTML.
+
+        Args:
+            data: Dictionary containing report data
+
+        Returns:
+            HTML string
+        """
+        html = "<html><body>"
+        html += f"<h1>Variant Analysis Report</h1>"
+        for key, value in data.items():
+            html += f"<p><strong>{key}:</strong> {value}</p>"
+        html += "</body></html>"
+        return html
+
+    def save(self, data: dict, filepath: str):
+        """Save formatted report to file."""
+        html = self.format(data)
+        with open(filepath, "w") as f:
+            f.write(html)
+
+
+class JSONFormatter:
+    """Format reports as JSON."""
+
+    def __init__(self, indent: int = 2):
+        """Initialize JSON formatter."""
+        self.indent = indent
+
+    def format(self, data: dict) -> str:
+        """Format data as JSON."""
+        import json
+
+        return json.dumps(data, indent=self.indent, default=str)
+
+    def save(self, data: dict, filepath: str):
+        """Save report to file."""
+        import json
+
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=self.indent, default=str)
+
+
+class CSVFormatter:
+    """Format reports as CSV."""
+
+    def __init__(self, delimiter: str = ","):
+        """Initialize CSV formatter."""
+        self.delimiter = delimiter
+
+    def format(self, data: dict) -> str:
+        """Format data as CSV."""
+        import csv
+        import io
+
+        output = io.StringIO()
+        if isinstance(data, dict):
+            writer = csv.DictWriter(
+                output, fieldnames=data.keys(), delimiter=self.delimiter
+            )
+            writer.writeheader()
+            writer.writerow(data)
+        return output.getvalue()
+
+    def save(self, data, filepath: str):
+        """Save report to CSV file."""
+        import pandas as pd
+
+        if isinstance(data, pd.DataFrame):
+            data.to_csv(filepath, index=False, sep=self.delimiter)
+        elif isinstance(data, dict):
+            pd.DataFrame([data]).to_csv(filepath, index=False, sep=self.delimiter)
+
+
+class TSVFormatter(CSVFormatter):
+    """Format reports as TSV (tab-separated)."""
+
+    def __init__(self):
+        """Initialize TSV formatter with tab delimiter."""
+        super().__init__(delimiter="\t")

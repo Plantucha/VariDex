@@ -47,7 +47,9 @@ class SchemaStandardizer:
     }
 
     @classmethod
-    def standardize_dataframe(cls, df: pd.DataFrame, source: str = "unknown") -> pd.DataFrame:
+    def standardize_dataframe(
+        cls, df: pd.DataFrame, source: str = "unknown"
+    ) -> pd.DataFrame:
         """Standardize all column names to canonical schema."""
         if df is None or len(df) == 0:
             logger.warning("Empty DataFrame from {source}")
@@ -57,7 +59,9 @@ class SchemaStandardizer:
         for col in df.columns:
             col_lower = col.lower().replace("_", "").replace("-", "")
             for canonical, aliases in cls.COLUMN_ALIASES.items():
-                alias_patterns = [a.lower().replace("_", "").replace("-", "") for a in aliases]
+                alias_patterns = [
+                    a.lower().replace("_", "").replace("-", "") for a in aliases
+                ]
                 if col_lower in alias_patterns:
                     rename_map[col] = canonical
                     break
@@ -69,7 +73,9 @@ class SchemaStandardizer:
         return df
 
     @classmethod
-    def validate_schema(cls, df: pd.DataFrame, required_cols: List[str]) -> Tuple[bool, List[str]]:
+    def validate_schema(
+        cls, df: pd.DataFrame, required_cols: List[str]
+    ) -> Tuple[bool, List[str]]:
         """Validate DataFrame has required canonical columns."""
         if df is None:
             return False, required_cols

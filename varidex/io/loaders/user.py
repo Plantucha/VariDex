@@ -44,12 +44,20 @@ def validate_chromosome_consistency(df: pd.DataFrame) -> pd.DataFrame:
     if "chromosome" not in df.columns:
         return df
     df = df.copy()
-    df["chromosome"] = df["chromosome"].astype(str).str.replace("chr", "", regex=True, case=False)
+    df["chromosome"] = (
+        df["chromosome"].astype(str).str.replace("chr", "", regex=True, case=False)
+    )
     nc = re.compile(r"NC_0000([01][0-9]|2[0-4])")
     df["chromosome"] = df["chromosome"].apply(
-        lambda c: str(int(nc.match(str(c)).group(1))) if not pd.isna(c) and nc.match(str(c)) else c
+        lambda c: (
+            str(int(nc.match(str(c)).group(1)))
+            if not pd.isna(c) and nc.match(str(c))
+            else c
+        )
     )
-    df["chromosome"] = df["chromosome"].replace({"23": "X", "24": "Y", "M": "MT"}).str.upper()
+    df["chromosome"] = (
+        df["chromosome"].replace({"23": "X", "24": "Y", "M": "MT"}).str.upper()
+    )
     return df
 
 
@@ -110,7 +118,9 @@ def detect_user_file_type(filepath: Path) -> str:
     try:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             lines = [f.readline() for _ in range(10)]
-        if any(l.startswith("##fileformat=VCF") or l.startswith("#CHROM") for l in lines):
+        if any(
+            l.startswith("##fileformat=VCF") or l.startswith("#CHROM") for l in lines
+        ):
             return "vc"
         if any("23andMe" in l for l in lines):
             return "23andme"
@@ -138,7 +148,9 @@ def load_23andme_file(filepath: Path) -> pd.DataFrame:
         )
 
         if len(df) == 0:
-            raise ValidationError("No variants in file", context={"file": str(filepath)})
+            raise ValidationError(
+                "No variants in file", context={"file": str(filepath)}
+            )
 
         df = validate_chromosome_consistency(df)
         df, stats = validate_variant_data_quality(df)
@@ -194,7 +206,9 @@ def load_user_vcf(filepath: Path) -> pd.DataFrame:
     except (ValidationError, DataLoadError):
         raise
     except Exception as e:
-        raise DataLoadError("Failed to load VCF", context={"file": str(filepath), "error": str(e)})
+        raise DataLoadError(
+            "Failed to load VCF", context={"file": str(filepath), "error": str(e)}
+        )
 
 
 def load_user_tsv(filepath: Path) -> pd.DataFrame:
@@ -239,7 +253,9 @@ def load_user_tsv(filepath: Path) -> pd.DataFrame:
     except (ValidationError, DataLoadError):
         raise
     except Exception as e:
-        raise DataLoadError("Failed to load TSV", context={"file": str(filepath), "error": str(e)})
+        raise DataLoadError(
+            "Failed to load TSV", context={"file": str(filepath), "error": str(e)}
+        )
 
 
 def load_user_file(filepath: Path, file_format: Optional[str] = None) -> pd.DataFrame:

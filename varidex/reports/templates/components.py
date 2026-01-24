@@ -164,7 +164,9 @@ def generate_legend() -> str:
 
 
 def generate_footer(
-    timestamp: Optional[str] = None, total_variants: int = 0, output_filename: str = "report"
+    timestamp: Optional[str] = None,
+    total_variants: int = 0,
+    output_filename: str = "report",
 ) -> str:
     """Generate report footer HTML with metadata and disclaimer.
 

@@ -88,7 +88,9 @@ class TestPredictionScore:
         deleterious: int = 3
         benign: int = 2
         algorithms: List[str] = ["SIFT", "PolyPhen", "CADD"]
-        summary: str = f"{deleterious} deleterious, {benign} benign ({len(algorithms)} algorithms)"
+        summary: str = (
+            f"{deleterious} deleterious, {benign} benign ({len(algorithms)} algorithms)"
+        )
         assert "3 deleterious" in summary
         assert "2 benign" in summary
         assert "3 algorithms" in summary
@@ -114,7 +116,10 @@ class TestDbNSFPClient:
 
     def test_init_custom(self) -> None:
         client = DbNSFPClient(
-            vep_url="https://custom.api", timeout=60, enable_cache=False, rate_limit=False
+            vep_url="https://custom.api",
+            timeout=60,
+            enable_cache=False,
+            rate_limit=False,
         )
         assert client.vep_url == "https://custom.api"
         assert client.timeout == 60
@@ -181,27 +186,39 @@ class TestComputationalPredictionService:
     def test_analyze_sift(self) -> None:
         service = ComputationalPredictionService(enable_predictions=False)
         assert (
-            service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.01)) == "deleterious"
+            service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.01))
+            == "deleterious"
         )
-        assert service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.5)) == "benign"
+        assert (
+            service._analyze_sift(PredictionScore(variant_id="1", sift_score=0.5))
+            == "benign"
+        )
 
     def test_analyze_polyphen(self) -> None:
         service = ComputationalPredictionService(enable_predictions=False)
         assert (
-            service._analyze_polyphen(PredictionScore(variant_id="1", polyphen_score=0.9))
+            service._analyze_polyphen(
+                PredictionScore(variant_id="1", polyphen_score=0.9)
+            )
             == "deleterious"
         )
         assert (
-            service._analyze_polyphen(PredictionScore(variant_id="1", polyphen_score=0.1))
+            service._analyze_polyphen(
+                PredictionScore(variant_id="1", polyphen_score=0.1)
+            )
             == "benign"
         )
 
     def test_analyze_cadd(self) -> None:
         service = ComputationalPredictionService(enable_predictions=False)
         assert (
-            service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=25.0)) == "deleterious"
+            service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=25.0))
+            == "deleterious"
         )
-        assert service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=10.0)) == "benign"
+        assert (
+            service._analyze_cadd(PredictionScore(variant_id="1", cadd_phred=10.0))
+            == "benign"
+        )
 
     def test_check_pp3_sufficient(self) -> None:
         service = ComputationalPredictionService(enable_predictions=False)
@@ -219,7 +236,9 @@ class TestComputationalPredictionService:
 
     def test_check_pp3_insufficient(self) -> None:
         service = ComputationalPredictionService(enable_predictions=False)
-        evidence = ComputationalEvidence(deleterious_count=2, benign_count=0, total_predictions=2)
+        evidence = ComputationalEvidence(
+            deleterious_count=2, benign_count=0, total_predictions=2
+        )
         applies, _ = service._check_pp3(evidence)
         assert applies is False
 

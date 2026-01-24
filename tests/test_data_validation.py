@@ -165,9 +165,7 @@ class TestDataFrameValidation:
         """Test error on missing required columns."""
         df = pd.DataFrame({"CHROM": ["1"], "POS": [12345]})
         with pytest.raises(ValueError):
-            validate_dataframe_columns(
-                df, ["CHROM", "POS", "REF", "ALT"], strict=True
-            )
+            validate_dataframe_columns(df, ["CHROM", "POS", "REF", "ALT"], strict=True)
 
     def test_empty_dataframe(self):
         """Test handling of empty DataFrames."""
@@ -318,7 +316,9 @@ def validate_chromosome(chrom: str, strict: bool = False) -> bool:
     return chrom in valid
 
 
-def validate_position(pos: int, chrom: Optional[str] = None, strict: bool = False) -> bool:
+def validate_position(
+    pos: int, chrom: Optional[str] = None, strict: bool = False
+) -> bool:
     """Validate genomic position."""
     if pos < 1:
         if strict:
@@ -354,7 +354,9 @@ def validate_ref_alt(ref: str, alt: str) -> bool:
     return True
 
 
-def validate_frequency(freq: float, precision: Optional[int] = None, strict: bool = False) -> float:
+def validate_frequency(
+    freq: float, precision: Optional[int] = None, strict: bool = False
+) -> float:
     """Validate allele frequency."""
     import math
 
@@ -414,7 +416,9 @@ def interpret_revel_score(score: float) -> str:
     return "benign"
 
 
-def validate_dataframe_columns(df: pd.DataFrame, required: List[str], strict: bool = False) -> bool:
+def validate_dataframe_columns(
+    df: pd.DataFrame, required: List[str], strict: bool = False
+) -> bool:
     """Validate DataFrame has required columns."""
     missing = set(required) - set(df.columns)
     if missing:
@@ -438,7 +442,7 @@ def find_duplicate_variants(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_dataframe_size_mb(df: pd.DataFrame) -> float:
     """Get DataFrame size in MB."""
-    return df.memory_usage(deep=True).sum() / (1024 ** 2)
+    return df.memory_usage(deep=True).sum() / (1024**2)
 
 
 def validate_dataframe_size(df: pd.DataFrame, max_mb: float) -> bool:

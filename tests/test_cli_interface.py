@@ -14,9 +14,7 @@ class TestCLIArguments:
     def test_cli_help_flag(self, capsys):
         """Test --help flag displays usage information."""
         with pytest.raises(SystemExit) as exc:
-            with patch.object(
-                sys, "argv", ["varidex", "--help"]
-            ):
+            with patch.object(sys, "argv", ["varidex", "--help"]):
                 # Import and run CLI
                 pass
         captured = capsys.readouterr()
@@ -137,9 +135,7 @@ class TestCLIExecution:
         output_file = tmp_path / "output.csv"
         input_file.write_text("##fileformat=VCFv4.2\n")
 
-        run_cli(
-            ["--input", str(input_file), "--output", str(output_file), "--dry-run"]
-        )
+        run_cli(["--input", str(input_file), "--output", str(output_file), "--dry-run"])
         assert not output_file.exists()
 
 
@@ -226,13 +222,11 @@ class TestCLIConfigurationOptions:
     def test_cli_config_file_loading(self, tmp_path):
         """Test loading configuration from file."""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            """
+        config_file.write_text("""
         threads: 4
         memory_limit: 8GB
         timeout: 300
-        """
-        )
+        """)
 
         config = load_config(str(config_file))
         assert config["threads"] == 4

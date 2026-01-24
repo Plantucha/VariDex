@@ -60,11 +60,17 @@ def classify_variants_production(variants: List[Dict], classifier) -> List[Dict]
     for variant in variants:
         try:
             # Basic classification
-            result = {"variant": variant, "classification": "VUS", "evidence": []}  # Default
+            result = {
+                "variant": variant,
+                "classification": "VUS",
+                "evidence": [],
+            }  # Default
             results.append(result)
         except Exception as e:
             logger.error(f"Error classifying variant: {e}")
-            results.append({"variant": variant, "classification": "ERROR", "error": str(e)})
+            results.append(
+                {"variant": variant, "classification": "ERROR", "error": str(e)}
+            )
 
     return results
 
