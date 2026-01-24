@@ -204,6 +204,113 @@ class VariantData:
 
 
 @dataclass
+class VariantAnnotation:
+    """
+    Annotation data for a variant from external databases.
+
+    This class stores annotation information separate from the core
+    variant data, allowing for flexible annotation sources.
+    """
+
+    # Population frequencies
+    gnomad_af: Optional[float] = None
+    gnomad_ac: Optional[int] = None
+    gnomad_an: Optional[int] = None
+
+    # Clinical databases
+    clinvar_significance: Optional[str] = None
+    clinvar_review_status: Optional[str] = None
+    clinvar_stars: Optional[int] = None
+
+    # Computational predictions
+    sift_score: Optional[float] = None
+    sift_prediction: Optional[str] = None
+    polyphen_score: Optional[float] = None
+    polyphen_prediction: Optional[str] = None
+    cadd_score: Optional[float] = None
+
+    # Functional annotations
+    gene_symbol: Optional[str] = None
+    consequence: Optional[str] = None
+    impact: Optional[str] = None
+    transcript_id: Optional[str] = None
+    protein_change: Optional[str] = None
+
+    # Additional metadata
+    annotation_source: str = "unknown"
+    annotation_date: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert annotation to dictionary."""
+        return {
+            k: v for k, v in self.__dict__.items() if v is not None
+        }
+
+    def has_frequency_data(self) -> bool:
+        """Check if frequency data is available."""
+        return self.gnomad_af is not None
+
+    def has_clinical_data(self) -> bool:
+        """Check if clinical data is available."""
+        return self.clinvar_significance is not None
+
+    def has_prediction_data(self) -> bool:
+        """Check if computational prediction data is available."""
+        return any([
+            self.sift_score is not None,
+            self.polyphen_score is not None,
+            self.cadd_score is not None,
+        ])
+
+
+@dataclass
+class AnnotatedVariant:
+    """
+    Variant with its annotation data.
+
+    Combines core variant information with external annotations.
+    """
+
+    variant: VariantData
+    annotation: VariantAnnotation = field(default_factory=VariantAnnotation)
+
+    @property
+    def rsid(self) -> str:
+        """Convenience accessor for variant rsid."""
+        return self.variant.rsid
+
+    @property
+    def chromosome(self) -> str:
+        """Convenience accessor for chromosome."""
+        return self.variant.chromosome
+
+    @property
+    def position(self) -> str:
+        """Convenience accessor for position."""
+        return self.variant.position
+
+    @property
+    def gene(self) -> str:
+        """Get gene from variant or annotation."""
+        return self.variant.gene or self.annotation.gene_symbol or ""
+
+    def has_complete_annotation(self) -> bool:
+        """Check if variant has complete annotation."""
+        return (
+            self.annotation.has_frequency_data()
+            and self.annotation.has_clinical_data()
+            and self.annotation.has_prediction_data()
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "variant": self.variant.summary_dict(),
+            "annotation": self.annotation.to_dict(),
+        }
+
+
+@dataclass
 class PipelineState:
     """Track pipeline execution state for checkpointing."""
 
@@ -302,6 +409,28 @@ if __name__ == "__main__":
     evidence.bp.add("BP1")
     print(f"  - After adding BP1: {evidence.has_conflict()}")
     assert evidence.has_conflict(), "Should be True with mixed evidence"
+
+    # Test new annotation classes
+    print("\n✓ Testing VariantAnnotation and AnnotatedVariant")
+    annotation = VariantAnnotation(
+        gnomad_af=0.001,
+        clinvar_significance="Pathogenic",
+        sift_score=0.01,
+    )
+    print(f"  - Has frequency data: {annotation.has_frequency_data()}")
+    print(f"  - Has clinical data: {annotation.has_clinical_data()}")
+    print(f"  - Has prediction data: {annotation.has_prediction_data()}")
+
+    variant = VariantData(
+        rsid="rs123",
+        chromosome="1",
+        position="12345",
+        genotype="AG",
+        gene="BRCA1",
+    )
+    annotated = AnnotatedVariant(variant=variant, annotation=annotation)
+    print(f"  - AnnotatedVariant rsid: {annotated.rsid}")
+    print(f"  - Has complete annotation: {annotated.has_complete_annotation()}")
 
     # Test aliases
     print("\n✓ Testing backward compatibility aliases")
