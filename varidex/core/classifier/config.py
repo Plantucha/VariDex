@@ -27,9 +27,10 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from collections import defaultdict
 
+from varidex.version import __version__
 from varidex.exceptions import ACMGConfigurationError
 
 
@@ -48,6 +49,10 @@ class ACMGConfig:
         config = ACMGConfig(enable_pm2=False, weight_pvs=10)
         classifier = ACMGClassifier(config)
     """
+
+    # === CONFIG METADATA ===
+    config_name: str = "default"
+    config_description: str = "Default ACMG configuration"
 
     # === ENABLED CODES ===
     enable_pvs1: bool = True
@@ -101,25 +106,25 @@ class ACMGConfig:
         # Check conflict thresholds
         if not (0 <= self.conflict_balanced_min <= self.conflict_balanced_max <= 1):
             raise ACMGConfigurationError(
-                "Invalid conflict thresholds: {self.conflict_balanced_min}, "
-                "{self.conflict_balanced_max}. Must be 0 <= min <= max <= 1"
+                f"Invalid conflict thresholds: {self.conflict_balanced_min}, "
+                f"{self.conflict_balanced_max}. Must be 0 <= min <= max <= 1"
             )
 
         # Check evidence threshold
         if self.strong_evidence_threshold < 1:
             raise ACMGConfigurationError(
-                "Strong evidence threshold must be >= 1, got {self.strong_evidence_threshold}"
+                f"Strong evidence threshold must be >= 1, got {self.strong_evidence_threshold}"
             )
 
         # Check log level
-        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        valid_levels: List[str] = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level not in valid_levels:
             raise ACMGConfigurationError(
-                "Invalid log level '{self.log_level}'. Must be one of {valid_levels}"
+                f"Invalid log level '{self.log_level}'. Must be one of {valid_levels}"
             )
 
         # Check weights are positive
-        weights = [
+        weights: List[int] = [
             self.weight_pvs,
             self.weight_ps,
             self.weight_pm,
@@ -225,7 +230,7 @@ class ACMGMetrics:
         metrics = ACMGMetrics()
         metrics.record_success(0.05, "Pathogenic", evidence)
         summary = metrics.get_summary()
-        print("Success rate: {summary['success_rate']:.1%}")
+        print(f"Success rate: {summary['success_rate']:.1%}")
     """
 
     total_classifications: int = 0
@@ -234,7 +239,9 @@ class ACMGMetrics:
     validation_errors: int = 0
     classification_times: List[float] = field(default_factory=list)
     evidence_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    classification_distribution: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    classification_distribution: Dict[str, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
 
     def record_success(self, duration: float, classification: str, evidence: Any) -> None:
         """
@@ -316,9 +323,9 @@ class ACMGMetrics:
 
     def get_performance_report(self) -> str:
         """Generate human-readable performance report."""
-        summary = self.get_summary()
+        summary: Dict[str, Any] = self.get_summary()
 
-        report = """
+        report: str = f"""
 ACMG Classifier Performance Report
 {'='*70}
 Total Classifications: {summary['total']:,}
@@ -336,10 +343,12 @@ Classification Distribution:
 Top Evidence Codes:
 """
         # Sort evidence by frequency
-        evidence = sorted(summary["evidence_counts"].items(), key=lambda x: x[1], reverse=True)[:10]
+        evidence: List[tuple] = sorted(
+            summary["evidence_counts"].items(), key=lambda x: x[1], reverse=True
+        )[:10]
 
         for code, count in evidence:
-            report += "  • {code}: {count:,}\n"
+            report += f"  • {code}: {count:,}\n"
 
         return report
 
@@ -355,12 +364,12 @@ Top Evidence Codes:
 
     def __str__(self) -> str:
         """String representation."""
-        self.get_summary()
+        summary: Dict[str, Any] = self.get_summary()
         return (
-            "ACMGMetrics(v{__version__}, "
-            "total={summary['total']}, "
-            "success_rate={summary['success_rate']:.1%}, "
-            "avg_time={summary['avg_time_ms']:.1f}ms)"
+            f"ACMGMetrics(v{__version__}, "
+            f"total={summary['total']}, "
+            f"success_rate={summary['success_rate']:.1%}, "
+            f"avg_time={summary['avg_time_ms']:.1f}ms)"
         )
 
 
@@ -382,9 +391,19 @@ if __name__ == "__main__":
     print("=" * 80)
 
 
-def get_preset(name="balanced"):
-    """Get preset ACMG configuration."""
-    presets = {
+def get_preset(name: str = "balanced") -> ACMGConfig:
+    """Get preset ACMG configuration.
+
+    Args:
+        name: Preset name ('strict', 'balanced', 'lenient')
+
+    Returns:
+        ACMGConfig instance with preset values
+
+    Raises:
+        ValueError: If preset name is invalid
+    """
+    presets: Dict[str, ACMGConfig] = {
         "strict": ACMGConfig(
             config_name="strict",
             config_description="Conservative preset",
@@ -415,6 +434,6 @@ def get_preset(name="balanced"):
     }
 
     if name not in presets:
-        raise ValueError("Invalid preset: {name}")
+        raise ValueError(f"Invalid preset: {name}. Must be one of {list(presets.keys())}")
 
     return presets[name]
