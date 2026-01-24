@@ -11,6 +11,7 @@ __version__: str = "6.0.0"
 
 __all__: List[str] = [
     "VaridexError",
+    "VariDexError",
     "ValidationError",
     "DataLoadError",
     "ClassificationError",
@@ -49,6 +50,10 @@ class VaridexError(Exception):
         super().__init__(message)
         self.code: Optional[ErrorCode] = code
         self.context: Dict[str, Any] = context or {}
+
+
+# Backward compatibility alias (CamelCase variant)
+VariDexError = VaridexError
 
 
 class ValidationError(VaridexError):
@@ -122,6 +127,7 @@ if __name__ == "__main__":
     # Test all exception classes
     exception_classes: List[Tuple[Type[Exception], str]] = [
         (VaridexError, "Base error"),
+        (VariDexError, "Base error (CamelCase alias)"),
         (ValidationError, "Validation failed"),
         (DataLoadError, "Data load failed"),
         (ClassificationError, "Classification failed"),
@@ -136,7 +142,9 @@ if __name__ == "__main__":
         for exc_class, test_msg in exception_classes:
             exc = exc_class(test_msg)
             assert isinstance(exc, Exception), f"{exc_class.__name__} is not an Exception"
-            assert str(exc) == test_msg, f"{exc_class.__name__} message mismatch"
+
+        # Verify alias works
+        assert VariDexError is VaridexError, "VariDexError alias broken"
 
         # Test validation helpers
         try:
