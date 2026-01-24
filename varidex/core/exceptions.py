@@ -17,6 +17,7 @@ __all__: List[str] = [
     "ACMGValidationError",
     "ACMGClassificationError",
     "ACMGConfigurationError",
+    "ConfigurationError",
     "ErrorCode",
     "validate_not_none",
     "validate_not_empty",
@@ -119,6 +120,9 @@ ACMGValidationError = ValidationError
 ACMGClassificationError = ClassificationError
 ACMGConfigurationError = ValidationError
 
+# Backward compatibility alias
+ConfigurationError = ValidationError
+
 
 # Validation helper functions
 def validate_not_none(value: Any, name: str) -> None:
@@ -148,7 +152,7 @@ if __name__ == "__main__":
     print("=" * 70)
 
     passed: int = 0
-    total: int = 14
+    total: int = 15
 
     try:
         raise VaridexError("test")
@@ -197,6 +201,12 @@ if __name__ == "__main__":
         raise ACMGClassificationError("test")
     except ClassificationError:
         print("✓ Test 8: ACMGClassificationError alias works")
+        passed += 1
+
+    try:
+        raise ConfigurationError("test")
+    except ValidationError:
+        print("✓ Test 9: ConfigurationError alias works")
         passed += 1
 
     print(f"\n{'='*70}")
