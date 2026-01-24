@@ -63,7 +63,7 @@ def classify_variants_production(variants: List[Dict], classifier) -> List[Dict]
             result = {"variant": variant, "classification": "VUS", "evidence": []}  # Default
             results.append(result)
         except Exception as e:
-            logger.error("Error classifying variant: {e}")
+            logger.error(f"Error classifying variant: {e}")
             results.append({"variant": variant, "classification": "ERROR", "error": str(e)})
 
     return results
@@ -82,7 +82,7 @@ def format_variant_key(chrom: str, pos: int, ref: str, alt: str) -> str:
     Returns:
         Formatted variant key
     """
-    return "{chrom}:{pos}:{ref}:{alt}"
+    return f"{chrom}:{pos}:{ref}:{alt}"
 
 
 def parse_variant_key(key: str) -> Dict[str, Any]:
@@ -101,7 +101,7 @@ def parse_variant_key(key: str) -> Dict[str, Any]:
             return {
                 "chromosome": parts[0],
                 "position": int(parts[1]),
-                "re": parts[2],
+                "ref": parts[2],
                 "alt": parts[3],
             }
     except Exception:
