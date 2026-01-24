@@ -9,11 +9,12 @@ import importlib
 
 
 def get_module(module_name: str) -> Any:
-    """Dynamically import a module.
-    
+    """
+    Dynamically import a module.
+
     Args:
         module_name: Name of module to import
-        
+
     Returns:
         Imported module
     """
@@ -21,8 +22,9 @@ def get_module(module_name: str) -> Any:
 
 
 def get_config() -> Any:
-    """Get configuration module.
-    
+    """
+    Get configuration module.
+
     Returns:
         Config module or minimal fallback
     """
@@ -39,8 +41,9 @@ def get_config() -> Any:
 
 
 def get_models() -> Optional[Any]:
-    """Get models module.
-    
+    """
+    Get models module.
+
     Returns:
         Models module or None
     """
@@ -53,8 +56,9 @@ def get_models() -> Optional[Any]:
 
 
 def get_model() -> Optional[Any]:
-    """Alias for get_models().
-    
+    """
+    Alias for get_models().
+
     Returns:
         Models module or None
     """
@@ -62,8 +66,9 @@ def get_model() -> Optional[Any]:
 
 
 def get_loaders() -> Optional[Any]:
-    """Get loaders module.
-    
+    """
+    Get loaders module.
+
     Returns:
         Loaders module or None
     """
@@ -76,8 +81,9 @@ def get_loaders() -> Optional[Any]:
 
 
 def get_loader() -> Optional[Any]:
-    """Alias for get_loaders().
-    
+    """
+    Alias for get_loaders().
+
     Returns:
         Loaders module or None
     """
@@ -85,8 +91,9 @@ def get_loader() -> Optional[Any]:
 
 
 def get_report_generator() -> Optional[Any]:
-    """Get report generator module.
-    
+    """
+    Get report generator module.
+
     Returns:
         Report generator module or None
     """
@@ -99,8 +106,9 @@ def get_report_generator() -> Optional[Any]:
 
 
 def get_report_generators() -> Optional[Any]:
-    """Alias for get_report_generator().
-    
+    """
+    Alias for get_report_generator().
+
     Returns:
         Report generator module or None
     """
@@ -108,8 +116,9 @@ def get_report_generators() -> Optional[Any]:
 
 
 def get_reports() -> Optional[Any]:
-    """Alias for get_report_generator().
-    
+    """
+    Alias for get_report_generator().
+
     Returns:
         Report generator module or None
     """
@@ -117,8 +126,9 @@ def get_reports() -> Optional[Any]:
 
 
 def get_report() -> Optional[Any]:
-    """Alias for get_report_generator().
-    
+    """
+    Alias for get_report_generator().
+
     Returns:
         Report generator module or None
     """
@@ -126,8 +136,9 @@ def get_report() -> Optional[Any]:
 
 
 def get_helpers() -> Optional[Any]:
-    """Get helpers module.
-    
+    """
+    Get helpers module.
+
     Returns:
         Helpers module or None
     """
@@ -140,8 +151,9 @@ def get_helpers() -> Optional[Any]:
 
 
 def get_helper() -> Optional[Any]:
-    """Alias for get_helpers().
-    
+    """
+    Alias for get_helpers().
+
     Returns:
         Helpers module or None
     """
@@ -149,8 +161,9 @@ def get_helper() -> Optional[Any]:
 
 
 def get_validator() -> Optional[Any]:
-    """Get validators module.
-    
+    """
+    Get validators module.
+
     Returns:
         Validators module or None
     """
@@ -163,8 +176,9 @@ def get_validator() -> Optional[Any]:
 
 
 def get_validators() -> Optional[Any]:
-    """Alias for get_validator().
-    
+    """
+    Alias for get_validator().
+
     Returns:
         Validators module or None
     """
@@ -172,8 +186,9 @@ def get_validators() -> Optional[Any]:
 
 
 def check_dependencies() -> Dict[str, bool]:
-    """Check if optional dependencies are available.
-    
+    """
+    Check if optional dependencies are available.
+
     Returns:
         Dictionary mapping dependency names to availability status
     """
