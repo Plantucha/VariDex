@@ -64,6 +64,8 @@ class ErrorCode(Enum):
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
     DATA_PROCESSING = "DATA_PROCESSING"
+    PIPELINE = "PIPELINE"
+
     CLASSIFICATION = "CLASSIFICATION"
     REPORT = "REPORT"
     CONFIG = "CONFIG"
@@ -125,6 +127,20 @@ class ReportError(VaridexError):
 
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.REPORT, context)
+
+
+class PipelineError(VaridexError):
+    """
+    Raised when pipeline execution fails.
+
+    This includes issues like:
+    - Stage execution failures
+    - Pipeline configuration errors
+    - Orchestration errors
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.PIPELINE, context)
 
 
 class FileProcessingError(VaridexError):

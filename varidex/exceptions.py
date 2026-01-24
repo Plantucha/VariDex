@@ -10,10 +10,12 @@ from typing import Any, Optional, Dict, List, Type, Tuple
 __version__: str = "6.0.0"
 
 __all__: List[str] = [
+    "ConfigurationError",
     "VaridexError",
     "VariDexError",
     "ValidationError",
     "DataLoadError",
+    "DownloadError",
     "DataIntegrityError",
     "MatchingError",
     "ClassificationError",
@@ -22,6 +24,8 @@ __all__: List[str] = [
     "ACMGValidationError",
     "ACMGClassificationError",
     "ACMGConfigurationError",
+    "DataProcessingError",
+    "PipelineError",
     "ErrorCode",
     "validate_not_none",
     "validate_not_empty",
@@ -35,6 +39,8 @@ class ErrorCode(Enum):
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
     DATA_INTEGRITY = "DATA_INTEGRITY"
+    PIPELINE = "PIPELINE"
+
     MATCHING = "MATCHING"
     CLASSIFICATION = "CLASSIFICATION"
     REPORT = "REPORT"
@@ -118,6 +124,35 @@ class ReportError(VaridexError):
         super().__init__(message, ErrorCode.REPORT, context)
 
 
+class PipelineError(VaridexError):
+    """
+    Raised when pipeline execution fails.
+
+    This includes issues like:
+    - Stage execution failures
+    - Pipeline configuration errors
+    - Orchestration errors
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.PIPELINE, context)
+
+
+class DownloadError(VaridexError):
+    """
+    Raised when file download operations fail.
+
+    This includes issues like:
+    - Network errors
+    - Invalid URLs
+    - Download interruptions
+    - Checksum mismatches
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.FILE_PROCESSING, context)
+
+
 class FileProcessingError(VaridexError):
     """Raised when file processing fails."""
 
@@ -129,6 +164,10 @@ class FileProcessingError(VaridexError):
 ACMGValidationError = ValidationError
 ACMGClassificationError = ClassificationError
 ACMGConfigurationError = ValidationError
+ConfigurationError = ValidationError  # Backward compatibility
+# Additional backward compatibility aliases
+DataProcessingError = DataIntegrityError
+ProcessingError = DataIntegrityError  # Generic alias
 
 
 # --------------------------

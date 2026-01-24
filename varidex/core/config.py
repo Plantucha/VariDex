@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field
+
 #!/usr/bin/env python3
 """
 Module 1: Configuration Constants v6.4.1
@@ -521,3 +523,36 @@ if __name__ == "__main__":
 else:
     # Module import message
     pass  # Silent import for production use
+
+
+@dataclass
+class PipelineConfig:
+    """Configuration for variant analysis pipeline."""
+
+    input_file: str = ""
+    output_dir: str = "output"
+    clinvar_file: str = ""
+    genome_assembly: str = "GRCh38"
+    min_quality: float = 0.0
+    filter_common_variants: bool = True
+    common_af_threshold: float = 0.01
+    run_validation: bool = True
+    run_annotation: bool = True
+    run_classification: bool = True
+    run_reporting: bool = True
+    max_workers: int = 4
+    chunk_size: int = 1000
+    generate_html: bool = True
+    generate_json: bool = True
+    generate_csv: bool = True
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> "PipelineConfig":
+        """Create config from dictionary."""
+        return cls(**{k: v for k, v in config_dict.items() if hasattr(cls, k)})
+
+    def to_dict(self) -> dict:
+        """Convert config to dictionary."""
+        from dataclasses import asdict
+
+        return asdict(self)

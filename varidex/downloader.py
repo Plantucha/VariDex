@@ -316,5 +316,48 @@ def main() -> int:
     return 0
 
 
+def verify_checksum(
+    filepath: str, expected_checksum: str, algorithm: str = "sha256"
+) -> bool:
+    """
+    Verify file checksum matches expected value.
+
+    Args:
+        filepath: Path to the file
+        expected_checksum: Expected checksum value
+        algorithm: Hash algorithm to use
+
+    Returns:
+        True if checksums match, False otherwise
+    """
+    actual_checksum = calculate_checksum(filepath, algorithm)
+    return actual_checksum.lower() == expected_checksum.lower()
+
+
+def calculate_checksum(filepath: str, algorithm: str = "sha256") -> str:
+    """
+    Calculate checksum for a file.
+
+    Args:
+        filepath: Path to the file
+        algorithm: Hash algorithm (sha256, md5, sha1, etc.)
+
+    Returns:
+        Hexadecimal digest string
+    """
+    import hashlib
+
+    if algorithm not in hashlib.algorithms_available:
+        raise ValueError(f"Unsupported algorithm: {algorithm}")
+
+    hasher = getattr(hashlib, algorithm)()
+
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
 if __name__ == "__main__":
     sys.exit(main())

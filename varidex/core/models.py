@@ -242,9 +242,7 @@ class VariantAnnotation:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert annotation to dictionary."""
-        return {
-            k: v for k, v in self.__dict__.items() if v is not None
-        }
+        return {k: v for k, v in self.__dict__.items() if v is not None}
 
     def has_frequency_data(self) -> bool:
         """Check if frequency data is available."""
@@ -256,11 +254,13 @@ class VariantAnnotation:
 
     def has_prediction_data(self) -> bool:
         """Check if computational prediction data is available."""
-        return any([
-            self.sift_score is not None,
-            self.polyphen_score is not None,
-            self.cadd_score is not None,
-        ])
+        return any(
+            [
+                self.sift_score is not None,
+                self.polyphen_score is not None,
+                self.cadd_score is not None,
+            ]
+        )
 
 
 @dataclass
@@ -368,6 +368,30 @@ GenomicVariant = VariantData
 
 # ACMG-related aliases
 ACMGCriteria = ACMGEvidenceSet  # Alias for test compatibility
+
+
+@dataclass
+class VariantClassification:
+    """
+    Complete classification result for a variant.
+
+    Combines ACMG classification with evidence and metadata.
+    """
+
+    classification: str
+    evidence: ACMGEvidenceSet = field(default_factory=ACMGEvidenceSet)
+    confidence: str = ""
+    timestamp: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "classification": self.classification,
+            "evidence": self.evidence.summary(),
+            "confidence": self.confidence,
+            "timestamp": self.timestamp or datetime.now().isoformat(),
+        }
+
 
 # Pathogenicity classification enum (for test compatibility)
 from enum import Enum
