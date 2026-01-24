@@ -165,9 +165,7 @@ class TestHTMLFormatter:
     def test_format_with_custom_template(self, formatter, sample_data):
         """Test formatting with custom template."""
         custom_template = "<html><body>{{ title }}</body></html>"
-        html = formatter.format_with_template(
-            sample_data, template=custom_template
-        )
+        html = formatter.format_with_template(sample_data, template=custom_template)
 
         assert "<html>" in html
         assert "<body>" in html
@@ -429,9 +427,7 @@ class TestReportTemplates:
     def test_load_custom_template(self, generator, tmp_path):
         """Test loading custom template."""
         template_file = tmp_path / "custom.html"
-        template_file.write_text(
-            "<html><body>{{ content }}</body></html>"
-        )
+        template_file.write_text("<html><body>{{ content }}</body></html>")
 
         try:
             template = generator.load_template(str(template_file))

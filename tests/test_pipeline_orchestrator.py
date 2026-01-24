@@ -87,9 +87,7 @@ class TestPipelineExecution:
         """Test basic pipeline execution."""
         orchestrator = PipelineOrchestrator(mock_config)
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             result = orchestrator.run()
 
@@ -100,9 +98,7 @@ class TestPipelineExecution:
         """Test pipeline execution with specific stages."""
         orchestrator = PipelineOrchestrator(mock_config)
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             result = orchestrator.run(stages=["validation", "annotation"])
 
@@ -113,9 +109,7 @@ class TestPipelineExecution:
         """Test pipeline handles stage failures gracefully."""
         orchestrator = PipelineOrchestrator(mock_config)
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.side_effect = PipelineError("Stage failed")
 
             with pytest.raises(PipelineError):
@@ -126,9 +120,7 @@ class TestPipelineExecution:
         orchestrator = PipelineOrchestrator(mock_config)
         orchestrator._completed_stages = {"validation"}
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             orchestrator.run()
 
@@ -151,9 +143,7 @@ class TestStageManagement:
 
     def test_stage_registration(self, orchestrator):
         """Test stages are properly registered."""
-        assert hasattr(orchestrator, "_stages") or hasattr(
-            orchestrator, "stages"
-        )
+        assert hasattr(orchestrator, "_stages") or hasattr(orchestrator, "stages")
 
     def test_stage_execution_order(self, orchestrator):
         """Test stages execute in correct order."""
@@ -178,9 +168,7 @@ class TestStageManagement:
     def test_stage_dependency_resolution(self, orchestrator):
         """Test stage dependencies are resolved correctly."""
         # Annotation depends on validation
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             orchestrator.run(stages=["annotation"])
 
@@ -191,9 +179,7 @@ class TestStageManagement:
         """Test stages can be skipped on error."""
         orchestrator.config.continue_on_error = True
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.side_effect = [
                 DataProcessingError("Stage 1 failed"),
                 True,
@@ -228,22 +214,18 @@ class TestProgressTracking:
 
         orchestrator.set_progress_callback(progress_callback)
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             orchestrator.run()
 
             # Verify callback was set
-            assert hasattr(orchestrator, "_progress_callback") or len(
-                progress_calls
-            ) >= 0
+            assert (
+                hasattr(orchestrator, "_progress_callback") or len(progress_calls) >= 0
+            )
 
     def test_progress_percentage_calculation(self, orchestrator):
         """Test progress percentage is calculated correctly."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
 
             orchestrator.run()
@@ -261,9 +243,7 @@ class TestProgressTracking:
         orchestrator.set_progress_callback(progress_callback)
         orchestrator.config.continue_on_error = True
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.side_effect = PipelineError("Test error")
 
             try:
@@ -290,9 +270,7 @@ class TestErrorHandling:
 
     def test_pipeline_error_propagation(self, orchestrator):
         """Test pipeline errors propagate correctly."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.side_effect = PipelineError("Critical error")
 
             with pytest.raises(PipelineError) as exc_info:
@@ -302,24 +280,16 @@ class TestErrorHandling:
 
     def test_validation_error_handling(self, orchestrator):
         """Test validation errors are handled properly."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
-            mock_execute.side_effect = ValidationError(
-                "Invalid input"
-            )
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
+            mock_execute.side_effect = ValidationError("Invalid input")
 
             with pytest.raises(ValidationError):
                 orchestrator.run()
 
     def test_data_processing_error_handling(self, orchestrator):
         """Test data processing errors are handled."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
-            mock_execute.side_effect = DataProcessingError(
-                "Processing failed"
-            )
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
+            mock_execute.side_effect = DataProcessingError("Processing failed")
 
             with pytest.raises(DataProcessingError):
                 orchestrator.run()
@@ -328,9 +298,7 @@ class TestErrorHandling:
         """Test continue-on-error mode works."""
         orchestrator.config.continue_on_error = True
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.side_effect = [
                 DataProcessingError("Non-critical error"),
                 True,
@@ -345,9 +313,7 @@ class TestErrorHandling:
 
     def test_error_logging(self, orchestrator, caplog):
         """Test errors are properly logged."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.side_effect = PipelineError("Test error")
 
             try:
@@ -374,9 +340,7 @@ class TestResourceCleanup:
 
     def test_cleanup_on_success(self, orchestrator):
         """Test cleanup happens after successful run."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             with patch.object(orchestrator, "cleanup") as mock_cleanup:
                 mock_execute.return_value = True
                 orchestrator.run()
@@ -386,9 +350,7 @@ class TestResourceCleanup:
 
     def test_cleanup_on_failure(self, orchestrator):
         """Test cleanup happens even on failure."""
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             with patch.object(orchestrator, "cleanup") as mock_cleanup:
                 mock_execute.side_effect = PipelineError("Failed")
 
@@ -405,9 +367,7 @@ class TestResourceCleanup:
         temp_file = tmp_path / "temp_data.tmp"
         temp_file.write_text("temporary data")
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             orchestrator.run()
 
@@ -453,9 +413,7 @@ class TestPipelineIntegration:
         )
         orchestrator = PipelineOrchestrator(config)
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             result = orchestrator.run()
 
@@ -475,9 +433,7 @@ class TestPipelineIntegration:
         )
         orchestrator = PipelineOrchestrator(config)
 
-        with patch.object(
-            orchestrator, "_execute_stages"
-        ) as mock_execute:
+        with patch.object(orchestrator, "_execute_stages") as mock_execute:
             mock_execute.return_value = True
             result = orchestrator.run()
 

@@ -164,7 +164,8 @@ def create_results_dataframe(
     records = []
     for variant in iterator:
         tier = ACMG_TIERS.get(
-            variant.acmg_classification, {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY}
+            variant.acmg_classification,
+            {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY},
         )
 
         record = {
@@ -251,11 +252,21 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
     stats = {
         "total": total,
         "pathogenic": int((results_df["acmg_classification"] == "Pathogenic").sum()),
-        "likely_pathogenic": int((results_df["acmg_classification"] == "Likely Pathogenic").sum()),
-        "vus": int((results_df["acmg_classification"] == "Uncertain Significance").sum()),
-        "likely_benign": int((results_df["acmg_classification"] == "Likely Benign").sum()),
+        "likely_pathogenic": int(
+            (results_df["acmg_classification"] == "Likely Pathogenic").sum()
+        ),
+        "vus": int(
+            (results_df["acmg_classification"] == "Uncertain Significance").sum()
+        ),
+        "likely_benign": int(
+            (results_df["acmg_classification"] == "Likely Benign").sum()
+        ),
         "benign": int((results_df["acmg_classification"] == "Benign").sum()),
-        "conflicts": int(results_df["has_conflicts"].sum()) if "has_conflicts" in results_df else 0,
+        "conflicts": (
+            int(results_df["has_conflicts"].sum())
+            if "has_conflicts" in results_df
+            else 0
+        ),
     }
 
     # Add percentages
@@ -349,7 +360,9 @@ def generate_all_reports(
     if generate_json:
         json_file = output_dir / f"classified_variants_{timestamp}.json"
         try:
-            result = generate_json_report(results_df, json_file, full_data=json_full_data)
+            result = generate_json_report(
+                results_df, json_file, full_data=json_full_data
+            )
             generated["json"] = result
             size_kb = result.stat().st_size / 1024
             logger.info(f"✓ JSON: {result.name} ({size_kb:.1f} KB)")
@@ -396,7 +409,9 @@ def generate_all_reports(
         raise ReportError(f"All {requested} report(s) failed: {'; '.join(errors)}")
 
     elapsed = time.time() - start_time
-    logger.info(f"\n✅ Generated {len(generated)}/{requested} report(s) in {elapsed:.2f}s")
+    logger.info(
+        f"\n✅ Generated {len(generated)}/{requested} report(s) in {elapsed:.2f}s"
+    )
     logger.info(f"{'='*70}\n")
 
     return generated
@@ -461,7 +476,9 @@ class ReportGenerator:
             generate_conflicts="conflicts" in formats,
         )
 
-    def generate_csv(self, results_df: pd.DataFrame, filename: Optional[str] = None) -> Path:
+    def generate_csv(
+        self, results_df: pd.DataFrame, filename: Optional[str] = None
+    ) -> Path:
         """Generate CSV report."""
         if filename is None:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
@@ -469,7 +486,9 @@ class ReportGenerator:
         output_file = self.output_dir / filename
         return generate_csv_report(results_df, output_file)
 
-    def generate_json(self, results_df: pd.DataFrame, filename: Optional[str] = None) -> Path:
+    def generate_json(
+        self, results_df: pd.DataFrame, filename: Optional[str] = None
+    ) -> Path:
         """Generate JSON report."""
         if filename is None:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
@@ -477,7 +496,9 @@ class ReportGenerator:
         output_file = self.output_dir / filename
         return generate_json_report(results_df, output_file, full_data=True)
 
-    def generate_html(self, results_df: pd.DataFrame, filename: Optional[str] = None) -> Path:
+    def generate_html(
+        self, results_df: pd.DataFrame, filename: Optional[str] = None
+    ) -> Path:
         """Generate HTML report."""
         if filename is None:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)

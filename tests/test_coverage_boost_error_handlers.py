@@ -169,9 +169,7 @@ class TestClassificationError:
 
     def test_classification_error_with_reason(self) -> None:
         """Test classification error with failure reason."""
-        err = ClassificationError(
-            "Classification failed: insufficient evidence"
-        )
+        err = ClassificationError("Classification failed: insufficient evidence")
         assert "insufficient evidence" in str(err)
 
     def test_classification_error_inheritance(self) -> None:

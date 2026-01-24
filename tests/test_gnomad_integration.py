@@ -6,7 +6,11 @@ Tests PM2, BA1, BS1 evidence codes with mocked gnomAD responses.
 import pytest
 from unittest.mock import Mock, patch
 
-from varidex.integrations.gnomad_client import GnomadClient, GnomadVariantFrequency, RateLimiter
+from varidex.integrations.gnomad_client import (
+    GnomadClient,
+    GnomadVariantFrequency,
+    RateLimiter,
+)
 from varidex.core.services.population_frequency import (
     PopulationFrequencyService,
     InheritanceMode,
@@ -85,7 +89,10 @@ class TestGnomadClient:
 
     def test_init_custom(self):
         client = GnomadClient(
-            api_url="https://custom.api", timeout=60, enable_cache=False, rate_limit=False
+            api_url="https://custom.api",
+            timeout=60,
+            enable_cache=False,
+            rate_limit=False,
         )
         assert client.api_url == "https://custom.api"
         assert client.timeout == 60
@@ -217,7 +224,9 @@ class TestPopulationFrequencyService:
     def test_ba1_not_common(self):
         """Test BA1 doesn't apply for uncommon variant."""
         service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G", genome_af=0.03)  # 3% < 5% threshold
+        freq = GnomadVariantFrequency(
+            variant_id="1-12345-A-G", genome_af=0.03
+        )  # 3% < 5% threshold
 
         applies, reason = service._check_ba1(freq)
         assert applies is False
@@ -236,7 +245,8 @@ class TestPopulationFrequencyService:
         """Test BA1 takes precedence over BS1."""
         service = PopulationFrequencyService(enable_gnomad=False)
         freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G", genome_af=0.06  # 6% - qualifies for both BA1 and BS1
+            variant_id="1-12345-A-G",
+            genome_af=0.06,  # 6% - qualifies for both BA1 and BS1
         )
 
         # BA1 check should pass
@@ -264,7 +274,9 @@ class TestACMGClassifierV7:
         with patch("varidex.core.services.population_frequency.GnomadClient"):
             classifier = ACMGClassifierV7(enable_gnomad=True)
             # May be False if initialization failed
-            assert classifier.frequency_service is not None or not classifier.enable_gnomad
+            assert (
+                classifier.frequency_service is not None or not classifier.enable_gnomad
+            )
 
     def test_extract_coordinates_full(self):
         """Test coordinate extraction with all fields."""

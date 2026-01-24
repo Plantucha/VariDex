@@ -132,7 +132,9 @@ def _generate_stratified_json(
 ) -> Path:
     """Generate stratified JSON files for large datasets."""
     stratified = {
-        "pathogenic": df[df["acmg_classification"].isin(["Pathogenic", "Likely Pathogenic"])],
+        "pathogenic": df[
+            df["acmg_classification"].isin(["Pathogenic", "Likely Pathogenic"])
+        ],
         "benign": df[df["acmg_classification"].isin(["Benign", "Likely Benign"])],
         "vus": df[df["acmg_classification"] == "Uncertain Significance"],
     }
@@ -236,7 +238,9 @@ def generate_html_report(
 # ==================== CONFLICT REPORT ====================
 
 
-def generate_conflict_report(df: pd.DataFrame, output_dir: Path, timestamp: str) -> Optional[Path]:
+def generate_conflict_report(
+    df: pd.DataFrame, output_dir: Path, timestamp: str
+) -> Optional[Path]:
     """Generate summary report of conflicting interpretations."""
     if len(df) == 0:
         logger.warning("Cannot generate conflict report: DataFrame is empty")

@@ -127,7 +127,9 @@ class VariantData:
     @property
     def has_conflicts(self) -> bool:
         """Check for conflicts in ACMG evidence or manual conflict details."""
-        acmg_conflict = self.acmg_evidence.has_conflict() if self.acmg_evidence else False
+        acmg_conflict = (
+            self.acmg_evidence.has_conflict() if self.acmg_evidence else False
+        )
         manual_conflict = len(self.conflict_details) > 0
         return acmg_conflict or manual_conflict
 
@@ -140,7 +142,10 @@ class VariantData:
         return (
             self.is_pathogenic()
             or self.has_conflicts
-            or (self.acmg_classification == "Uncertain Significance" and self.star_rating >= 2)
+            or (
+                self.acmg_classification == "Uncertain Significance"
+                and self.star_rating >= 2
+            )
         )
 
     def add_conflict(self, detail: str) -> None:
@@ -151,7 +156,10 @@ class VariantData:
     def get_variant_notation(self) -> str:
         """Get standard variant notation (chr:pos:ref>alt)."""
         if self.ref_allele and self.alt_allele:
-            return f"{self.chromosome}:{self.position}:" f"{self.ref_allele}>{self.alt_allele}"
+            return (
+                f"{self.chromosome}:{self.position}:"
+                f"{self.ref_allele}>{self.alt_allele}"
+            )
         return f"{self.chromosome}:{self.position}"
 
     def is_protein_altering(self) -> bool:
@@ -166,7 +174,9 @@ class VariantData:
             "stop_lost",
             "stop_gained",
         ]
-        return any(alt in self.molecular_consequence.lower() for alt in protein_altering)
+        return any(
+            alt in self.molecular_consequence.lower() for alt in protein_altering
+        )
 
     def summary_dict(self) -> Dict[str, Any]:
         """Get dictionary summary for logging/export."""

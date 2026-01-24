@@ -109,7 +109,9 @@ def _norm_header(h: str) -> str:
     return str(h).strip().lower()
 
 
-def apply_aliases(df: pd.DataFrame, aliases: Optional[Dict[str, str]] = None) -> pd.DataFrame:
+def apply_aliases(
+    df: pd.DataFrame, aliases: Optional[Dict[str, str]] = None
+) -> pd.DataFrame:
     """Return a copy of df with alias-based renames applied.
 
     - Does NOT remove columns.
@@ -139,7 +141,11 @@ def require_columns(df: pd.DataFrame, required: Sequence[str], stage: str) -> No
     if missing:
         raise ValidationError(
             "Missing required columns",
-            context={"stage": stage, "missing": missing, "present": list(df.columns)[:50]},
+            context={
+                "stage": stage,
+                "missing": missing,
+                "present": list(df.columns)[:50],
+            },
         )
 
 
@@ -169,8 +175,8 @@ def coerce_types(df: pd.DataFrame) -> pd.DataFrame:
             out[c] = pd.to_numeric(out[c], errors="coerce")
 
     if CANON_TOTAL_POINTS in out.columns:
-        out[CANON_TOTAL_POINTS] = pd.to_numeric(out[CANON_TOTAL_POINTS], errors="coerce").astype(
-            "Int64"
-        )
+        out[CANON_TOTAL_POINTS] = pd.to_numeric(
+            out[CANON_TOTAL_POINTS], errors="coerce"
+        ).astype("Int64")
 
     return out

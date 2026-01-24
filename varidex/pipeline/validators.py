@@ -116,7 +116,9 @@ class ComprehensiveValidator:
         if not valid:
             errors.append(error)
 
-        valid, error = cls.validate_position(variant_data["position"], variant_data["chromosome"])
+        valid, error = cls.validate_position(
+            variant_data["position"], variant_data["chromosome"]
+        )
         if not valid:
             errors.append(error)
 
@@ -131,7 +133,9 @@ class ComprehensiveValidator:
         return len(errors) == 0, errors
 
     @classmethod
-    def validate_dataframe_batch(cls, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def validate_dataframe_batch(
+        cls, df: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Batch validate DataFrame."""
         if df is None or len(df) == 0:
             return pd.DataFrame(), pd.DataFrame()
@@ -150,6 +154,8 @@ class ComprehensiveValidator:
                 invalid_records.append(invalid_record)
 
         valid_df = df.loc[valid_indices].copy()
-        invalid_df = pd.DataFrame(invalid_records) if invalid_records else pd.DataFrame()
+        invalid_df = (
+            pd.DataFrame(invalid_records) if invalid_records else pd.DataFrame()
+        )
         logger.info("Validation: {len(valid_df)} valid, {len(invalid_df)} invalid")
         return valid_df, invalid_df

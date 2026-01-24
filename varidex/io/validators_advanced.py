@@ -200,7 +200,9 @@ def validate_with_cache(
         func_name = validation_func.__name__
 
         if func_name == "validate_content_type":
-            passed = _cached_content_validation(str(filepath), stat.st_mtime, stat.st_size)
+            passed = _cached_content_validation(
+                str(filepath), stat.st_mtime, stat.st_size
+            )
             return ValidationResult(
                 passed,
                 "content_type",
@@ -208,7 +210,9 @@ def validate_with_cache(
                 "info" if passed else "error",
             )
         elif func_name == "validate_encoding":
-            passed = _cached_encoding_validation(str(filepath), stat.st_mtime, stat.st_size)
+            passed = _cached_encoding_validation(
+                str(filepath), stat.st_mtime, stat.st_size
+            )
             return ValidationResult(
                 passed,
                 "encoding",
@@ -279,7 +283,11 @@ def generate_validation_report(
             except (ValueError, OSError, RuntimeError) as e:
                 results.append(
                     ValidationResult(
-                        False, rule_name, "Custom rule error: {e}", "error", {"error": str(e)}
+                        False,
+                        rule_name,
+                        "Custom rule error: {e}",
+                        "error",
+                        {"error": str(e)},
                     )
                 )
 

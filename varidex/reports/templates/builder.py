@@ -41,7 +41,9 @@ def _validate_css_path(css_file: str) -> str:
     return safe if all(c.isalnum() or c in ".-_" for c in safe) else "styles.css"
 
 
-def _validate_custom_code(code: Optional[str], code_type: str, max_len: int = 10000) -> str:
+def _validate_custom_code(
+    code: Optional[str], code_type: str, max_len: int = 10000
+) -> str:
     """Validate custom CSS/JS to prevent abuse."""
     if not code:
         return ""
@@ -113,8 +115,12 @@ def generate_html_template(
         logger.exception(e)
         raisecurrent_time = current_date = "N/A"
 
-    css_block = f'<style nonce="{nonce}">{safe_custom_css}</style>' if safe_custom_css else ""
-    js_block = f'<script nonce="{nonce}">{safe_custom_js}</script>' if safe_custom_js else ""
+    css_block = (
+        f'<style nonce="{nonce}">{safe_custom_css}</style>' if safe_custom_css else ""
+    )
+    js_block = (
+        f'<script nonce="{nonce}">{safe_custom_js}</script>' if safe_custom_js else ""
+    )
 
     build_stats_dashboard(stats, nonce)
     build_classification_legend(stats, nonce)

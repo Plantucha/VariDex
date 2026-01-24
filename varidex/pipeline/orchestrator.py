@@ -170,7 +170,11 @@ def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
         if first_line.startswith("##fileformat=vc") or first_line.startswith("#chrom"):
             logger.info("    → VCF")
             return "vc"
-        if "rsid" in first_line and "chromosome" in first_line and "genotype" in first_line:
+        if (
+            "rsid" in first_line
+            and "chromosome" in first_line
+            and "genotype" in first_line
+        ):
             logger.info("    → 23andMe")
             return "23andme"
         if "chromosome" in first_line and "position" in first_line:
@@ -179,7 +183,8 @@ def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
 
         if strict:
             raise FileTypeDetectionError(
-                f"Cannot detect file type for {file_path.name}. " "Use --format vcf|23andme|tsv"
+                f"Cannot detect file type for {file_path.name}. "
+                "Use --format vcf|23andme|tsv"
             )
         logger.warning("    → Defaulting to 23andMe (AMBIGUOUS)")
         return "23andme"
@@ -191,7 +196,10 @@ def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
 
 
 def check_clinvar_freshness(
-    file_path: Path, max_age_days: int = 45, force: bool = False, interactive: bool = True
+    file_path: Path,
+    max_age_days: int = 45,
+    force: bool = False,
+    interactive: bool = True,
 ) -> bool:
     """Check ClinVar age."""
     if force:
@@ -236,7 +244,9 @@ def main(
     print("=" * 70)
     print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    yaml_cfg: Dict[str, Any] = load_yaml_config(yaml_config_path or Path(".varidex.yaml"))
+    yaml_cfg: Dict[str, Any] = load_yaml_config(
+        yaml_config_path or Path(".varidex.yaml")
+    )
     SAFEGUARD_CONFIG: Dict[str, Any] = get_safeguard_config(yaml_cfg)
 
     if not SAFEGUARD_CONFIG["abort_on_threshold"]:
@@ -271,7 +281,9 @@ def main(
             return False
 
         clinvar_type: str = loader.detect_clinvar_file_type(clinvar_file)
-        user_type: str = user_format or detect_data_file_type(user_file, strict=not force)
+        user_type: str = user_format or detect_data_file_type(
+            user_file, strict=not force
+        )
         match_mode: Any = get_config_value("MATCH_MODE", "hybrid")
 
         print(f"  ClinVar: {clinvar_type}")
@@ -316,7 +328,13 @@ def main(
         print("=" * 70)
 
         matched_df: Any = execute_stage4_hybrid_matching(
-            clinvar_df, user_df, clinvar_type, user_type, loader, SAFEGUARD_CONFIG, _IMPORT_MODE
+            clinvar_df,
+            user_df,
+            clinvar_type,
+            user_type,
+            loader,
+            SAFEGUARD_CONFIG,
+            _IMPORT_MODE,
         )
 
         state.matches = len(matched_df)
@@ -324,7 +342,9 @@ def main(
             raise ValueError("No matches! Check formats & coordinates")
 
         match_rate: float = (
-            (state.matches / state.user_variants * 100) if state.user_variants > 0 else 0
+            (state.matches / state.user_variants * 100)
+            if state.user_variants > 0
+            else 0
         )
         logger.info(f"✓ Matched {state.matches:,} variants ({match_rate:.1f}%)")
         print(f"  ✓ Matched: {state.matches:,} ({match_rate:.1f}%)")
@@ -388,7 +408,9 @@ def main(
         print("=" * 70)
         print("✅ PIPELINE COMPLETE")
         print("=" * 70)
-        print(f"Coverage: {state.matches:,}/{state.user_variants:,} ({match_rate:.1f}%)")
+        print(
+            f"Coverage: {state.matches:,}/{state.user_variants:,} ({match_rate:.1f}%)"
+        )
         print(
             f"Pathogenic: {stats.get('pathogenic', 0):,} | "
             f"Likely Pathogenic: {stats.get('likely_pathogenic', 0):,} | "

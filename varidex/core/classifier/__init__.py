@@ -86,13 +86,13 @@ try:
     from .engine_v7 import ACMGClassifierV7
 
     HAS_V7 = True
-    
+
     # Issue warning when V7 is imported
     warnings.warn(
         "ACMGClassifierV7 is EXPERIMENTAL and not production-tested. "
         "Use ACMGClassifier for production. See VERSION_HISTORY.md for details.",
         UserWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 except ImportError as e:
     # V7 requires gnomAD dependencies
@@ -103,17 +103,18 @@ except ImportError as e:
             f"Original error: {e}"
         )
 
+
 try:
     from .engine_v8 import ACMGClassifierV8
 
     HAS_V8 = True
-    
+
     # Issue warning when V8 is imported
     warnings.warn(
         "ACMGClassifierV8 is EXPERIMENTAL and not production-tested. "
         "Use ACMGClassifier for production. See VERSION_HISTORY.md for details.",
         UserWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 except ImportError as e:
     # V8 requires gnomAD + SpliceAI + dbNSFP dependencies
@@ -123,6 +124,7 @@ except ImportError as e:
             "Install with: pip install varidex[predictions]\n"
             f"Original error: {e}"
         )
+
 
 __all__: List[str] = [
     # Main classifier (PRODUCTION)

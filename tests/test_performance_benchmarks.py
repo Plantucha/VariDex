@@ -15,7 +15,6 @@ from varidex.pipeline.orchestrator import PipelineOrchestrator
 from varidex.core.config import PipelineConfig
 from varidex.core.models import Variant
 
-
 # Mark all tests in this module as performance tests
 pytestmark = pytest.mark.performance
 
@@ -300,9 +299,7 @@ class TestScalability:
             f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
             for chrom in range(1, 23):  # chr1-chr22
                 for i in range(100):
-                    f.write(
-                        f"chr{chrom}\t{10000 + i * 100}\t.\tA\tG\t30\tPASS\t.\n"
-                    )
+                    f.write(f"chr{chrom}\t{10000 + i * 100}\t.\tA\tG\t30\tPASS\t.\n")
 
         config = PipelineConfig(
             input_vcf=vcf_file,
@@ -327,9 +324,7 @@ class TestResourceOptimization:
 
     def test_batch_processing_efficiency(self, tmp_path):
         """Test batch processing is more efficient than individual."""
-        variants = [
-            Variant("chr1", 10000 + i * 100, "A", "G") for i in range(100)
-        ]
+        variants = [Variant("chr1", 10000 + i * 100, "A", "G") for i in range(100)]
 
         # Individual processing
         start_individual = time.time()
@@ -409,6 +404,4 @@ class TestPerformanceRegression:
 
             # Baseline: should process 1000 variants in under 5 seconds
             baseline = 5.0
-            assert (
-                elapsed_time < baseline
-            ), f"Regression: {elapsed_time}s > {baseline}s"
+            assert elapsed_time < baseline, f"Regression: {elapsed_time}s > {baseline}s"

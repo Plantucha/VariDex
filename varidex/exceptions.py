@@ -141,7 +141,9 @@ if __name__ == "__main__":
     try:
         for exc_class, test_msg in exception_classes:
             exc = exc_class(test_msg)
-            assert isinstance(exc, Exception), f"{exc_class.__name__} is not an Exception"
+            assert isinstance(
+                exc, Exception
+            ), f"{exc_class.__name__} is not an Exception"
 
         # Verify alias works
         assert VariDexError is VaridexError, "VariDexError alias broken"
@@ -155,7 +157,9 @@ if __name__ == "__main__":
 
         try:
             validate_not_empty("", "test_value")
-            raise AssertionError("validate_not_empty should have raised ValidationError")
+            raise AssertionError(
+                "validate_not_empty should have raised ValidationError"
+            )
         except ValidationError:
             pass
 

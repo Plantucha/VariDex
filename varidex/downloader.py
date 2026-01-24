@@ -21,14 +21,26 @@ SAFETY_MARGIN_GB: int = 5  # Keep 5GB free space buffer
 
 # Define files to download (filename, URL, approx_unzipped_size_MB)
 FILES: List[Tuple[str, str, int]] = [
-    ("variant_summary.txt.gz", f"{FTP_BASE}/tab_delimited/variant_summary.txt.gz", 3000),
+    (
+        "variant_summary.txt.gz",
+        f"{FTP_BASE}/tab_delimited/variant_summary.txt.gz",
+        3000,
+    ),
     ("var_citations.txt", f"{FTP_BASE}/tab_delimited/var_citations.txt", 50),
     ("cross_references.txt", f"{FTP_BASE}/tab_delimited/cross_references.txt", 100),
-    ("organization_summary.txt", f"{FTP_BASE}/tab_delimited/organization_summary.txt", 5),
+    (
+        "organization_summary.txt",
+        f"{FTP_BASE}/tab_delimited/organization_summary.txt",
+        5,
+    ),
     ("submission_summary.txt", f"{FTP_BASE}/tab_delimited/submission_summary.txt", 500),
     ("clinvar_GRCh37.vcf.gz", f"{FTP_BASE}/vcf_GRCh37/clinvar.vcf.gz", 1500),
     ("clinvar_GRCh38.vcf.gz", f"{FTP_BASE}/vcf_GRCh38/clinvar.vcf.gz", 1500),
-    ("ClinVarVCVRelease.xml.gz", f"{FTP_BASE}/xml/ClinVarVCVRelease_00-latest.xml.gz", 8000),
+    (
+        "ClinVarVCVRelease.xml.gz",
+        f"{FTP_BASE}/xml/ClinVarVCVRelease_00-latest.xml.gz",
+        8000,
+    ),
     (
         "ClinVarRCVRelease.xml.gz",
         f"{FTP_BASE}/xml/RCV_release/ClinVarRCVRelease_00-latest.xml.gz",
@@ -279,7 +291,9 @@ def main() -> int:
             print()
         print("All downloads complete.")
     else:
-        print("Insufficient space for all files. Downloading what fits (smallest first)...")
+        print(
+            "Insufficient space for all files. Downloading what fits (smallest first)..."
+        )
         print()
         space_used = 0
         for filename, url, size_mb in to_download:

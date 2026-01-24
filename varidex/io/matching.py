@@ -34,7 +34,12 @@ def normalize_column_names(df: pd.DataFrame, source: str = "unknown") -> pd.Data
 
 
 logger = logging.getLogger(__name__)
-REQUIRED_COORD_COLUMNS: List[str] = ["chromosome", "position", "ref_allele", "alt_allele"]
+REQUIRED_COORD_COLUMNS: List[str] = [
+    "chromosome",
+    "position",
+    "ref_allele",
+    "alt_allele",
+]
 
 
 def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
@@ -49,12 +54,16 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
     if "rsid" not in user_df.columns or "rsid" not in clinvar_df.columns:
         logger.warning("rsID column missing, returning empty DataFrame")
         return pd.DataFrame()
-    matched = user_df.merge(clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar"))
+    matched = user_df.merge(
+        clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar")
+    )
     logger.info("rsID matches: {len(matched):,}")
     return matched
 
 
-def match_by_coordinates(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
+def match_by_coordinates(
+    user_df: pd.DataFrame, clinvar_df: pd.DataFrame
+) -> pd.DataFrame:
     """Match variants by coordinates (chr:pos:ref:alt).
 
     BUGFIX v6.0.1: Explicitly assign normalized DataFrames.
@@ -85,7 +94,9 @@ def match_by_coordinates(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.
     if "coord_key" not in clinvar_df.columns:
         clinvar_df = normalize_dataframe_coordinates(clinvar_df)
 
-    matched = user_df.merge(clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar"))
+    matched = user_df.merge(
+        clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar")
+    )
     logger.info("Coordinate matches: {len(matched):,}")
     return matched
 
@@ -171,7 +182,10 @@ def match_variants_hybrid(
     logger.info("{'='*60}")
 
     # Reconcile column names for classification
-    if "chromosome_clinvar" in combined.columns and "chromosome" not in combined.columns:
+    if (
+        "chromosome_clinvar" in combined.columns
+        and "chromosome" not in combined.columns
+    ):
         combined["chromosome"] = combined["chromosome_clinvar"]
 
     if "position_clinvar" in combined.columns and "position" not in combined.columns:
@@ -206,7 +220,11 @@ def match_variants_hybrid(
             if pd.isna(info_str):
                 return "single_nucleotide_variant"
             match = re.search(r"CLNVC=([^;]+)", str(info_str))
-            return match.group(1).replace("_", " ") if match else "single_nucleotide_variant"
+            return (
+                match.group(1).replace("_", " ")
+                if match
+                else "single_nucleotide_variant"
+            )
 
         combined["variant_type"] = combined["INFO"].apply(extract_variant_type)
 

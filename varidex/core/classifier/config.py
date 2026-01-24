@@ -243,7 +243,9 @@ class ACMGMetrics:
         default_factory=lambda: defaultdict(int)
     )
 
-    def record_success(self, duration: float, classification: str, evidence: Any) -> None:
+    def record_success(
+        self, duration: float, classification: str, evidence: Any
+    ) -> None:
         """
         Record successful classification.
 
@@ -312,10 +314,14 @@ class ACMGMetrics:
             "success_rate": self.get_success_rate(),
             "avg_time_ms": self.get_avg_time(),
             "min_time_ms": (
-                min(self.classification_times) * 1000 if self.classification_times else 0
+                min(self.classification_times) * 1000
+                if self.classification_times
+                else 0
             ),
             "max_time_ms": (
-                max(self.classification_times) * 1000 if self.classification_times else 0
+                max(self.classification_times) * 1000
+                if self.classification_times
+                else 0
             ),
             "evidence_counts": dict(self.evidence_counts),
             "classification_distribution": dict(self.classification_distribution),
@@ -434,6 +440,8 @@ def get_preset(name: str = "balanced") -> ACMGConfig:
     }
 
     if name not in presets:
-        raise ValueError(f"Invalid preset: {name}. Must be one of {list(presets.keys())}")
+        raise ValueError(
+            f"Invalid preset: {name}. Must be one of {list(presets.keys())}"
+        )
 
     return presets[name]

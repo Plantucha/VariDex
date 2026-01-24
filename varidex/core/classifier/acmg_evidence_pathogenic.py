@@ -76,25 +76,37 @@ class PathogenicEvidenceAssigner:
         self.enable_pvs1 = self.config.get("enable_pvs1", True)
         self.enable_ps1 = self.config.get("enable_ps1", False)  # Requires variant DB
         self.enable_ps2 = self.config.get("enable_ps2", False)  # Requires parental data
-        self.enable_ps3 = self.config.get("enable_ps3", False)  # Requires functional data
-        self.enable_ps4 = self.config.get("enable_ps4", False)  # Requires case-control data
+        self.enable_ps3 = self.config.get(
+            "enable_ps3", False
+        )  # Requires functional data
+        self.enable_ps4 = self.config.get(
+            "enable_ps4", False
+        )  # Requires case-control data
         self.enable_pm1 = self.config.get("enable_pm1", True)
         self.enable_pm2 = self.config.get("enable_pm2", True)
         self.enable_pm3 = self.config.get("enable_pm3", False)  # Requires family data
         self.enable_pm4 = self.config.get("enable_pm4", True)
         self.enable_pm5 = self.config.get("enable_pm5", False)  # Requires variant DB
-        self.enable_pm6 = self.config.get("enable_pm6", False)  # Requires parental assumption
-        self.enable_pp1 = self.config.get("enable_pp1", False)  # Requires segregation data
+        self.enable_pm6 = self.config.get(
+            "enable_pm6", False
+        )  # Requires parental assumption
+        self.enable_pp1 = self.config.get(
+            "enable_pp1", False
+        )  # Requires segregation data
         self.enable_pp2 = self.config.get("enable_pp2", True)
         self.enable_pp3 = self.config.get("enable_pp3", True)
-        self.enable_pp4 = self.config.get("enable_pp4", False)  # Requires phenotype data
+        self.enable_pp4 = self.config.get(
+            "enable_pp4", False
+        )  # Requires phenotype data
         self.enable_pp5 = self.config.get("enable_pp5", True)
 
         # Thresholds
         self.pm2_gnomad_threshold = self.config.get("pm2_gnomad_threshold", 0.0001)
         self.pm1_hotspot_threshold = self.config.get("pm1_hotspot_threshold", 5)
 
-        logger.info(f"Initialized with {sum([self.enable_pvs1, self.enable_ps1])} codes")
+        logger.info(
+            f"Initialized with {sum([self.enable_pvs1, self.enable_ps1])} codes"
+        )
 
     def check_pvs1(self, variant: Dict[str, Any], lof_genes: Set[str]) -> bool:
         """
@@ -133,7 +145,9 @@ class PathogenicEvidenceAssigner:
             logger.error("PVS1 check failed: {e}")
             return False
 
-    def check_ps1(self, variant: Dict[str, Any], pathogenic_db: Optional[Dict] = None) -> bool:
+    def check_ps1(
+        self, variant: Dict[str, Any], pathogenic_db: Optional[Dict] = None
+    ) -> bool:
         """
         PS1: Same amino acid change as established pathogenic variant.
 
@@ -165,7 +179,9 @@ class PathogenicEvidenceAssigner:
             logger.error("PS1 check failed: {e}")
             return False
 
-    def check_pm1(self, variant: Dict[str, Any], functional_domains: Dict[str, Any]) -> bool:
+    def check_pm1(
+        self, variant: Dict[str, Any], functional_domains: Dict[str, Any]
+    ) -> bool:
         """
         PM1: Located in mutational hot spot and/or critical/well-established
         functional domain without benign variation.
@@ -200,8 +216,13 @@ class PathogenicEvidenceAssigner:
 
                 if start <= aa_position <= end:
                     # Check enrichment (pathogenic >> benign)
-                    if pathogenic_count >= self.pm1_hotspot_threshold and benign_count < 2:
-                        logger.info("PM1: {gene} position {aa_position} in functional domain")
+                    if (
+                        pathogenic_count >= self.pm1_hotspot_threshold
+                        and benign_count < 2
+                    ):
+                        logger.info(
+                            "PM1: {gene} position {aa_position} in functional domain"
+                        )
                         return True
 
             return False
@@ -210,7 +231,9 @@ class PathogenicEvidenceAssigner:
             logger.error("PM1 check failed: {e}")
             return False
 
-    def check_pm2(self, variant: Dict[str, Any], gnomad_api: Optional[Any] = None) -> bool:
+    def check_pm2(
+        self, variant: Dict[str, Any], gnomad_api: Optional[Any] = None
+    ) -> bool:
         """
         PM2: Absent from controls (or extremely low frequency) in population
         databases (gnomAD, ExAC).
@@ -287,7 +310,9 @@ class PathogenicEvidenceAssigner:
             logger.error("PM4 check failed: {e}")
             return False
 
-    def check_pm5(self, variant: Dict[str, Any], pathogenic_db: Optional[Dict] = None) -> bool:
+    def check_pm5(
+        self, variant: Dict[str, Any], pathogenic_db: Optional[Dict] = None
+    ) -> bool:
         """
         PM5: Novel missense change at amino acid residue where different
         missense change determined to be pathogenic.
@@ -350,14 +375,18 @@ class PathogenicEvidenceAssigner:
             if gene not in missense_rare_genes:
                 return False
 
-            logger.info("PP2: Missense in {gene} with known pathogenic missense mechanism")
+            logger.info(
+                "PP2: Missense in {gene} with known pathogenic missense mechanism"
+            )
             return True
 
         except Exception:
             logger.error("PP2 check failed: {e}")
             return False
 
-    def check_pp3(self, variant: Dict[str, Any], prediction_scores: Optional[Dict] = None) -> bool:
+    def check_pp3(
+        self, variant: Dict[str, Any], prediction_scores: Optional[Dict] = None
+    ) -> bool:
         """
         PP3: Multiple lines of computational evidence support deleterious effect
         (SIFT, PolyPhen, MutationTaster, CADD, REVEL, etc.).
@@ -437,14 +466,18 @@ class PathogenicEvidenceAssigner:
             star_rating = variant.get("star_rating", 0)
 
             # Check for pathogenic classification
-            is_pathogenic = "pathogenic" in clinical_sig and "benign" not in clinical_sig
+            is_pathogenic = (
+                "pathogenic" in clinical_sig and "benign" not in clinical_sig
+            )
 
             if not is_pathogenic:
                 return False
 
             # Require 2+ star rating (multiple submitters, criteria provided)
             if star_rating >= 2:
-                logger.info("PP5: Reputable source reports pathogenic (ClinVar {star_rating}★)")
+                logger.info(
+                    "PP5: Reputable source reports pathogenic (ClinVar {star_rating}★)"
+                )
                 return True
 
             return False
@@ -453,7 +486,9 @@ class PathogenicEvidenceAssigner:
             logger.error("PP5 check failed: {e}")
             return False
 
-    def assign_all(self, variant: Dict[str, Any], resources: Optional[Dict] = None) -> Set[str]:
+    def assign_all(
+        self, variant: Dict[str, Any], resources: Optional[Dict] = None
+    ) -> Set[str]:
         """
         Assign all pathogenic evidence codes to a variant.
 

@@ -78,7 +78,10 @@ class ACMGClassifierV8(ACMGClassifierV7):
         """
         # Initialize parent (v7 with gnomAD)
         super().__init__(
-            config=config, enable_gnomad=enable_gnomad, gnomad_client=gnomad_client, **kwargs
+            config=config,
+            enable_gnomad=enable_gnomad,
+            gnomad_client=gnomad_client,
+            **kwargs,
         )
 
         # Initialize prediction service
@@ -238,9 +241,9 @@ class ACMGClassifierV8(ACMGClassifierV7):
 
         if self.prediction_service:
             try:
-                health["predictions"]["statistics"] = (
-                    self.prediction_service.get_statistics()
-                )
+                health["predictions"][
+                    "statistics"
+                ] = self.prediction_service.get_statistics()
             except Exception as e:
                 health["predictions"]["error"] = str(e)
 

@@ -339,25 +339,45 @@ class TestValidationPerformance:
             for i in range(1000)
         ]
 
-        valid_count = sum(1 for v in variants if validate_variant(v, raise_on_error=False))
+        valid_count = sum(
+            1 for v in variants if validate_variant(v, raise_on_error=False)
+        )
         assert valid_count == 1000
 
     def test_validate_mixed_validity(self) -> None:
         """Test validation with mix of valid and invalid variants."""
         variants = [
             GenomicVariant(
-                chromosome="chr1", position=100, reference="A", alternate="G", assembly="GRCh38"
+                chromosome="chr1",
+                position=100,
+                reference="A",
+                alternate="G",
+                assembly="GRCh38",
             ),
             GenomicVariant(
-                chromosome="chr99", position=100, reference="A", alternate="G", assembly="GRCh38"
+                chromosome="chr99",
+                position=100,
+                reference="A",
+                alternate="G",
+                assembly="GRCh38",
             ),
             GenomicVariant(
-                chromosome="chr2", position=-1, reference="A", alternate="G", assembly="GRCh38"
+                chromosome="chr2",
+                position=-1,
+                reference="A",
+                alternate="G",
+                assembly="GRCh38",
             ),
             GenomicVariant(
-                chromosome="chrX", position=100, reference="X", alternate="G", assembly="GRCh38"
+                chromosome="chrX",
+                position=100,
+                reference="X",
+                alternate="G",
+                assembly="GRCh38",
             ),
         ]
 
-        valid_count = sum(1 for v in variants if validate_variant(v, raise_on_error=False))
+        valid_count = sum(
+            1 for v in variants if validate_variant(v, raise_on_error=False)
+        )
         assert valid_count == 1

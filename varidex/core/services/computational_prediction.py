@@ -77,7 +77,9 @@ class PredictionThresholds:
     bp4_min_concordant: int = 3  # Min algorithms for BP4
 
     # Conflict resolution
-    conflict_ratio_threshold: float = 0.4  # If deleterious ratio < 0.4 or > 0.6, resolve
+    conflict_ratio_threshold: float = (
+        0.4  # If deleterious ratio < 0.4 or > 0.6, resolve
+    )
 
 
 @dataclass
@@ -117,7 +119,9 @@ class ComputationalEvidence:
         elif self.bp4:
             return f"BP4: {self.benign_count}/{self.total_predictions} benign"
         else:
-            return f"Neither PP3 nor BP4: {self.deleterious_count}D/{self.benign_count}B"
+            return (
+                f"Neither PP3 nor BP4: {self.deleterious_count}D/{self.benign_count}B"
+            )
 
 
 class ComputationalPredictionService:
@@ -147,10 +151,14 @@ class ComputationalPredictionService:
             enable_predictions: Enable prediction queries (False for testing/offline)
         """
         self.enable_predictions: bool = enable_predictions
-        self.thresholds: PredictionThresholds = thresholds if thresholds else PredictionThresholds()
+        self.thresholds: PredictionThresholds = (
+            thresholds if thresholds else PredictionThresholds()
+        )
 
         if enable_predictions:
-            self.client: Optional[DbNSFPClient] = dbnsfp_client if dbnsfp_client else DbNSFPClient()
+            self.client: Optional[DbNSFPClient] = (
+                dbnsfp_client if dbnsfp_client else DbNSFPClient()
+            )
             logger.info("ComputationalPredictionService initialized with VEP client")
         else:
             self.client = None
@@ -301,7 +309,12 @@ class ComputationalPredictionService:
         return False, "BP4 not met: insufficient concordant benign predictions"
 
     def analyze_predictions(
-        self, chromosome: str, position: int, ref: str, alt: str, gene: Optional[str] = None
+        self,
+        chromosome: str,
+        position: int,
+        ref: str,
+        alt: str,
+        gene: Optional[str] = None,
     ) -> ComputationalEvidence:
         """Analyze computational predictions and determine PP3/BP4.
 
@@ -343,7 +356,13 @@ class ComputationalPredictionService:
             evidence.metasvm_result = self._analyze_metasvm(predictions)
 
             # Track algorithm availability
-            all_algorithms: List[str] = ["SIFT", "PolyPhen-2", "CADD", "REVEL", "MetaSVM"]
+            all_algorithms: List[str] = [
+                "SIFT",
+                "PolyPhen-2",
+                "CADD",
+                "REVEL",
+                "MetaSVM",
+            ]
             all_results: List[Optional[str]] = [
                 evidence.sift_result,
                 evidence.polyphen_result,
@@ -354,7 +373,9 @@ class ComputationalPredictionService:
 
             evidence.algorithms_available = sum(1 for r in all_results if r is not None)
             evidence.algorithms_missing = [
-                algo for algo, result in zip(all_algorithms, all_results) if result is None
+                algo
+                for algo, result in zip(all_algorithms, all_results)
+                if result is None
             ]
 
             # Warn if limited algorithm coverage
@@ -415,7 +436,9 @@ class ComputationalPredictionService:
                         evidence.reasoning = f"Conflicting predictions: {evidence.deleterious_count}D/{evidence.benign_count}B"
                         evidence.strength = PredictionStrength.NEUTRAL
                     else:
-                        evidence.reasoning = "Insufficient concordant predictions for PP3 or BP4"
+                        evidence.reasoning = (
+                            "Insufficient concordant predictions for PP3 or BP4"
+                        )
 
                     logger.debug(f"Neither PP3 nor BP4: {evidence.reasoning}")
 

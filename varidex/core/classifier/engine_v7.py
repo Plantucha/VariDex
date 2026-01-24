@@ -83,7 +83,9 @@ class ACMGClassifierV7(ACMGClassifier):
         else:
             logger.info(f"ACMGClassifierV7 {self.VERSION} initialized without gnomAD")
 
-    def _extract_variant_coordinates(self, variant: VariantData) -> Optional[Dict[str, Any]]:
+    def _extract_variant_coordinates(
+        self, variant: VariantData
+    ) -> Optional[Dict[str, Any]]:
         """Extract normalized coordinates from a variant for gnomAD queries.
 
         Handles multiple possible attribute names for compatibility.
@@ -96,7 +98,9 @@ class ACMGClassifierV7(ACMGClassifier):
             coords: Dict[str, Any] = {}
 
             # Chromosome
-            chrom = getattr(variant, "chromosome", None) or getattr(variant, "chrom", None)
+            chrom = getattr(variant, "chromosome", None) or getattr(
+                variant, "chrom", None
+            )
             if not chrom:
                 return None
             coords["chromosome"] = str(chrom).replace("chr", "")
@@ -193,7 +197,9 @@ class ACMGClassifierV7(ACMGClassifier):
 
                 if hasattr(evidence, "metadata"):
                     evidence.metadata["gnomad_af"] = freq_evidence.max_af
-                    evidence.metadata["gnomad_population"] = freq_evidence.max_af_population
+                    evidence.metadata["gnomad_population"] = (
+                        freq_evidence.max_af_population
+                    )
 
                 logger.debug(f"Frequency analysis: {freq_evidence.summary()}")
 
@@ -282,4 +288,6 @@ if __name__ == "__main__":
 else:
     logger.info(f"ACMGClassifierV7 {ACMGClassifierV7.VERSION} loaded")
     logger.info("  Enhanced with gnomAD population frequency (PM2, BA1, BS1)")
-    logger.info("  Backward compatible with v6, graceful degradation if gnomAD unavailable")
+    logger.info(
+        "  Backward compatible with v6, graceful degradation if gnomAD unavailable"
+    )

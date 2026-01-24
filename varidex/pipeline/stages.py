@@ -73,7 +73,9 @@ STAGE_REQUIRED_COLUMNS = {
 }
 
 
-def validate_stage_dependencies(stage_id: int, completed_stages: Set[int]) -> Tuple[bool, str]:
+def validate_stage_dependencies(
+    stage_id: int, completed_stages: Set[int]
+) -> Tuple[bool, str]:
     required = set(STAGE_DEPENDENCIES.get(stage_id, []))
     missing = required - completed_stages
     if missing:
@@ -81,7 +83,9 @@ def validate_stage_dependencies(stage_id: int, completed_stages: Set[int]) -> Tu
     return True, ""
 
 
-def validate_stage_input(df: pd.DataFrame, stage_id: int, stage_name: str) -> Tuple[bool, str]:
+def validate_stage_input(
+    df: pd.DataFrame, stage_id: int, stage_name: str
+) -> Tuple[bool, str]:
     from varidex.utils.helpers import DataValidator
 
     required_cols = STAGE_REQUIRED_COLUMNS.get(stage_id, [])
@@ -112,7 +116,11 @@ class StageProfiler:
         }
 
     def end_stage(
-        self, context: Dict, output_rows: int = 0, status: str = "success", error: str = None
+        self,
+        context: Dict,
+        output_rows: int = 0,
+        status: str = "success",
+        error: str = None,
     ):
         if not self.enabled or not context:
             return
@@ -149,7 +157,9 @@ class StageProfiler:
 class CheckpointManager:
     """State snapshots with memory optimization."""
 
-    def __init__(self, checkpoint_dir: Path, enabled: bool = True, free_memory: bool = False):
+    def __init__(
+        self, checkpoint_dir: Path, enabled: bool = True, free_memory: bool = False
+    ):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.enabled = enabled
         self.free_memory = free_memory
@@ -164,7 +174,9 @@ class CheckpointManager:
             return df
 
         file_path = self.checkpoint_dir / "stage_{stage_id}_{stage_name}.parquet"
-        df.to_parquet(file_path, index=False, compression="zstd", compression_level=3)  # OPTIMIZED
+        df.to_parquet(
+            file_path, index=False, compression="zstd", compression_level=3
+        )  # OPTIMIZED
 
         checkpoint = StageCheckpoint(
             stage_id=stage_id,
@@ -257,7 +269,9 @@ class StageExecutor:
             self.profiler.end_stage(ctx, output_rows=output_rows, status="success")
 
             if isinstance(result, pd.DataFrame):
-                result = self.checkpoint_manager.save_checkpoint(stage_id, result, stage_name)
+                result = self.checkpoint_manager.save_checkpoint(
+                    stage_id, result, stage_name
+                )
 
             self.completed_stages.add(stage_id)
             return result
@@ -276,7 +290,9 @@ def execute_stage2_load_clinvar(
     return clinvar_df
 
 
-def execute_stage3_load_user_data(user_file: Path, user_type: str, loader: Any) -> pd.DataFrame:
+def execute_stage3_load_user_data(
+    user_file: Path, user_type: str, loader: Any
+) -> pd.DataFrame:
     """STAGE 3: Load user genome data."""
     if user_type == "23andme":
         user_df = loader.load_23andme_file(user_file)
@@ -313,7 +329,9 @@ def execute_stage4_hybrid_matching(
 ) -> pd.DataFrame:
     """STAGE 4: Match variants with progress bar."""
     with tqdm(total=len(user_df), desc="Matching variants", unit="var") as pbar:
-        matched_df = loader.match_variants_hybrid(clinvar_df, user_df, clinvar_type, user_type)
+        matched_df = loader.match_variants_hybrid(
+            clinvar_df, user_df, clinvar_type, user_type
+        )
         pbar.update(len(matched_df))
     if len(matched_df) == 0:
         raise ValueError("No matches found! Check file formats and genomic coordinates")
@@ -326,7 +344,9 @@ def _classify_batch(batch_data):
     from varidex.utils.helpers import classify_variants_production
 
     batch_df, safeguard_config, clinvar_type, user_type = batch_data
-    return classify_variants_production(batch_df, safeguard_config, clinvar_type, user_type)
+    return classify_variants_production(
+        batch_df, safeguard_config, clinvar_type, user_type
+    )
 
 
 def execute_stage5_acmg_classification(
@@ -343,17 +363,23 @@ def execute_stage5_acmg_classification(
     if parallel and len(matched_df) > batch_size:
         logger.info("🔀 Parallel ACMG classification ({len(matched_df):,} variants)")
         batches = [
-            matched_df.iloc[i : i + batch_size] for i in range(0, len(matched_df), batch_size)
+            matched_df.iloc[i : i + batch_size]
+            for i in range(0, len(matched_df), batch_size)
         ]
-        batch_data = [(batch, safeguard_config, clinvar_type, user_type) for batch in batches]
+        batch_data = [
+            (batch, safeguard_config, clinvar_type, user_type) for batch in batches
+        ]
 
         classified_variants = []
         combined_stats = {}
 
         with ProcessPoolExecutor(max_workers=4) as executor:
-            with tqdm(total=len(batches), desc="Classifying batches", unit="batch") as pbar:
+            with tqdm(
+                total=len(batches), desc="Classifying batches", unit="batch"
+            ) as pbar:
                 futures = {
-                    executor.submit(_classify_batch, data): i for i, data in enumerate(batch_data)
+                    executor.submit(_classify_batch, data): i
+                    for i, data in enumerate(batch_data)
                 }
                 for future in as_completed(futures):
                     batch_classified, batch_stats = future.result()
@@ -364,7 +390,9 @@ def execute_stage5_acmg_classification(
         logger.info("✓ Classified {len(classified_variants):,} variants (parallel)")
         return classified_variants, combined_stats
     else:
-        with tqdm(total=len(matched_df), desc="Classifying variants", unit="var") as pbar:
+        with tqdm(
+            total=len(matched_df), desc="Classifying variants", unit="var"
+        ) as pbar:
             classified_variants, stats = classify_variants_production(
                 matched_df, safeguard_config, clinvar_type, user_type
             )
@@ -375,7 +403,9 @@ def execute_stage5_acmg_classification(
         return classified_variants, stats
 
 
-def execute_stage6_create_results(classified_variants: List, reports: Any) -> pd.DataFrame:
+def execute_stage6_create_results(
+    classified_variants: List, reports: Any
+) -> pd.DataFrame:
     """STAGE 6: Create results DataFrame."""
     results_df = reports.create_results_dataframe(classified_variants)
     logger.info("✓ Created results DataFrame: {len(results_df):,} rows")
@@ -389,7 +419,9 @@ def execute_stage7_generate_reports(
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
     with tqdm(total=3, desc="Generating reports", unit="file") as pbar:
-        report_files = reports.generate_all_reports(results_df, stats, output_dir=output_dir)
+        report_files = reports.generate_all_reports(
+            results_df, stats, output_dir=output_dir
+        )
         pbar.update(3)
     logger.info("✓ Reports generated in: {output_dir.absolute()}/")
     return report_files
@@ -408,9 +440,15 @@ def execute_stages_2_3_parallel(
     logger.info("🔀 Starting parallel execution: Stages 2 & 3")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_clinvar = executor.submit(
-            execute_stage2_load_clinvar, clinvar_file, checkpoint_dir, loader, safeguard_config
+            execute_stage2_load_clinvar,
+            clinvar_file,
+            checkpoint_dir,
+            loader,
+            safeguard_config,
         )
-        future_user = executor.submit(execute_stage3_load_user_data, user_file, user_type, loader)
+        future_user = executor.submit(
+            execute_stage3_load_user_data, user_file, user_type, loader
+        )
         clinvar_df = future_clinvar.result()
         user_df = future_user.result()
     logger.info("✓ Parallel loading complete")
@@ -453,7 +491,9 @@ if __name__ == "__main__":
 
     assert "parallel" in inspect.getsource(execute_stage5_acmg_classification)
     print("✓ Batch-parallel ACMG")
-    assert "hash_pandas_object" not in inspect.getsource(CheckpointManager.save_checkpoint)
+    assert "hash_pandas_object" not in inspect.getsource(
+        CheckpointManager.save_checkpoint
+    )
     print("✓ No expensive hash")
     assert "interval=0" in inspect.getsource(StageProfiler.end_stage)
     print("✓ Non-blocking CPU")
@@ -461,7 +501,9 @@ if __name__ == "__main__":
     print("✓ Progress bars")
     assert "zstd" in inspect.getsource(CheckpointManager.save_checkpoint)
     print("✓ zstd compression")
-    assert "FileNotFoundError" in inspect.getsource(StageExecutor._validate_dry_run_inputs)
+    assert "FileNotFoundError" in inspect.getsource(
+        StageExecutor._validate_dry_run_inputs
+    )
     print("✓ Dry-run validation")
 
     print("=" * 70)

@@ -37,7 +37,11 @@ class GnomadVariantFrequency:
 
     @property
     def max_af(self) -> Optional[float]:
-        afs = [af for af in [self.genome_af, self.exome_af, self.popmax_af] if af is not None]
+        afs = [
+            af
+            for af in [self.genome_af, self.exome_af, self.popmax_af]
+            if af is not None
+        ]
         return max(afs) if afs else None
 
     @property
@@ -181,7 +185,9 @@ class GnomadClient:
                 last_error = e
                 if attempt < self.retry_attempts - 1:
                     wait_time = 2**attempt
-                    logger.debug(f"Retry {attempt + 1}/{self.retry_attempts} after {wait_time}s")
+                    logger.debug(
+                        f"Retry {attempt + 1}/{self.retry_attempts} after {wait_time}s"
+                    )
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Failed after {self.retry_attempts} attempts: {e}")
@@ -243,7 +249,12 @@ class GnomadClient:
             return None
 
     def get_variant_frequency(
-        self, chromosome: str, position: int, ref: str, alt: str, dataset: str = "gnomad_r4"
+        self,
+        chromosome: str,
+        position: int,
+        ref: str,
+        alt: str,
+        dataset: str = "gnomad_r4",
     ) -> Optional[GnomadVariantFrequency]:
         chromosome = chromosome.replace("chr", "")
         variant_id = f"{chromosome}-{position}-{ref}-{alt}"

@@ -28,9 +28,7 @@ class TestEmptyInputHandling:
 
     def test_dataframe_with_no_variants(self):
         """Test DataFrame with headers but no data rows."""
-        df = pd.DataFrame(
-            columns=["CHROM", "POS", "REF", "ALT", "GENE", "CONSEQUENCE"]
-        )
+        df = pd.DataFrame(columns=["CHROM", "POS", "REF", "ALT", "GENE", "CONSEQUENCE"])
         assert len(df) == 0
         assert list(df.columns) == [
             "CHROM",

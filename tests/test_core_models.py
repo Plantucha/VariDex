@@ -142,9 +142,7 @@ class TestVariantSerialization:
 
     def test_to_dict(self) -> None:
         """Test variant can be converted to dictionary."""
-        variant = Variant(
-            chrom="chr1", pos=100, ref="A", alt="G", gene="TEST_GENE"
-        )
+        variant = Variant(chrom="chr1", pos=100, ref="A", alt="G", gene="TEST_GENE")
         variant_dict = variant.to_dict()
         assert isinstance(variant_dict, dict)
         assert variant_dict["chrom"] == "chr1"
@@ -330,9 +328,7 @@ class TestVariantEdgeCases:
 
     def test_max_chromosome_position(self) -> None:
         """Test maximum chromosome position."""
-        variant = Variant(
-            chrom="chr1", pos=249250621, ref="A", alt="G"
-        )  # chr1 length
+        variant = Variant(chrom="chr1", pos=249250621, ref="A", alt="G")  # chr1 length
         assert variant.pos == 249250621
 
     def test_sex_chromosomes(self) -> None:

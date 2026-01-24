@@ -146,9 +146,7 @@ class TestMatchByCoordinates:
             }
         )
 
-        result = match_by_coordinates(
-            query_df, ref_df, match_alleles=False
-        )
+        result = match_by_coordinates(query_df, ref_df, match_alleles=False)
         assert len(result) > 0
 
 
@@ -178,9 +176,7 @@ class TestMatchByVariantID:
 
         ref_df = pd.DataFrame({"dbsnp_id": ["rs123"], "info": ["annotation"]})
 
-        result = match_by_variant_id(
-            query_df, ref_df, id_column="dbsnp_id"
-        )
+        result = match_by_variant_id(query_df, ref_df, id_column="dbsnp_id")
         assert len(result) == 1
         assert result.iloc[0]["info"] == "annotation"
 
@@ -432,9 +428,7 @@ class TestMatchVariants:
     def test_match_variants_empty_query(self) -> None:
         """Test variant matching with empty query."""
         query = pd.DataFrame()
-        reference = pd.DataFrame(
-            {"chromosome": ["chr1"], "position": [12345]}
-        )
+        reference = pd.DataFrame({"chromosome": ["chr1"], "position": [12345]})
 
         result = match_variants(query, reference)
         assert len(result) == 0

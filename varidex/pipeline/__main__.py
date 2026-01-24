@@ -10,17 +10,24 @@ from typing import Any, List, Dict
 
 from varidex import __version__
 from varidex.downloader import setup_genomic_data  # type: ignore[attr-defined]
-from varidex.pipeline.orchestrator import execute_stage5_acmg_classification, PipelineState
+from varidex.pipeline.orchestrator import (
+    execute_stage5_acmg_classification,
+    PipelineState,
+)
 from varidex.io.loaders.clinvar import load_clinvar_file  # type: ignore[import]
 from varidex.io.loaders.user import load_user_file  # type: ignore[import]
 
 
 def main() -> None:
-    parser = ArgumentParser(description=f"VariDex v{__version__} - Genome + ClinVar ACMG")
+    parser = ArgumentParser(
+        description=f"VariDex v{__version__} - Genome + ClinVar ACMG"
+    )
     parser.add_argument("--clinvar", help="ClinVar VCF (auto-downloads if missing)")
     parser.add_argument("--user-genome", required=True, help="YOUR genome VCF/23andMe")
     parser.add_argument("--output", default="michal_results", help="Results directory")
-    parser.add_argument("--download-clinvar", action="store_true", help="Auto-download ClinVar")
+    parser.add_argument(
+        "--download-clinvar", action="store_true", help="Auto-download ClinVar"
+    )
     parser.add_argument("--threads", type=int, default=4)
 
     args: Namespace = parser.parse_args()
@@ -37,12 +44,16 @@ def main() -> None:
     clinvar_data = load_clinvar_file(args.clinvar)
     user_data = load_user_file(args.user_genome)
 
-    results: List[Any] = execute_stage5_acmg_classification(state, clinvar_data, user_data)
+    results: List[Any] = execute_stage5_acmg_classification(
+        state, clinvar_data, user_data
+    )
 
     # Save results
     Path(args.output).mkdir(exist_ok=True)
 
-    pathogenic: List[Any] = [r for r in results if getattr(r, "acmg_final", "") in ("P", "LP")]
+    pathogenic: List[Any] = [
+        r for r in results if getattr(r, "acmg_final", "") in ("P", "LP")
+    ]
     print(f"🔴 PATHOGENIC: {len(pathogenic)}")
     print(f"📁 Report: {args.output}/michal_acmg.html")
 

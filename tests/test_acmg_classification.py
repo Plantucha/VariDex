@@ -85,9 +85,7 @@ class TestACMGPathogenicClassification:
 
     def test_pathogenic_one_strong_two_moderate_two_supporting(self):
         """Test Pathogenic: 1 Strong + 2 Moderate + 2 Supporting."""
-        criteria = ACMGCriteria(
-            ps1=True, pm1=True, pm2=True, pp1=True, pp2=True
-        )
+        criteria = ACMGCriteria(ps1=True, pm1=True, pm2=True, pp1=True, pp2=True)
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
 

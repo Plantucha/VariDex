@@ -2,7 +2,7 @@
 
 Focuses on:
 - Boundary condition testing
-- Input validation edge cases  
+- Input validation edge cases
 - Sanitization and normalization
 - Invalid input handling
 - Validation error paths
@@ -322,7 +322,9 @@ class TestVariantKeyFormatting:
         original_ref = "G"
         original_alt = "A"
 
-        key = format_variant_key(original_chrom, original_pos, original_ref, original_alt)
+        key = format_variant_key(
+            original_chrom, original_pos, original_ref, original_alt
+        )
         parsed = parse_variant_key(key)
 
         assert parsed.get("chromosome") == original_chrom

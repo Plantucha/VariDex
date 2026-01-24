@@ -122,9 +122,7 @@ class TestDownloadFile:
             download_file("https://example.com/missing.txt", dest_file)
 
     @patch("varidex.downloader.requests.get")
-    def test_download_file_with_progress(
-        self, mock_get: Mock, tmp_path: Path
-    ) -> None:
+    def test_download_file_with_progress(self, mock_get: Mock, tmp_path: Path) -> None:
         """Test download with progress callback."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -140,7 +138,9 @@ class TestDownloadFile:
 
         dest_file = tmp_path / "progress.txt"
         download_file(
-            "https://example.com/file.txt", dest_file, progress_callback=progress_callback
+            "https://example.com/file.txt",
+            dest_file,
+            progress_callback=progress_callback,
         )
 
         assert len(progress_calls) > 0
@@ -351,9 +351,7 @@ class TestDownloadRetry:
         assert mock_get.call_count == 2
 
     @patch("varidex.downloader.requests.get")
-    def test_download_retry_exhausted(
-        self, mock_get: Mock, tmp_path: Path
-    ) -> None:
+    def test_download_retry_exhausted(self, mock_get: Mock, tmp_path: Path) -> None:
         """Test download fails after all retries exhausted."""
         mock_get.side_effect = requests.Timeout("Persistent timeout")
 
