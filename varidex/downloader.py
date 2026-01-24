@@ -3,7 +3,7 @@
 """
 ClinVar File Downloader with Space Management
 Updates: First Thursday of each month
-Version: 2026-01-24-v2 (Bandit B310 security fix)
+Version: 2026-01-24-v2 (Bandit B310 security fix + ResourceDownloader class)
 """
 
 import os
@@ -91,10 +91,10 @@ def get_available_space_mb(path: Path) -> int:
 
 def _validate_url(url: str) -> None:
     """Validate URL scheme to prevent security issues.
-    
+
     Only allows HTTPS/HTTP URLs to prevent file:// or custom scheme exploitation.
     Raises ValueError if URL scheme is not allowed.
-    
+
     This addresses Bandit B310: URL scheme validation for urllib.urlretrieve.
     """
     parsed = urlparse(url)
@@ -106,13 +106,13 @@ def _validate_url(url: str) -> None:
 
 def download_file(url: str, filepath: Path) -> bool:
     """Download a file with progress indication.
-    
+
     Validates URL scheme before downloading to prevent security issues.
     """
     try:
         # Validate URL scheme (Bandit B310 fix)
         _validate_url(url)
-        
+
         print(f"  URL: {url}")
 
         def reporthook(block_num: int, block_size: int, total_size: int) -> None:
@@ -130,6 +130,78 @@ def download_file(url: str, filepath: Path) -> bool:
     except Exception as e:
         print(f"\n  Error: {e}")
         return False
+
+
+# ===================================================================
+# SECTION: RESOURCE DOWNLOADER CLASS (for test compatibility)
+# ===================================================================
+
+
+class ResourceDownloader:
+    """
+    Object-oriented interface for downloading ClinVar resources.
+
+    This class provides a testable interface to the downloader functionality
+    while maintaining backward compatibility with the existing script-based
+    approach.
+    """
+
+    def __init__(self, download_dir: Optional[Path] = None):
+        """
+        Initialize the ResourceDownloader.
+
+        Args:
+            download_dir: Directory for downloads. Defaults to ./clinvar_data
+        """
+        self.download_dir = download_dir or Path("./clinvar_data")
+        self.download_dir.mkdir(parents=True, exist_ok=True)
+        self.safety_margin_gb = SAFETY_MARGIN_GB
+        self.files = FILES.copy()
+
+    def get_expected_update_date(self) -> datetime.date:
+        """Get the most recent first Thursday (current or previous month)."""
+        return get_expected_update_date()
+
+    def check_file_status(self, filename: str) -> Tuple[bool, str]:
+        """Check if a specific file needs updating."""
+        filepath = self.download_dir / filename
+        expected_date = self.get_expected_update_date()
+        return needs_update(filepath, expected_date)
+
+    def get_available_space_mb(self) -> int:
+        """Get available disk space in MB."""
+        return get_available_space_mb(self.download_dir)
+
+    def download(self, url: str, filename: str) -> bool:
+        """Download a single file."""
+        filepath = self.download_dir / filename
+        return download_file(url, filepath)
+
+    def download_all(self, force: bool = False) -> List[str]:
+        """
+        Download all ClinVar files that need updating.
+
+        Args:
+            force: If True, download all files regardless of current status
+
+        Returns:
+            List of successfully downloaded filenames
+        """
+        expected_date = self.get_expected_update_date()
+        downloaded = []
+
+        for filename, url, size_mb in self.files:
+            filepath = self.download_dir / filename
+            needs_dl, status = needs_update(filepath, expected_date)
+
+            if force or needs_dl:
+                print(f"Downloading: {filename}")
+                if self.download(url, filename):
+                    downloaded.append(filename)
+                else:
+                    print(f"  Warning: Download failed for {filename}")
+
+        return downloaded
 
 
 def main() -> int:
