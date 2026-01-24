@@ -434,8 +434,7 @@ def main(
 
 def print_usage() -> None:
     """Print usage."""
-    print(
-        """
+    print("""
 CLINVAR-WGS PIPELINE v6.0.0 (PRODUCTION)
 
 USAGE:
@@ -455,8 +454,7 @@ EXAMPLES:
 
 ⚠️  RESEARCH USE ONLY
 Reference: Richards et al. 2015, PMID 25741868
-"""
-    )
+""")
 
 
 if __name__ == "__main__":
