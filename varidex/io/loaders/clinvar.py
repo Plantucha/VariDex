@@ -61,9 +61,7 @@ CLINVAR_COLUMNS: Dict[str, List[str]] = {
 def detect_clinvar_file_type(filepath: Path) -> str:
     """Auto-detect: vcf|vcf_tsv|variant_summary."""
     try:
-        opener: Any = (
-            gzip.open(filepath, "rt") if str(filepath).endswith(".gz") else open(filepath, "r")
-        )
+        opener: Any = gzip.open(filepath, "rt") if str(filepath).endswith(".gz") else open(filepath, "r")
         with opener as f:
             lines: List[str] = [f.readline() for _ in range(5)]
         if not lines or not lines[0]:
@@ -172,9 +170,7 @@ def extract_rsid_from_info(info_str: Any) -> Optional[str]:
     return None
 
 
-def load_clinvar_vcf(
-    filepath: Path, checkpoint_dir: Optional[Path] = None
-) -> pd.DataFrame:
+def load_clinvar_vcf(filepath: Path, checkpoint_dir: Optional[Path] = None) -> pd.DataFrame:
     """Load full ClinVar VCF."""
     filepath = Path(filepath)
     print(f"\n[VCF] {filepath.name}")
@@ -230,21 +226,15 @@ def load_clinvar_vcf(
         print(f"  Filtered: {orig_len:,} → {len(df):,}\n  ✓ {len(df):,} variants")
         return df
     except Exception as e:
-        raise DataLoadError(
-            "VCF load failed", context={"file": str(filepath), "error": str(e)}
-        )
+        raise DataLoadError("VCF load failed", context={"file": str(filepath), "error": str(e)})
 
 
-def load_clinvar_vcf_tsv(
-    filepath: Path, checkpoint_dir: Optional[Path] = None
-) -> pd.DataFrame:
+def load_clinvar_vcf_tsv(filepath: Path, checkpoint_dir: Optional[Path] = None) -> pd.DataFrame:
     """Load VCF-style TSV."""
     filepath = Path(filepath)
     print(f"\n[VCF-TSV] {filepath.name}")
     try:
-        df: pd.DataFrame = pd.read_csv(
-            filepath, sep="\t", low_memory=True, on_bad_lines="skip"
-        )
+        df: pd.DataFrame = pd.read_csv(filepath, sep="\t", low_memory=True, on_bad_lines="skip")
         if len(df) == 0:
             raise ValidationError("TSV empty", context={"file": str(filepath)})
 
@@ -259,7 +249,7 @@ def load_clinvar_vcf_tsv(
         }
         for target, candidates in target_candidates.items():
             for col in df.columns:
-                if any(cand in col.lower() for cand in candidates):
+                if col in candidates or any(cand in col.lower() for cand in candidates):
                     col_map[col] = target
                     break
 
@@ -275,14 +265,10 @@ def load_clinvar_vcf_tsv(
         print(f"  ✓ {len(df):,} variants")
         return df
     except Exception as e:
-        raise DataLoadError(
-            "VCF-TSV load failed", context={"file": str(filepath), "error": str(e)}
-        )
+        raise DataLoadError("VCF-TSV load failed", context={"file": str(filepath), "error": str(e)})
 
 
-def load_variant_summary(
-    filepath: Path, checkpoint_dir: Optional[Path] = None
-) -> pd.DataFrame:
+def load_variant_summary(filepath: Path, checkpoint_dir: Optional[Path] = None) -> pd.DataFrame:
     """Load variant_summary.txt."""
     filepath = Path(filepath)
     print(f"\n[VARIANT_SUMMARY] {filepath.name}")
@@ -309,9 +295,7 @@ def load_variant_summary(
         col_map: Dict[str, str] = {}
         for target, candidates in CLINVAR_COLUMNS.items():
             for col in df.columns:
-                if col in candidates or any(
-                    cand.lower() in col.lower() for cand in candidates
-                ):
+                if col in candidates or any(cand.lower() in col.lower() for cand in candidates):
                     col_map[col] = target
                     break
 
@@ -326,11 +310,7 @@ def load_variant_summary(
                 print(f"  Filtered rsIDs: {orig_len:,} → {len(df):,}")
 
         if "clinical_sig" in df.columns:
-            df["has_conflict"] = df["clinical_sig"].apply(
-                lambda x: any(
-                    kw in str(x).lower() for kw in ["conflict", "conflicting", "|"]
-                )
-            )
+            df["has_conflict"] = df["clinical_sig"].apply(lambda x: any(kw in str(x).lower() for kw in ["conflict", "conflicting", "|"]))
 
         if "rsid" in df.columns and df["rsid"].duplicated().any():
             agg_dict: Dict[str, Callable[..., str]] = {
@@ -350,9 +330,7 @@ def load_variant_summary(
         print(f"  ✓ {len(df):,} variants")
         return df
     except Exception as e:
-        raise DataLoadError(
-            "variant_summary load failed", context={"file": str(filepath), "error": str(e)}
-        )
+        raise DataLoadError("variant_summary load failed", context={"file": str(filepath), "error": str(e)})
 
 
 def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
@@ -378,6 +356,4 @@ def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
 
         return loader(filepath, **kwargs)
     except Exception as e:
-        raise DataLoadError(
-            "ClinVar load failed", context={"file": str(filepath), "error": str(e)}
-        )
+        raise DataLoadError("ClinVar load failed", context={"file": str(filepath), "error": str(e)})

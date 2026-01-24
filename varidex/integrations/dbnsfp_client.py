@@ -297,9 +297,7 @@ class DbNSFPClient:
             variant_data: Dict[str, Any] = data[0] if isinstance(data, list) else data
 
             # Extract transcript consequences
-            consequences: List[Dict[str, Any]] = variant_data.get(
-                "transcript_consequences", []
-            )
+            consequences: List[Dict[str, Any]] = variant_data.get("transcript_consequences", [])
             if not consequences:
                 logger.debug(f"No transcript consequences for {variant_id}")
                 return None
@@ -383,10 +381,7 @@ class DbNSFPClient:
             # Construct VEP query
             # Format: /vep/human/region/17:43094692-43094692:1/A
             chrom: str = chromosome.replace("chr", "")
-            url: str = (
-                f"{self.vep_url}/vep/{species}/region/"
-                f"{chrom}:{position}-{position}:1/{alt}"
-            )
+            url: str = f"{self.vep_url}/vep/{species}/region/" f"{chrom}:{position}-{position}:1/{alt}"
 
             logger.debug(f"VEP query: {url}")
 
@@ -397,9 +392,7 @@ class DbNSFPClient:
             data: List[Dict[str, Any]] = response.json()
 
             # Parse response
-            prediction: Optional[PredictionScore] = self._parse_vep_response(
-                data, variant_id
-            )
+            prediction: Optional[PredictionScore] = self._parse_vep_response(data, variant_id)
 
             if prediction is None:
                 logger.warning(f"No predictions found for {variant_id}")
@@ -411,14 +404,10 @@ class DbNSFPClient:
             return prediction
 
         except requests.exceptions.Timeout:
-            logger.error(
-                f"VEP request timeout for {variant_id} (offline or slow connection?)"
-            )
+            logger.error(f"VEP request timeout for {variant_id} (offline or slow connection?)")
             return None
         except requests.exceptions.ConnectionError:
-            logger.error(
-                f"VEP connection failed for {variant_id} (offline or VEP unavailable?)"
-            )
+            logger.error(f"VEP connection failed for {variant_id} (offline or VEP unavailable?)")
             logger.info("Tip: For offline use, disable predictions or use engine_v7/v6")
             return None
         except requests.exceptions.RequestException as e:
