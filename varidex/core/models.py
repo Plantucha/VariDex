@@ -237,6 +237,35 @@ class PipelineState:
         )
 
 
+# ===================================================================
+# BACKWARD COMPATIBILITY ALIASES
+# ===================================================================
+# These aliases maintain backward compatibility with existing tests
+# while the codebase transitions to the new class names.
+
+# Primary alias: Variant -> VariantData
+Variant = VariantData
+
+# GenomicVariant alias for position-based variant representation
+GenomicVariant = VariantData
+
+# ACMG-related aliases
+ACMGCriteria = ACMGEvidenceSet  # Alias for test compatibility
+
+# Pathogenicity classification enum (for test compatibility)
+from enum import Enum
+
+
+class PathogenicityClass(Enum):
+    """ACMG pathogenicity classifications."""
+
+    PATHOGENIC = "Pathogenic"
+    LIKELY_PATHOGENIC = "Likely Pathogenic"
+    UNCERTAIN_SIGNIFICANCE = "Uncertain Significance"
+    LIKELY_BENIGN = "Likely Benign"
+    BENIGN = "Benign"
+
+
 if __name__ == "__main__":
     print("=" * 80)
     print("MODELS MODULE - VERIFICATION")
@@ -263,6 +292,13 @@ if __name__ == "__main__":
     evidence.bp.add("BP1")
     print(f"  - After adding BP1: {evidence.has_conflict()}")
     assert evidence.has_conflict(), "Should be True with mixed evidence"
+
+    # Test aliases
+    print("\n✓ Testing backward compatibility aliases")
+    print(f"  - Variant == VariantData: {Variant is VariantData}")
+    print(f"  - GenomicVariant == VariantData: {GenomicVariant is VariantData}")
+    print(f"  - ACMGCriteria == ACMGEvidenceSet: {ACMGCriteria is ACMGEvidenceSet}")
+    print(f"  - PathogenicityClass enum: {PathogenicityClass.PATHOGENIC.value}")
 
     print("\n✅ All optimized models validated successfully")
     print("=" * 80)
