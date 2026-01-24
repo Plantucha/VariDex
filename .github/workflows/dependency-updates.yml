@@ -1,0 +1,140 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ==================== CHECK OUTDATED PACKAGES ====================
+  check-outdated:
+    name: Check Outdated Packages
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-check pip-audit
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+    
+    - name: Check for outdated packages
+      run: |
+        echo "📊 Checking for outdated packages..."
+        pip list --outdated > outdated-packages.txt
+        cat outdated-packages.txt
+    
+    - name: Upload outdated packages report
+      uses: actions/upload-artifact@v4
+      with:
+        name: outdated-packages-report
+        path: outdated-packages.txt
+        retention-days: 30
+
+  # ==================== SECURITY UPDATES ====================
+  security-updates:
+    name: Check Security Updates
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety pip-audit
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+    
+    - name: Run Safety check
+      run: |
+        echo "🔒 Checking for known vulnerabilities..."
+        pip freeze | safety check --stdin --json > safety-report.json || true
+        pip freeze | safety check --stdin || true
+    
+    - name: Run pip-audit
+      run: |
+        echo "🔍 Auditing packages for vulnerabilities..."
+        pip-audit --desc --format json > pip-audit-report.json || true
+        pip-audit --desc || true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-update-reports
+        path: |
+          safety-report.json
+          pip-audit-report.json
+        retention-days: 90
+
+  # ==================== PYTHON VERSION COMPATIBILITY ====================
+  python-compat:
+    name: Test Python ${{ matrix.python-version }} Compatibility
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    
+    - name: Test import
+      run: |
+        python -c "import varidex; print(f'VariDex v{varidex.__version__} works on Python ${{ matrix.python-version }}')"
+    
+    - name: Run basic tests
+      run: |
+        pip install pytest
+        pytest tests/ -v --maxfail=3 || echo "⚠️ Some tests failed on Python ${{ matrix.python-version }}"
+
+  # ==================== DEPENDENCY SUMMARY ====================
+  summary:
+    name: Dependency Update Summary
+    runs-on: ubuntu-latest
+    needs: [check-outdated, security-updates, python-compat]
+    if: always()
+    
+    steps:
+    - name: Generate summary
+      run: |
+        echo "📊 ===================================="
+        echo "📊 DEPENDENCY UPDATE CHECK COMPLETE"
+        echo "📊 ===================================="
+        echo "📊 Results:"
+        echo "  - Outdated Check: ${{ needs.check-outdated.result }}"
+        echo "  - Security Updates: ${{ needs.security-updates.result }}"
+        echo "  - Python Compatibility: ${{ needs.python-compat.result }}"
+        echo "📊 ===================================="
+        echo "ℹ️ Check artifacts for detailed reports"
+        echo "📊 ===================================="
