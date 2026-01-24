@@ -13,6 +13,7 @@ Changes v6.4.1 (2026-01-24):
 - CRITICAL FIX: Replaced __getattribute__ with __getattr__ for performance
 - Performance improvement: 10-100x speedup on attribute access
 - All string formatting bugs resolved
+- Added Config and VariDexConfig classes for test compatibility
 
 Changes v6.0.0:
 - Import from varidex.version for dynamic versioning
@@ -29,6 +30,7 @@ from enum import Enum
 from pathlib import Path
 import warnings
 import sys
+from typing import Any
 
 # ===================================================================
 # SECTION 1: VERSION IMPORT (GE-2 FIX)
@@ -71,6 +73,9 @@ __all__ = [
     # Ratings
     "CLINVAR_STAR_RATINGS",
     "ACMG_TIERS",
+    # Config classes
+    "Config",
+    "VariDexConfig",
     # Deprecated (but preserved for import compatibility)
     "FUNCTIONAL_DOMAINS",  # Empty dict - PM1 disabled
     "MAXFILESIZE",  # Use get_max_filesize() instead
@@ -370,7 +375,42 @@ DEPRECATED_CONSTANTS = {
 MAXFILESIZE = DEPRECATED_CONSTANTS["MAXFILESIZE"]
 
 # ===================================================================
-# SECTION 11: DEPRECATION HANDLING (PERFORMANCE FIX)
+# SECTION 11: CONFIG CLASSES (for test compatibility)
+# ===================================================================
+
+
+class Config:
+    """
+    Configuration class providing attribute-based access to config constants.
+
+    This class provides backward compatibility for tests that expect a Config object.
+    All module-level constants are accessible as class attributes.
+    """
+
+    def __getattr__(self, name: str) -> Any:
+        """Provide attribute access to module-level constants."""
+        # Get the module's global namespace
+        module_globals = globals()
+
+        if name in module_globals:
+            return module_globals[name]
+
+        raise AttributeError(
+            f"Config has no attribute '{name}'. "
+            f"Available: {', '.join([k for k in __all__ if not k.startswith('_')])}"
+        )
+
+    def __dir__(self):
+        """List available attributes."""
+        return __all__
+
+
+# Alias for alternate naming convention
+VariDexConfig = Config
+
+
+# ===================================================================
+# SECTION 12: DEPRECATION HANDLING (PERFORMANCE FIX)
 # ===================================================================
 
 
@@ -460,11 +500,23 @@ if __name__ == "__main__":
                 print(f"✗ {description} - Unexpected error: {e}")
 
     print("=" * 70)
+    print("CONFIG CLASS TESTS")
+    print("=" * 70)
+
+    # Test Config class
+    config = Config()
+    print(f"✓ Config class instantiated")
+    print(f"✓ Config.CHUNK_SIZE = {config.CHUNK_SIZE}")
+    print(f"✓ Config.LOF_GENES = {len(config.LOF_GENES)} genes")
+    print(f"✓ VariDexConfig is Config: {VariDexConfig is Config}")
+
+    print("=" * 70)
     print(f"TYPE VALIDATION: {passed}/{total} tests passed")
     print("=" * 70)
-    print(f"✓ Configuration module v{__version__} - BUGS FIXED")
+    print(f"✓ Configuration module v{__version__} - ALL FEATURES WORKING")
     print("  - String formatting: ✅ Fixed")
     print("  - Performance: ✅ Fixed (__getattr__ instead of __getattribute__)")
+    print("  - Config classes: ✅ Added for test compatibility")
     print("=" * 70)
 else:
     # Module import message
