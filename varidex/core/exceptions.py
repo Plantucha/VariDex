@@ -69,7 +69,10 @@ class VaridexError(Exception):
     """Base exception for all VariDex errors."""
 
     def __init__(
-        self, message: str, code: Optional[ErrorCode] = None, context: Optional[Dict[str, Any]] = None
+        self,
+        message: str,
+        code: Optional[ErrorCode] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(message)
         self.code: Optional[ErrorCode] = code
