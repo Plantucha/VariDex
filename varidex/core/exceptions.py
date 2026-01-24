@@ -11,6 +11,7 @@ __all__: List[str] = [
     "VaridexError",
     "ValidationError",
     "DataLoadError",
+    "DataProcessingError",
     "ClassificationError",
     "ReportError",
     "FileProcessingError",
@@ -33,6 +34,7 @@ if __name__ == "__main__":
         from varidex.core.exceptions import (
             ValidationError,
             DataLoadError,
+            DataProcessingError,
             ClassificationError,
             ReportError,
             FileProcessingError,
@@ -41,6 +43,7 @@ if __name__ == "__main__":
         test_classes: List[Type[Exception]] = [
             ValidationError,
             DataLoadError,
+            DataProcessingError,
             ClassificationError,
             ReportError,
             FileProcessingError,
@@ -60,6 +63,7 @@ class ErrorCode(Enum):
 
     VALIDATION = "VALIDATION"
     DATA_LOAD = "DATA_LOAD"
+    DATA_PROCESSING = "DATA_PROCESSING"
     CLASSIFICATION = "CLASSIFICATION"
     REPORT = "REPORT"
     CONFIG = "CONFIG"
@@ -92,6 +96,21 @@ class DataLoadError(VaridexError):
 
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message, ErrorCode.DATA_LOAD, context)
+
+
+class DataProcessingError(VaridexError):
+    """
+    Raised when data processing operations fail.
+
+    This includes issues like:
+    - Transformation errors
+    - Filtering errors
+    - Aggregation errors
+    - Pipeline stage failures
+    """
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, ErrorCode.DATA_PROCESSING, context)
 
 
 class ClassificationError(VaridexError):
@@ -152,7 +171,7 @@ if __name__ == "__main__":
     print("=" * 70)
 
     passed: int = 0
-    total: int = 15
+    total: int = 16
 
     try:
         raise VaridexError("test")
@@ -174,39 +193,45 @@ if __name__ == "__main__":
         passed += 1
 
     try:
+        raise DataProcessingError("test")
+    except DataProcessingError:
+        print("✓ Test 4: DataProcessingError")
+        passed += 1
+
+    try:
         raise ClassificationError("test")
     except ClassificationError:
-        print("✓ Test 4: ClassificationError")
+        print("✓ Test 5: ClassificationError")
         passed += 1
 
     try:
         raise ReportError("test")
     except ReportError:
-        print("✓ Test 5: ReportError")
+        print("✓ Test 6: ReportError")
         passed += 1
 
     try:
         raise FileProcessingError("test")
     except FileProcessingError:
-        print("✓ Test 6: FileProcessingError")
+        print("✓ Test 7: FileProcessingError")
         passed += 1
 
     try:
         raise ACMGValidationError("test")
     except ValidationError:
-        print("✓ Test 7: ACMGValidationError alias works")
+        print("✓ Test 8: ACMGValidationError alias works")
         passed += 1
 
     try:
         raise ACMGClassificationError("test")
     except ClassificationError:
-        print("✓ Test 8: ACMGClassificationError alias works")
+        print("✓ Test 9: ACMGClassificationError alias works")
         passed += 1
 
     try:
         raise ConfigurationError("test")
     except ValidationError:
-        print("✓ Test 9: ConfigurationError alias works")
+        print("✓ Test 10: ConfigurationError alias works")
         passed += 1
 
     print(f"\n{'='*70}")
