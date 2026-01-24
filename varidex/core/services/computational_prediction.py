@@ -147,14 +147,10 @@ class ComputationalPredictionService:
             enable_predictions: Enable prediction queries (False for testing/offline)
         """
         self.enable_predictions: bool = enable_predictions
-        self.thresholds: PredictionThresholds = (
-            thresholds if thresholds else PredictionThresholds()
-        )
+        self.thresholds: PredictionThresholds = thresholds if thresholds else PredictionThresholds()
 
         if enable_predictions:
-            self.client: Optional[DbNSFPClient] = (
-                dbnsfp_client if dbnsfp_client else DbNSFPClient()
-            )
+            self.client: Optional[DbNSFPClient] = dbnsfp_client if dbnsfp_client else DbNSFPClient()
             logger.info("ComputationalPredictionService initialized with VEP client")
         else:
             self.client = None

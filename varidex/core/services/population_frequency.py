@@ -219,9 +219,7 @@ class PopulationFrequencyService:
 
         return False, f"AF {max_af:.6f} below BS1 threshold ({threshold})"
 
-    def _check_allele_number_confidence(
-        self, freq: GnomadVariantFrequency
-    ) -> Tuple[bool, str]:
+    def _check_allele_number_confidence(self, freq: GnomadVariantFrequency) -> Tuple[bool, str]:
         """Check if allele number is sufficient for confident frequency estimate.
 
         Args:
