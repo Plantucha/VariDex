@@ -160,7 +160,7 @@ class TestVariDexConfigUpdate:
 
     def test_update_single_parameter(self) -> None:
         """Test updating a single configuration parameter."""
-        config = VariDexConfig(min_ore=20.0)
+        config = VariDexConfig(min_quality_score=20.0)
         config.update(min_quality_score=30.0)
         assert config.min_quality_score == 30.0
 
