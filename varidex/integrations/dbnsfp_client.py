@@ -33,7 +33,7 @@ import logging
 import time
 import requests
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,7 +50,7 @@ class PredictionScore:
 
     # PolyPhen-2 (0-1, higher = more deleterious)
     polyphen_score: Optional[float] = None
-    polyphen_prediction: Optional[str] = None  # 'probably_damaging', 'possibly_damaging', 'benign'
+    polyphen_prediction: Optional[str] = None
 
     # CADD (1-99, higher = more deleterious)
     cadd_phred: Optional[float] = None
@@ -73,7 +73,7 @@ class PredictionScore:
 
     def count_deleterious(self) -> int:
         """Count number of algorithms predicting deleterious effect."""
-        count = 0
+        count: int = 0
 
         # SIFT: score < 0.05 is deleterious
         if self.sift_score is not None and self.sift_score < 0.05:
@@ -103,7 +103,7 @@ class PredictionScore:
 
     def count_benign(self) -> int:
         """Count number of algorithms predicting benign effect."""
-        count = 0
+        count: int = 0
 
         # SIFT: score > 0.05 is tolerated
         if self.sift_score is not None and self.sift_score > 0.05:
@@ -133,7 +133,7 @@ class PredictionScore:
 
     def get_available_algorithms(self) -> List[str]:
         """Get list of algorithms with scores available."""
-        available = []
+        available: List[str] = []
         if self.sift_score is not None or self.sift_prediction:
             available.append("SIFT")
         if self.polyphen_score is not None or self.polyphen_prediction:
@@ -161,10 +161,10 @@ class PredictionScore:
 
     def summary(self) -> str:
         """Generate human-readable summary."""
-        self.count_deleterious()
-        self.count_benign()
-        self.get_available_algorithms()
-        return "{deleterious} deleterious, {benign} benign ({len(algorithms)} algorithms)"
+        deleterious: int = self.count_deleterious()
+        benign: int = self.count_benign()
+        algorithms: List[str] = self.get_available_algorithms()
+        return f"{deleterious} deleterious, {benign} benign ({len(algorithms)} algorithms)"
 
 
 class DbNSFPClient:
@@ -185,9 +185,9 @@ class DbNSFPClient:
         - Increasing cache TTL
     """
 
-    DEFAULT_VEP_URL = "https://rest.ensembl.org"
-    DEFAULT_TIMEOUT = 30
-    DEFAULT_CACHE_TTL = 86400  # 24 hours
+    DEFAULT_VEP_URL: str = "https://rest.ensembl.org"
+    DEFAULT_TIMEOUT: int = 30
+    DEFAULT_CACHE_TTL: int = 86400  # 24 hours
 
     def __init__(
         self,
@@ -197,7 +197,7 @@ class DbNSFPClient:
         cache_ttl: int = DEFAULT_CACHE_TTL,
         rate_limit: bool = True,
         max_requests_per_second: int = 15,  # VEP limit
-    ):
+    ) -> None:
         """Initialize dbNSFP/VEP client.
 
         Args:
@@ -211,28 +211,30 @@ class DbNSFPClient:
         Raises:
             Warning: If offline (no internet connectivity)
         """
-        self.vep_url = vep_url.rstrip("/")
-        self.timeout = timeout
-        self.enable_cache = enable_cache
-        self.cache_ttl = timedelta(seconds=cache_ttl)
+        self.vep_url: str = vep_url.rstrip("/")
+        self.timeout: int = timeout
+        self.enable_cache: bool = enable_cache
+        self.cache_ttl: timedelta = timedelta(seconds=cache_ttl)
 
         # Cache: variant_id -> (PredictionScore, timestamp)
         self._cache: Dict[str, Tuple[PredictionScore, datetime]] = {}
 
         # Rate limiting
-        self.rate_limit = rate_limit
+        self.rate_limit: bool = rate_limit
+        self.min_interval: float = 0.0
+        self.last_request_time: float = 0.0
         if rate_limit:
             self.min_interval = 1.0 / max_requests_per_second
-            self.last_request_time = 0.0
 
         # Session for connection pooling
-        self.session = requests.Session()
+        self.session: requests.Session = requests.Session()
         self.session.headers.update(
             {"Content-Type": "application/json", "Accept": "application/json"}
         )
 
         logger.info(
-            "DbNSFPClient initialized: VEP={vep_url}, cache={enable_cache}, rate_limit={rate_limit}"
+            f"DbNSFPClient initialized: VEP={vep_url}, cache={enable_cache}, "
+            f"rate_limit={rate_limit}"
         )
         logger.info("Note: This client requires internet connectivity to function")
 
@@ -241,12 +243,12 @@ class DbNSFPClient:
         if not self.rate_limit:
             return
 
-        current_time = time.time()
-        time_since_last = current_time - self.last_request_time
+        current_time: float = time.time()
+        time_since_last: float = current_time - self.last_request_time
 
         if time_since_last < self.min_interval:
-            sleep_time = self.min_interval - time_since_last
-            logger.debug("Rate limit: sleeping {sleep_time:.3f}s")
+            sleep_time: float = self.min_interval - time_since_last
+            logger.debug(f"Rate limit: sleeping {sleep_time:.3f}s")
             time.sleep(sleep_time)
 
         self.last_request_time = time.time()
@@ -257,13 +259,13 @@ class DbNSFPClient:
             return None
 
         prediction, timestamp = self._cache[variant_id]
-        age = datetime.now() - timestamp
+        age: timedelta = datetime.now() - timestamp
 
         if age < self.cache_ttl:
-            logger.debug("Cache hit: {variant_id} (age: {age.seconds}s)")
+            logger.debug(f"Cache hit: {variant_id} (age: {age.seconds}s)")
             return prediction
         else:
-            logger.debug("Cache expired: {variant_id} (age: {age.seconds}s)")
+            logger.debug(f"Cache expired: {variant_id} (age: {age.seconds}s)")
             del self._cache[variant_id]
             return None
 
@@ -271,7 +273,7 @@ class DbNSFPClient:
         """Add prediction to cache."""
         if self.enable_cache:
             self._cache[variant_id] = (prediction, datetime.now())
-            logger.debug("Cached: {variant_id}")
+            logger.debug(f"Cached: {variant_id}")
 
     def clear_cache(self) -> None:
         """Clear all cached predictions."""
@@ -292,18 +294,20 @@ class DbNSFPClient:
                 return None
 
             # VEP returns list, usually one entry per variant
-            variant_data = data[0] if isinstance(data, list) else data
+            variant_data: Dict[str, Any] = data[0] if isinstance(data, list) else data
 
             # Extract transcript consequences
-            consequences = variant_data.get("transcript_consequences", [])
+            consequences: List[Dict[str, Any]] = variant_data.get(
+                "transcript_consequences", []
+            )
             if not consequences:
-                logger.debug("No transcript consequences for {variant_id}")
+                logger.debug(f"No transcript consequences for {variant_id}")
                 return None
 
             # Use first transcript (or most severe)
-            transcript = consequences[0]
+            transcript: Dict[str, Any] = consequences[0]
 
-            prediction = PredictionScore(
+            prediction: PredictionScore = PredictionScore(
                 variant_id=variant_id,
                 consequence=transcript.get("consequence_terms", [""])[0],
                 source="VEP",
@@ -332,17 +336,18 @@ class DbNSFPClient:
                 prediction.revel_score = float(transcript["revel"])
 
             # Log available algorithms
-            available = prediction.get_available_algorithms()
-            logger.info("Parsed predictions for {variant_id}: {prediction.summary()}")
+            available: List[str] = prediction.get_available_algorithms()
+            logger.info(f"Parsed predictions for {variant_id}: {prediction.summary()}")
             if len(available) < 3:
                 logger.warning(
-                    "Limited algorithm coverage for {variant_id}: only {', '.join(available)} available"
+                    f"Limited algorithm coverage for {variant_id}: "
+                    f"only {', '.join(available)} available"
                 )
 
             return prediction
 
-        except Exception:
-            logger.error("Failed to parse VEP response for {variant_id}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to parse VEP response for {variant_id}: {e}")
             return None
 
     def get_predictions(
@@ -364,10 +369,10 @@ class DbNSFPClient:
             Requires internet connectivity. If offline, returns None
             and logs an error. Service will gracefully degrade.
         """
-        variant_id = "{chromosome}-{position}-{ref}-{alt}"
+        variant_id: str = f"{chromosome}-{position}-{ref}-{alt}"
 
         # Check cache
-        cached = self._get_from_cache(variant_id)
+        cached: Optional[PredictionScore] = self._get_from_cache(variant_id)
         if cached is not None:
             return cached
 
@@ -377,22 +382,27 @@ class DbNSFPClient:
 
             # Construct VEP query
             # Format: /vep/human/region/17:43094692-43094692:1/A
-            chromosome.replace("chr", "")
-            url = "{self.vep_url}/vep/{species}/region/{chrom}:{position}-{position}:1/{alt}"
+            chrom: str = chromosome.replace("chr", "")
+            url: str = (
+                f"{self.vep_url}/vep/{species}/region/"
+                f"{chrom}:{position}-{position}:1/{alt}"
+            )
 
-            logger.debug("VEP query: {url}")
+            logger.debug(f"VEP query: {url}")
 
             # Make request
-            response = self.session.get(url, timeout=self.timeout)
+            response: requests.Response = self.session.get(url, timeout=self.timeout)
             response.raise_for_status()
 
-            data = response.json()
+            data: List[Dict[str, Any]] = response.json()
 
             # Parse response
-            prediction = self._parse_vep_response(data, variant_id)
+            prediction: Optional[PredictionScore] = self._parse_vep_response(
+                data, variant_id
+            )
 
             if prediction is None:
-                logger.warning("No predictions found for {variant_id}")
+                logger.warning(f"No predictions found for {variant_id}")
                 return None
 
             # Cache result
@@ -401,17 +411,21 @@ class DbNSFPClient:
             return prediction
 
         except requests.exceptions.Timeout:
-            logger.error("VEP request timeout for {variant_id} (offline or slow connection?)")
+            logger.error(
+                f"VEP request timeout for {variant_id} (offline or slow connection?)"
+            )
             return None
         except requests.exceptions.ConnectionError:
-            logger.error("VEP connection failed for {variant_id} (offline or VEP unavailable?)")
+            logger.error(
+                f"VEP connection failed for {variant_id} (offline or VEP unavailable?)"
+            )
             logger.info("Tip: For offline use, disable predictions or use engine_v7/v6")
             return None
         except requests.exceptions.RequestException as e:
-            logger.error("VEP request failed for {variant_id}: {e}")
+            logger.error(f"VEP request failed for {variant_id}: {e}")
             return None
-        except Exception:
-            logger.error("Unexpected error getting predictions for {variant_id}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error getting predictions for {variant_id}: {e}")
             return None
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -429,7 +443,7 @@ class DbNSFPClient:
             "requires_internet": True,
         }
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Clean up session."""
         if hasattr(self, "session"):
             self.session.close()
