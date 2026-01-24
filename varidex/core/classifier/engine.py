@@ -48,9 +48,7 @@ class ACMGClassifier:
     def __init__(self, config: Optional[ACMGConfig] = None) -> None:
         """Initialize classifier with configuration."""
         self.config: ACMGConfig = config if config else ACMGConfig()
-        self.metrics: Optional[ACMGMetrics] = (
-            ACMGMetrics() if self.config.enable_metrics else None
-        )
+        self.metrics: Optional[ACMGMetrics] = ACMGMetrics() if self.config.enable_metrics else None
 
         if self.config.enable_logging:
             logging.basicConfig(
@@ -247,9 +245,7 @@ class ACMGClassifier:
             logger.error(f"Classification failed: {e}", exc_info=True)
             return "Uncertain Significance", f"Error: {str(e)}"
 
-    def classify_variant(
-        self, variant: VariantData
-    ) -> Tuple[str, str, ACMGEvidenceSet, float]:
+    def classify_variant(self, variant: VariantData) -> Tuple[str, str, ACMGEvidenceSet, float]:
         """Complete classification pipeline with metrics.
 
         Args:
@@ -274,8 +270,7 @@ class ACMGClassifier:
                 self.metrics.record_success(duration, classification, evidence)
 
             logger.info(
-                f"Classified {variant} → {classification} ({confidence}) "
-                f"in {duration:.3f}s"
+                f"Classified {variant} → {classification} ({confidence}) " f"in {duration:.3f}s"
             )
 
             return classification, confidence, evidence, duration
@@ -334,11 +329,7 @@ if __name__ == "__main__":
     print("\nAll files now under 500-line limit!")
 else:
     logger.info(f"ACMGClassifier {__version__} v6.4.0 Production classifier loaded")
-    logger.info(
-        f" - {len(LOF_GENES)} LOF genes, {len(MISSENSE_RARE_GENES)} missense-rare genes"
-    )
+    logger.info(f" - {len(LOF_GENES)} LOF genes, {len(MISSENSE_RARE_GENES)} missense-rare genes")
     logger.info(" - Enterprise features: Error handling, Metrics, Config management")
-    logger.info(
-        " - DISABLED: PM2 (gnomAD), BP7 (SpliceAI) - hallucination fixes maintained"
-    )
+    logger.info(" - DISABLED: PM2 (gnomAD), BP7 (SpliceAI) - hallucination fixes maintained")
     logger.info(" - Modular: evidence_utils.py + evidence_assignment.py")
