@@ -78,12 +78,12 @@ class VariantData:
     """Complete information for a single genetic variant"""
 
     # Core identification
-    rsid: str
-    chromosome: str
-    position: str
+    rsid: str = ""
+    chromosome: str = ""
+    position: str = ""
 
     # Genotype information
-    genotype: str
+    genotype: str = ""
     normalized_genotype: str = ""
     genotype_class: str = ""
     zygosity: str = ""
@@ -91,6 +91,9 @@ class VariantData:
     # Reference and alternate alleles
     ref_allele: str = ""
     alt_allele: str = ""
+
+    # Reference assembly
+    assembly: str = ""
 
     # ClinVar annotation
     gene: str = ""

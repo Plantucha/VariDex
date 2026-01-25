@@ -161,8 +161,8 @@ class TestValidateVariant:
         variant = GenomicVariant(
             chromosome="chr1",
             position=12345,
-            reference="A",
-            alternate="G",
+            ref_allele="A",
+            alt_allele="G",
             assembly="GRCh38",
         )
         assert validate_variant(variant) is True
@@ -172,8 +172,8 @@ class TestValidateVariant:
         variant = GenomicVariant(
             chromosome="chr99",
             position=12345,
-            reference="A",
-            alternate="G",
+            ref_allele="A",
+            alt_allele="G",
             assembly="GRCh38",
         )
         with pytest.raises(ValidationError, match="Invalid chromosome"):
@@ -184,8 +184,8 @@ class TestValidateVariant:
         variant = GenomicVariant(
             chromosome="chr1",
             position=-100,
-            reference="A",
-            alternate="G",
+            ref_allele="A",
+            alt_allele="G",
             assembly="GRCh38",
         )
         assert validate_variant(variant, raise_on_error=False) is False
@@ -195,8 +195,8 @@ class TestValidateVariant:
         variant = GenomicVariant(
             chromosome="chr1",
             position=12345,
-            reference="X",
-            alternate="G",
+            ref_allele="X",
+            alt_allele="G",
             assembly="GRCh38",
         )
         assert validate_variant(variant, raise_on_error=False) is False
@@ -206,8 +206,8 @@ class TestValidateVariant:
         variant = GenomicVariant(
             chromosome="chr1",
             position=12345,
-            reference="A",
-            alternate="G",
+            ref_allele="A",
+            alt_allele="G",
             assembly="GRCh36",
         )
         with pytest.raises(ValidationError, match="Invalid assembly"):
@@ -218,8 +218,8 @@ class TestValidateVariant:
         variant = GenomicVariant(
             chromosome="chr99",
             position=12345,
-            reference="A",
-            alternate="G",
+            ref_allele="A",
+            alt_allele="G",
             assembly="GRCh38",
         )
         result = validate_variant(variant, raise_on_error=False)
@@ -233,7 +233,7 @@ class TestValidateVCFFile:
         """Test validation of valid VCF file."""
         vcf_file = tmp_path / "test.vcf"
         vcf_content = """##fileformat=VCFv4.2
-##reference=GRCh38
+##ref_allele=GRCh38
 #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO
 chr1\t12345\t.\tA\tG\t.\tPASS\t.
 """
@@ -306,8 +306,8 @@ class TestValidationEdgeCases:
         variant = GenomicVariant(
             chromosome="chr1",
             position=12345,
-            reference="",
-            alternate="G",
+            ref_allele="",
+            alt_allele="G",
             assembly="GRCh38",
         )
         assert validate_variant(variant, raise_on_error=False) is False
@@ -331,9 +331,9 @@ class TestValidationPerformance:
         variants = [
             GenomicVariant(
                 chromosome=f"chr{i % 22 + 1}",
-                position=1000 * i,
-                reference="A",
-                alternate="G",
+                position=1000 * (i + 1),
+                ref_allele="A",
+                alt_allele="G",
                 assembly="GRCh38",
             )
             for i in range(1000)
@@ -350,29 +350,29 @@ class TestValidationPerformance:
             GenomicVariant(
                 chromosome="chr1",
                 position=100,
-                reference="A",
-                alternate="G",
+                ref_allele="A",
+                alt_allele="G",
                 assembly="GRCh38",
             ),
             GenomicVariant(
                 chromosome="chr99",
                 position=100,
-                reference="A",
-                alternate="G",
+                ref_allele="A",
+                alt_allele="G",
                 assembly="GRCh38",
             ),
             GenomicVariant(
                 chromosome="chr2",
                 position=-1,
-                reference="A",
-                alternate="G",
+                ref_allele="A",
+                alt_allele="G",
                 assembly="GRCh38",
             ),
             GenomicVariant(
                 chromosome="chrX",
                 position=100,
-                reference="X",
-                alternate="G",
+                ref_allele="X",
+                alt_allele="G",
                 assembly="GRCh38",
             ),
         ]
