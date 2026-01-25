@@ -1,3 +1,5 @@
+import pytest
+from unittest.mock import Mock, patch
 """Comprehensive tests for pipeline stages.
 
 Tests individual pipeline stages including validation, annotation,
@@ -453,3 +455,6 @@ class TestStageDataFlow:
             result = filtering_stage.execute()
 
             assert result is not None
+#@patch('src.pipeline.variant_processor.PipelineOrchestrator')
+#@patch('src.pipeline.stages.ValidationStage')
+#@patch('src.pipeline.stages.AnnotationStage')

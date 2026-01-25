@@ -1,0 +1,14 @@
+# (Keep existing imports/classes, replace ONLY PipelineConfig)
+@dataclass
+class PipelineConfig:
+    input_vcf: str = None
+    output_dir: str = "output"
+    stages: list = None
+    continue_on_error: bool = False
+    
+    def __init__(self, input_vcf: str = None, output_dir: str = "output", 
+                 stages: list = None, continue_on_error: bool = False):
+        self.input_vcf = input_vcf
+        self.output_dir = output_dir
+        self.stages = stages or []
+        self.continue_on_error = continue_on_error

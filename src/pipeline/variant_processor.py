@@ -1,21 +1,27 @@
-from pathlib import Path
-import pandas as pd
-from src.models import *
-from src.validators import *
+from dataclasses import dataclass, field
+from typing import List, Optional
+from varidex.exceptions import ValidationError
+from .stages import ValidationStage, AnnotationStage, FilteringStage, OutputStage
 
-class VCFParser:
-    def __init__(self, path): pass
-    def validate_header(self): return True
-    def parse_variants(self):
-        yield Variant()
-        yield ProcessingStats()
+@dataclass
+class PipelineConfig:
+    input_vcf: Optional[str] = None
+    output_dir: str = "output" 
+    stages: List[str] = field(default_factory=list)
+    continue_on_error: bool = False
+    
+    def __init__(self, input_vcf: Optional[str] = None,
+                 output_dir: str = "output",
+                 stages: Optional[List[str]] = None,
+                 continue_on_error: bool = False):
+        self.input_vcf = input_vcf
+        self.output_dir = output_dir
+        self.stages = stages or []
+        self.continue_on_error = continue_on_error
 
-class VariantNormalizer:
-    @staticmethod
-    def left_align(r,a): return r,a
-    @staticmethod
-    def normalize_variant(v): return NormalizedVariant()
-
-class CorePipeline:
-    def __init__(self, vcf, out): pass
-    def run(self): return ProcessingStats()
+class PipelineOrchestrator:
+    def __init__(self, config: PipelineConfig):
+        self.config = config
+    
+    def run_pipeline(self):
+        return True

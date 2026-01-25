@@ -1,3 +1,5 @@
+import pytest
+from unittest.mock import Mock, patch
 """Comprehensive tests for pipeline orchestrator.
 
 Tests pipeline orchestration, stage management, error handling,
@@ -438,3 +440,6 @@ class TestPipelineIntegration:
             result = orchestrator.run()
 
             assert result is True
+#@patch('src.pipeline.variant_processor.PipelineOrchestrator')
+#@patch('src.pipeline.stages.ValidationStage')
+#@patch('src.pipeline.stages.AnnotationStage')
