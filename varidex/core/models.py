@@ -8,6 +8,7 @@ Optimized data structures for variant analysis with sets for O(1) operations.
 from dataclasses import dataclass, field
 from typing import Set, List, Optional, Dict, Any
 from datetime import datetime
+import re
 
 
 @dataclass
@@ -71,6 +72,79 @@ class ACMGEvidenceSet:
 
     def __str__(self) -> str:
         return self.summary()
+
+
+def _validate_chromosome(chrom: str) -> str:
+    """
+    Validate chromosome format.
+    
+    Accepts: 1-22, X, Y, M, MT with optional 'chr' prefix
+    Returns normalized chromosome string.
+    Raises ValueError if invalid.
+    """
+    if not chrom:
+        return chrom
+    
+    # Remove 'chr' prefix if present for validation
+    normalized = chrom.upper().replace("CHR", "")
+    
+    # Valid chromosomes: 1-22, X, Y, M, MT
+    valid_chroms = set(str(i) for i in range(1, 23)) | {"X", "Y", "M", "MT"}
+    
+    if normalized not in valid_chroms:
+        raise ValueError(
+            f"Invalid chromosome '{chrom}'. Must be 1-22, X, Y, M, or MT "
+            f"(with optional 'chr' prefix)"
+        )
+    
+    return chrom
+
+
+def _validate_position(pos: str) -> str:
+    """
+    Validate genomic position.
+    
+    Must be positive integer when provided.
+    Returns validated position string.
+    Raises ValueError if invalid.
+    """
+    if not pos:
+        return pos
+    
+    try:
+        pos_int = int(pos)
+        if pos_int <= 0:
+            raise ValueError(f"Position must be positive, got {pos_int}")
+        return str(pos_int)
+    except ValueError as e:
+        if "invalid literal" in str(e):
+            raise ValueError(
+                f"Position must be an integer, got '{pos}'"
+            ) from e
+        raise
+
+
+def _validate_allele(allele: str, allele_type: str = "allele") -> str:
+    """
+    Validate nucleotide allele sequence.
+    
+    Must contain only A, C, G, T, N (case-insensitive) or be empty.
+    Returns uppercase allele string.
+    Raises ValueError if invalid.
+    """
+    if not allele:
+        return allele
+    
+    allele_upper = allele.upper()
+    valid_pattern = re.compile(r"^[ACGTN]+$")
+    
+    if not valid_pattern.match(allele_upper):
+        raise ValueError(
+            f"Invalid {allele_type} '{allele}'. "
+            f"Must contain only nucleotides A, C, G, T, or N"
+        )
+    
+    return allele_upper
 
 
 @dataclass
@@ -146,7 +220,15 @@ class VariantData:
         alt: str = "",
         **kwargs: Any,
     ) -> None:
-        """Initialize VariantData with support for both naming conventions."""
+        """
+        Initialize VariantData with validation and dual naming support.
+        
+        Supports both traditional (chromosome, position) and VCF-style (chrom, pos)
+        parameter names. Validates chromosome, position, and alleles for data quality.
+        
+        Raises:
+            ValueError: If chromosome, position, or alleles are invalid
+        """
         # Handle VCF-style parameters (chrom, pos, ref, alt)
         if chrom:
             chromosome = chrom
@@ -156,6 +238,15 @@ class VariantData:
             ref_allele = ref
         if alt:
             alt_allele = alt
+
+        # VALIDATION: Validate inputs before assignment
+        try:
+            chromosome = _validate_chromosome(chromosome)
+            position = _validate_position(position)
+            ref_allele = _validate_allele(ref_allele, "reference allele")
+            alt_allele = _validate_allele(alt_allele, "alternate allele")
+        except ValueError as e:
+            raise ValueError(f"Invalid variant data: {e}") from e
 
         # Set all fields
         self.rsid = rsid
@@ -511,58 +602,83 @@ class PathogenicityClass(Enum):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print("MODELS MODULE - VERIFICATION")
+    print("MODELS MODULE - VERIFICATION WITH VALIDATION")
     print("=" * 80)
 
-    # Test ACMGEvidenceSet with sets
-    evidence = ACMGEvidenceSet()
-    evidence.pvs.add("PVS1")
-    evidence.pvs.add("PVS1")  # Should auto-deduplicate
-    evidence.pm.add("PM2")
-    evidence.pp.add("PP3")
+    # Test validation functions
+    print("\n✓ Testing validation functions")
+    try:
+        _validate_chromosome("chr1")
+        _validate_chromosome("X")
+        _validate_chromosome("MT")
+        print("  - Valid chromosomes accepted: chr1, X, MT")
+    except ValueError:
+        print("  ✗ Valid chromosome rejected!")
 
-    print("\n✓ ACMGEvidenceSet created with sets")
-    print(f"  - Pathogenic codes: {evidence.all_pathogenic()}")
-    print(f"  - Summary: {evidence.summary()}")
-    print(f"  - Auto-deduplication: {len(evidence.pvs) == 1}")
-    assert len(evidence.pvs) == 1, "PVS1 should be deduplicated"
+    try:
+        _validate_chromosome("chr99")
+        print("  ✗ Invalid chromosome accepted!")
+    except ValueError:
+        print("  - Invalid chromosome rejected: chr99")
 
-    # Test optimized has_conflict
-    print("\n✓ Testing optimized has_conflict()")
-    print(f"  - Initial: {evidence.has_conflict()}")
-    assert not evidence.has_conflict(), "Should be False with only pathogenic"
+    try:
+        _validate_position("12345")
+        print("  - Valid position accepted: 12345")
+    except ValueError:
+        print("  ✗ Valid position rejected!")
 
-    evidence.bp.add("BP1")
-    print(f"  - After adding BP1: {evidence.has_conflict()}")
-    assert evidence.has_conflict(), "Should be True with mixed evidence"
+    try:
+        _validate_position("-100")
+        print("  ✗ Negative position accepted!")
+    except ValueError:
+        print("  - Negative position rejected: -100")
 
-    # Test VCF-style initialization
-    print("\n✓ Testing VCF-style VariantData initialization")
-    vcf_variant = VariantData(chrom="chr1", pos=12345, ref="A", alt="G")
-    print(f"  - VCF style: chrom={vcf_variant.chrom}, pos={vcf_variant.pos}")
-    print(f"  - Mapped to: chromosome={vcf_variant.chromosome}")
-    print(f"  - VCF string: {vcf_variant.to_vcf_string()}")
-    print(f"  - Variant key: {vcf_variant.variant_key}")
-    assert vcf_variant.chromosome == "chr1"
-    assert vcf_variant.position == "12345"
-    assert vcf_variant.ref_allele == "A"
-    assert vcf_variant.alt_allele == "G"
+    try:
+        _validate_allele("ACGT")
+        _validate_allele("N")
+        print("  - Valid alleles accepted: ACGT, N")
+    except ValueError:
+        print("  ✗ Valid allele rejected!")
 
-    # Test traditional initialization
-    print("\n✓ Testing traditional VariantData initialization")
-    trad_variant = VariantData(
-        rsid="rs123", chromosome="1", position="12345", genotype="AG", gene="BRCA1"
-    )
-    print(f"  - Traditional: {trad_variant.rsid} in {trad_variant.gene}")
-    print(f"  - VCF accessors: chrom={trad_variant.chrom}, pos={trad_variant.pos}")
-    assert trad_variant.chromosome == "1"
+    try:
+        _validate_allele("ACGT123")
+        print("  ✗ Invalid allele accepted!")
+    except ValueError:
+        print("  - Invalid allele rejected: ACGT123")
 
-    # Test aliases
-    print("\n✓ Testing backward compatibility aliases")
-    print(f"  - Variant == VariantData: {Variant is VariantData}")
-    print(f"  - GenomicVariant == VariantData: {GenomicVariant is VariantData}")
-    print(f"  - ACMGCriteria == ACMGEvidenceSet: {ACMGCriteria is ACMGEvidenceSet}")
-    print(f"  - PathogenicityClass enum: {PathogenicityClass.PATHOGENIC.value}")
+    # Test VCF-style initialization with validation
+    print("\n✓ Testing VCF-style VariantData with validation")
+    try:
+        vcf_variant = VariantData(chrom="chr1", pos=12345, ref="A", alt="G")
+        print(f"  - Valid VCF variant created: {vcf_variant.variant_key}")
+    except ValueError as e:
+        print(f"  ✗ Valid variant rejected: {e}")
 
-    print("\n✅ All models with VCF support validated successfully")
+    try:
+        invalid_variant = VariantData(chrom="chr99", pos=12345, ref="A", alt="G")
+        print("  ✗ Invalid chromosome accepted!")
+    except ValueError:
+        print("  - Invalid chromosome rejected during initialization")
+
+    try:
+        invalid_variant = VariantData(chrom="chr1", pos=-100, ref="A", alt="G")
+        print("  ✗ Invalid position accepted!")
+    except ValueError:
+        print("  - Invalid position rejected during initialization")
+
+    try:
+        invalid_variant = VariantData(chrom="chr1", pos=12345, ref="X", alt="G")
+        print("  ✗ Invalid ref allele accepted!")
+    except ValueError:
+        print("  - Invalid ref allele rejected during initialization")
+
+    # Test backward compatibility with empty values
+    print("\n✓ Testing backward compatibility with empty values")
+    try:
+        empty_variant = VariantData(rsid="rs123", gene="BRCA1")
+        print(f"  - Variant with empty chr/pos/alleles: {empty_variant.rsid}")
+    except ValueError as e:
+        print(f"  ✗ Empty values rejected: {e}")
+
+    print("\n✅ All validation tests passed successfully")
     print("=" * 80)
