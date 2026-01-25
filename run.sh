@@ -1,5 +1,7 @@
 #!/bin/bash
 python3 -c "
+import os
+from pathlib import Path
 from varidex.io.loaders.clinvar import load_clinvar_file
 from varidex.io.loaders.user import load_user_file
 from varidex.io import matching
@@ -40,6 +42,11 @@ for cat in ['P','LP','VUS','LB','B']:
     print(f'{emoji_map[cat]} {cat.ljust(12)}: {counter.get(cat,0):,}')
 
 print(f'📊 TOTAL: {len(m):,}')
+
+# CREATE OUTPUT DIRECTORY IF NOT EXISTS
+output_dir = Path('output')
+output_dir.mkdir(parents=True, exist_ok=True)
+
 m.to_csv('output/michal_clinvar_direct.csv', index=False)
 print('✅ output/michal_clinvar_direct.csv SAVED!')
 print('🏥 P/LP = clinical priority')
