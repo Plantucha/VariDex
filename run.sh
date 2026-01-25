@@ -44,7 +44,8 @@ for cat in ['P','LP','VUS','LB','B']:
 print(f'📊 TOTAL: {len(m):,}')
 
 # CREATE OUTPUT DIRECTORY IF NOT EXISTS
-output_dir = Path('output')
+if not output_dir.exists():
+if not output_dir.exists():
 output_dir.mkdir(parents=True, exist_ok=True)
 
 m.to_csv('output/michal_clinvar_direct.csv', index=False)

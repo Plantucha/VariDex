@@ -371,7 +371,7 @@ class VariantMatcherV8:
     """Triple-source variant matcher for engine_v8.py integration."""
 
     def __init__(self, clinvar_dir: Path):
-        self.clinvar_dir = clinvar_dir.resolve()
+        self.clinvar_dir = Path(clinvar_dir).resolve()
         self.variant_cache: Dict[str, Dict[str, Any]] = {}
         self.dbnsfp_path = clinvar_dir / "dbNSFP4.1_gene.complete.gz"
         self.gnomad_exomes = clinvar_dir / "gnomad.exomes.v4.1.sites.chr1.vcf.bgz"
