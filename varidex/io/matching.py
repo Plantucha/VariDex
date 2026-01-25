@@ -373,9 +373,11 @@ class VariantMatcherV8:
     def __init__(self, clinvar_dir: Path):
         self.clinvar_dir = Path(clinvar_dir).resolve()
         self.variant_cache: Dict[str, Dict[str, Any]] = {}
-        self.dbnsfp_path = clinvar_dir / "dbNSFP4.1_gene.complete.gz"
-        self.gnomad_exomes = clinvar_dir / "gnomad.exomes.v4.1.sites.chr1.vcf.bgz"
-        self.gnomad_genomes = clinvar_dir / "gnomad.genomes.v4.1.sites.chr1.vcf.bgz"
+        self.dbnsfp_path = Path(clinvar_dir) / "dbNSFP4.1_gene.complete.gz"
+        self.gnomad_exomes = Path(clinvar_dir) / "gnomad.exomes.v4.1.sites.chr1.vcf.bgz"
+        self.gnomad_genomes = (
+            Path(clinvar_dir) / "gnomad.genomes.v4.1.sites.chr1.vcf.bgz"
+        )
 
         logger.info(f"V8 Matcher initialized: {self.clinvar_dir}")
         logger.info(f"  dbNSFP: {self.dbnsfp_path.exists()}")
