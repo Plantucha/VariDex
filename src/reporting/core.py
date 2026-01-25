@@ -1,7 +1,7 @@
 """Core reporting engine for variant data."""
 from typing import List, Dict, Any
 from src.models import Variant
-from src.annotation.models import AnnotatedVariant
+from .models import AnnotatedVariant
 
 class ReportGenerator:
     """Generates multi-format reports from annotated variants."""
@@ -52,6 +52,6 @@ class QCDashboard:
         return {
             "total_variants": total,
             "pathogenic": pathogenic,
-            "pass_rate": pathogenic / total if total else 0,
-            "avg_gnomad_af": sum(v.gnomad_af or 0 for v in self.variants) / total
+            "pass_rate": pathogenic if total > 0 else 0,
+            "avg_gnomad_af": sum(v.gnomad_af or 0 for v in self.variants) / (total or 1)
         }

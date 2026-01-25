@@ -1,4 +1,8 @@
+import pandas as pd
+from src.reporting.models import AnnotatedVariant
+import pandas as pd
 """Reporting integration tests (15 tests)."""
+from src.reporting.models import AnnotatedVariant
 import pytest
 from pathlib import Path
 from src.reporting.core import ReportGenerator
@@ -35,7 +39,7 @@ class TestReportingIntegration:
     # Edge case tests (10 more)
     @pytest.mark.parametrize("variant_count", [0, 1, 100])
     def test_varying_variant_counts(self, variant_count, tmp_path):
-        variants = [AnnotatedVariant("1", i, "A", "T", "B", 0.01) 
+        variants = [AnnotatedVariant(chr="1", pos=i, ref="A", alt="T", acmg_class="B", gnomad_af=0.01) 
                    for i in range(1, variant_count + 1)]
         gen = ReportGenerator(variants)
         tsv_path = tmp_path / "varying.tsv"
