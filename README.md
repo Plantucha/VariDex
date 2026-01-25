@@ -49,7 +49,7 @@ VariDex automatically classifies genetic variants using the **ACMG/AMP 2015 guid
 ### Core Capabilities
 
 - **🧩 ACMG Classification Engine**
-  - Implements 7 of 28 ACMG evidence codes (25% coverage)
+  - Implements 12 of 28 ACMG evidence codes 12/28 codes (PVS1,PM2+Benign)
   - Follows official ACMG/AMP 2015 combination rules
   - Evidence-based pathogenicity scoring
   - Currently includes: PVS1, PM4, PP2, BA1, BS1, BP1, BP3
