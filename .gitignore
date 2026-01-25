@@ -1,17 +1,14 @@
-# Data files (NEVER upload)
-data/
-clinvar/
-*.vcf
-*.txt
-*.csv
+# Temp/Generated
+htmlcov/
+data.tsv
 output/
-fuzzy_output/
+*.html
+*.tsv
+*.sh  # Keep scripts? rm fix_reporting_*.sh first
+
+# Python
 __pycache__/
-*.log
-# Debug files
-debug_*.py
-fix_*.py
-.coverage
-*.egg-info/
-# Backup files
-*.backup
+*.pyc
+.venv/
+venv/
+.pytest_cache/
