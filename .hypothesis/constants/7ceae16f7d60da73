@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/io/loaders/__init__.py
+# hypothesis_version: 6.150.3
+
+['load_clinvar_file', 'load_user_file', 'load_vcf_file']

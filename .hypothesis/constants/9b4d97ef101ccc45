@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/reports/formatters.py
+# hypothesis_version: 6.150.3
+
+[1000, 1024, 10000, 32767, "'", '+', ',', '-', '...[TRUNCATED]', '</body></html>', '<html><body>', '=', '@', 'B', 'Benign', 'GB', 'KB', 'Likely Benign', 'Likely Pathogenic', 'MB', 'Pathogenic', '[^A-Za-z0-9_-]', '^rs\\d+$', 'acmg_classification', 'benign', 'category', 'classification', 'evidence', 'files', 'gene', 'generated_at', 'has_conflicts', 'icon', 'metadata', 'object', 'pathogenic', 'records', 'rsid', 'star_rating', 'stars', 'statistics', 'stratified', 'total_variants', 'utf-8', 'utf-8-sig', 'variant_count', 'variants', 'varidex_version', 'vus', 'vus_{timestamp}.json', 'w', '{size_bytes:.1f} TB', '★']

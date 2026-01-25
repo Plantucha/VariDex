@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/pipeline/validators.py
+# hypothesis_version: 6.150.3
+
+[100, 16569, 46709983, 50818468, 57227415, 58617616, 64444167, 80373285, 83257441, 90338345, 101991189, 107043718, 114364328, 133275309, 133797422, 135086622, 138394717, 145138636, 156040895, 159345973, 170805979, 181538259, 190214555, 198295559, 242193529, 249250621, 300000000, '##', '##fileformat=VCF', '#CHROM', '-', '.gz', '.vcf', '.vcf.gz', '1', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2', '20', '21', '22', '3', '4', '5', '6', '7', '8', '9', 'ACGT', 'ALT', 'CHR', 'Empty file', 'FILTER', 'GRCh37', 'GRCh38', 'GRCh39', 'ID', 'INFO', 'Invalid variant data', 'M', 'MT', 'Missing VCF header', 'POS', 'QUAL', 'REF', 'T2T-CHM13v2.0', 'X', 'Y', 'alt_allele', 'assembly', 'chromosome', 'hg18', 'hg19', 'hg38', 'position', 'r', 'ref_allele', 'rt']

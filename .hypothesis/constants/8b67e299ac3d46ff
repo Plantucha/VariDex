@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/evidence_assignment.py
+# hypothesis_version: 6.150.3
+
+['/', 'BA1', 'BP1', 'BP3', 'BS1', 'PM4', 'PP2', 'PVS1', 'ba', 'benign', 'bp', 'bs', 'common', 'conflict', 'deletion', 'frequency', 'high', 'in-frame', 'inframe', 'insertion', 'missense', 'pathogenic', 'pm', 'polymorphism', 'population', 'pp', 'ps', 'pvs', 'repeat', 'repetitive', 'stop-lost']

@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/integrations/dbnsfp_client.py
+# hypothesis_version: 6.150.3
+
+[0.0, 0.05, 0.3, 0.5, 1.0, 86400, '\nRequirements:', '\nUsage:', '  if predictions:', '/', '=', 'Accept', 'CADD', 'Cache cleared', 'Content-Type', 'D', 'MetaSVM', 'PolyPhen-2', 'REVEL', 'SIFT', 'T', 'VEP', '__main__', 'application/json', 'benign', 'cache_enabled', 'cache_size', 'cache_ttl_seconds', 'cadd_phred', 'cadd_raw', 'chr', 'consequence_terms', 'damaging', 'deleterious', 'human', 'polyphen_prediction', 'polyphen_score', 'rate_limit_enabled', 'requires_internet', 'revel', 'session', 'sift_prediction', 'sift_score', 'tolerated', 'vep_url']

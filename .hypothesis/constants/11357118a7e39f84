@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/engine_v8.py
+# hypothesis_version: 6.150.3
+
+['\nNew in V8:', '  Total: 10 codes', '8.0.1', '=', 'BA', 'BP', 'BP4', 'BS', 'PM', 'PP', 'PP3', 'PS', 'PVS', '__main__', 'algorithms', 'alt', 'ba', 'benign', 'benign_count', 'bp', 'bs', 'cadd', 'chromosome', 'classification', 'confidence', 'conflicts', 'consequence', 'deleterious_count', 'duration_seconds', 'enabled', 'error', 'evidence', 'features_used', 'gene', 'gnomad', 'metadata', 'pathogenic', 'pm', 'polyphen', 'position', 'pp', 'predictions', 'ps', 'pvs', 'ref', 'rsid', 'service_initialized', 'sift', 'statistics', 'strength', 'variant', 'version']

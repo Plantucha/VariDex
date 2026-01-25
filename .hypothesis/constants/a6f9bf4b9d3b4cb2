@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/io/matching.py
+# hypothesis_version: 6.150.3
+
+[100, 'ALT', 'CLNVC=([^;]+)', 'GENEINFO=([^:;]+)', 'ID', 'INFO', 'MC=([^;]+)', 'REF', '_', '_clinvar', '_user', 'alt', 'alt_allele', 'chr', 'chromosome', 'chromosome_clinvar', 'clinvar', 'coord_key', 'first', 'gene', 'inner', 'left', 'position', 'position_clinvar', 're', 'ref', 'ref_allele', 'rsid', 'unknown', 'user', 'variant_type', 'vc', 'vcf_tsv', "{'='*60}"]

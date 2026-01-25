@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/integrations/gnomad_client.py
+# hypothesis_version: 6.150.3
+
+[0.0001, 0.01, 100, 1000, 'Cache cleared', 'Content-Type', 'Unknown error', 'User-Agent', 'ac', 'af', 'an', 'application/json', 'chr', 'data', 'errors', 'exome', 'filters', 'genome', 'gnomad_r4', 'id', 'max_size', 'message', 'populations', 'query', 'size', 'variant']

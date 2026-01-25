@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/engine.py
+# hypothesis_version: 6.150.3
+
+[0.0, '=', 'BA', 'BP', 'BS', 'Benign', 'High', 'Likely Benign', 'Likely Pathogenic', 'Low', 'Moderate', 'No Evidence', 'PM', 'PP', 'PS', 'PVS', 'Pathogenic', 'Stand-alone BA1', 'Very High', '__main__', 'bp7_enabled', 'config', 'dependencies', 'error', 'healthy', 'lof_genes', 'metrics', 'missense_rare_genes', 'pm2_enabled', 'pvs1_enabled', 'status', 'unhealthy', 'version']

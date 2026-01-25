@@ -10,46 +10,44 @@ class TestACMGCriteriaBasics:
 
     def test_acmg_criteria_initialization(self):
         """Test ACMGCriteria model initialization."""
-        criteria = ACMGCriteria(
-            pvs1=True, ps1=False, pm1=True, pp1=False, ba1=False, bs1=False
-        )
-        assert criteria.pvs1 is True
-        assert criteria.ps1 is False
-        assert criteria.pm1 is True
+        criteria = ACMGCriteria(pvs={"PVS1"}, pm={"PM1"})
+        assert criteria.pvs and "PVS1" in criteria.pvs
+        assert criteria.ps is not None and "PS1" not in criteria.ps
+        assert criteria.pm and "PM1" in criteria.pm
 
     def test_acmg_criteria_defaults(self):
         """Test that all criteria default to False."""
         criteria = ACMGCriteria()
         # Very Strong
-        assert criteria.pvs1 is False
+        assert criteria.pvs is not None and "PVS1" not in criteria.pvs
         # Strong
         assert all(
             [
-                criteria.ps1 is False,
-                criteria.ps2 is False,
-                criteria.ps3 is False,
-                criteria.ps4 is False,
+                criteria.ps is not None and "PS1" not in criteria.ps,
+                criteria.ps is not None and "PS2" not in criteria.ps,
+                criteria.ps is not None and "PS3" not in criteria.ps,
+                criteria.ps is not None and "PS4" not in criteria.ps,
             ]
         )
         # Moderate
         assert all(
             [
-                criteria.pm1 is False,
-                criteria.pm2 is False,
-                criteria.pm3 is False,
-                criteria.pm4 is False,
-                criteria.pm5 is False,
-                criteria.pm6 is False,
+                criteria.pm is not None and "PM1" not in criteria.pm,
+                criteria.pm is not None and "PM2" not in criteria.pm,
+                criteria.pm is not None and "PM3" not in criteria.pm,
+                criteria.pm is not None and "PM4" not in criteria.pm,
+                criteria.pm is not None and "PM5" not in criteria.pm,
+                criteria.pm is not None and "PM6" not in criteria.pm,
             ]
         )
         # Supporting
         assert all(
             [
-                criteria.pp1 is False,
-                criteria.pp2 is False,
-                criteria.pp3 is False,
-                criteria.pp4 is False,
-                criteria.pp5 is False,
+                criteria.pp is not None and "PP1" not in criteria.pp,
+                criteria.pp is not None and "PP2" not in criteria.pp,
+                criteria.pp is not None and "PP3" not in criteria.pp,
+                criteria.pp is not None and "PP4" not in criteria.pp,
+                criteria.pp is not None and "PP5" not in criteria.pp,
             ]
         )
 
@@ -57,7 +55,9 @@ class TestACMGCriteriaBasics:
         """Test PathogenicityClass enumeration."""
         assert PathogenicityClass.PATHOGENIC.value == "Pathogenic"
         assert PathogenicityClass.LIKELY_PATHOGENIC.value == "Likely Pathogenic"
-        assert PathogenicityClass.UNCERTAIN.value == "Uncertain Significance"
+        assert (
+            PathogenicityClass.UNCERTAIN_SIGNIFICANCE.value == "Uncertain Significance"
+        )
         assert PathogenicityClass.LIKELY_BENIGN.value == "Likely Benign"
         assert PathogenicityClass.BENIGN.value == "Benign"
 
@@ -67,25 +67,25 @@ class TestACMGPathogenicClassification:
 
     def test_pathogenic_pvs1_ps1(self):
         """Test Pathogenic: 1 Very strong + 1 Strong."""
-        criteria = ACMGCriteria(pvs1=True, ps1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
 
     def test_pathogenic_two_strong(self):
         """Test Pathogenic: 2 Strong."""
-        criteria = ACMGCriteria(ps1=True, ps2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
 
     def test_pathogenic_one_strong_multiple_moderate(self):
         """Test Pathogenic: 1 Strong + ≥3 Moderate."""
-        criteria = ACMGCriteria(ps1=True, pm1=True, pm2=True, pm3=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
 
     def test_pathogenic_one_strong_two_moderate_two_supporting(self):
         """Test Pathogenic: 1 Strong + 2 Moderate + 2 Supporting."""
-        criteria = ACMGCriteria(ps1=True, pm1=True, pm2=True, pp1=True, pp2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
 
@@ -95,31 +95,31 @@ class TestACMGLikelyPathogenicClassification:
 
     def test_likely_pathogenic_pvs1_moderate(self):
         """Test Likely Pathogenic: 1 Very strong + 1 Moderate."""
-        criteria = ACMGCriteria(pvs1=True, pm1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_PATHOGENIC
 
     def test_likely_pathogenic_strong_moderate(self):
         """Test Likely Pathogenic: 1 Strong + 1-2 Moderate."""
-        criteria = ACMGCriteria(ps1=True, pm1=True, pm2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_PATHOGENIC
 
     def test_likely_pathogenic_strong_supporting(self):
         """Test Likely Pathogenic: 1 Strong + ≥2 Supporting."""
-        criteria = ACMGCriteria(ps1=True, pp1=True, pp2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_PATHOGENIC
 
     def test_likely_pathogenic_three_moderate(self):
         """Test Likely Pathogenic: ≥3 Moderate."""
-        criteria = ACMGCriteria(pm1=True, pm2=True, pm3=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_PATHOGENIC
 
     def test_likely_pathogenic_two_moderate_two_supporting(self):
         """Test Likely Pathogenic: 2 Moderate + ≥2 Supporting."""
-        criteria = ACMGCriteria(pm1=True, pm2=True, pp1=True, pp2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_PATHOGENIC
 
@@ -129,13 +129,13 @@ class TestACMGBenignClassification:
 
     def test_benign_ba1_alone(self):
         """Test Benign: 1 Stand-alone."""
-        criteria = ACMGCriteria(ba1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.BENIGN
 
     def test_benign_two_strong(self):
         """Test Benign: ≥2 Strong."""
-        criteria = ACMGCriteria(bs1=True, bs2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.BENIGN
 
@@ -145,13 +145,13 @@ class TestACMGLikelyBenignClassification:
 
     def test_likely_benign_one_strong_one_supporting(self):
         """Test Likely Benign: 1 Strong + 1 Supporting."""
-        criteria = ACMGCriteria(bs1=True, bp1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_BENIGN
 
     def test_likely_benign_two_supporting(self):
         """Test Likely Benign: ≥2 Supporting."""
-        criteria = ACMGCriteria(bp1=True, bp2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_BENIGN
 
@@ -163,19 +163,19 @@ class TestACMGUncertainSignificance:
         """Test Uncertain: No criteria met."""
         criteria = ACMGCriteria()
         classification = classify_variant(criteria)
-        assert classification == PathogenicityClass.UNCERTAIN
+        assert classification == PathogenicityClass.UNCERTAIN_SIGNIFICANCE
 
     def test_uncertain_insufficient_evidence(self):
         """Test Uncertain: Insufficient evidence."""
-        criteria = ACMGCriteria(pm1=True, pp1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
-        assert classification == PathogenicityClass.UNCERTAIN
+        assert classification == PathogenicityClass.UNCERTAIN_SIGNIFICANCE
 
     def test_uncertain_conflicting_evidence(self):
         """Test Uncertain: Conflicting pathogenic and benign evidence."""
-        criteria = ACMGCriteria(ps1=True, bs1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
-        assert classification == PathogenicityClass.UNCERTAIN
+        assert classification == PathogenicityClass.UNCERTAIN_SIGNIFICANCE
 
 
 class TestACMGEdgeCases:
@@ -184,22 +184,10 @@ class TestACMGEdgeCases:
     def test_all_pathogenic_criteria(self):
         """Test with all pathogenic criteria set."""
         criteria = ACMGCriteria(
-            pvs1=True,
-            ps1=True,
-            ps2=True,
-            ps3=True,
-            ps4=True,
-            pm1=True,
-            pm2=True,
-            pm3=True,
-            pm4=True,
-            pm5=True,
-            pm6=True,
-            pp1=True,
-            pp2=True,
-            pp3=True,
-            pp4=True,
-            pp5=True,
+            pvs={"PVS1"},
+            ps={"PS1", "PS2", "PS3", "PS4"},
+            pm={"PM1", "PM2", "PM3", "PM4", "PM5", "PM6"},
+            pp={"PP1", "PP2", "PP3", "PP4", "PP5"},
         )
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
@@ -207,31 +195,22 @@ class TestACMGEdgeCases:
     def test_all_benign_criteria(self):
         """Test with all benign criteria set."""
         criteria = ACMGCriteria(
-            ba1=True,
-            bs1=True,
-            bs2=True,
-            bs3=True,
-            bs4=True,
-            bp1=True,
-            bp2=True,
-            bp3=True,
-            bp4=True,
-            bp5=True,
-            bp6=True,
-            bp7=True,
+            ba={"BA1"},
+            bs={"BS1", "BS2", "BS3", "BS4"},
+            bp={"BP1", "BP2", "BP3", "BP4", "BP5", "BP6", "BP7"},
         )
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.BENIGN
 
     def test_exactly_threshold_pathogenic(self):
         """Test exactly meeting pathogenic threshold."""
-        criteria = ACMGCriteria(ps1=True, ps2=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.PATHOGENIC
 
     def test_just_below_threshold(self):
         """Test just below classification threshold."""
-        criteria = ACMGCriteria(ps1=True, pm1=True)
+        criteria = ACMGCriteria()
         classification = classify_variant(criteria)
         assert classification == PathogenicityClass.LIKELY_PATHOGENIC
 
@@ -241,14 +220,14 @@ class TestACMGCriteriaWeights:
 
     def test_calculate_pathogenic_weight(self):
         """Test pathogenic evidence weight calculation."""
-        criteria = ACMGCriteria(pvs1=True, ps1=True, pm1=True, pp1=True)
+        criteria = ACMGCriteria()
         weight = calculate_pathogenic_weight(criteria)
         # Very Strong=8, Strong=4, Moderate=2, Supporting=1
         assert weight == 8 + 4 + 2 + 1
 
     def test_calculate_benign_weight(self):
         """Test benign evidence weight calculation."""
-        criteria = ACMGCriteria(ba1=True, bs1=True, bp1=True)
+        criteria = ACMGCriteria()
         weight = calculate_benign_weight(criteria)
         # Stand-alone=8, Strong=4, Supporting=1
         assert weight == 8 + 4 + 1
@@ -270,10 +249,10 @@ class TestACMGVariantIntegration:
             pos=12345,
             ref="A",
             alt="T",
-            acmg_criteria=ACMGCriteria(pvs1=True, ps1=True),
+            acmg_criteria=ACMGCriteria(),
         )
         assert variant.acmg_criteria is not None
-        assert variant.acmg_criteria.pvs1 is True
+        assert variant.acmg_criteria.pvs and "PVS1" in criteria.pvs
 
     def test_variant_acmg_classification_result(self):
         """Test variant automatically gets classification."""
@@ -282,7 +261,7 @@ class TestACMGVariantIntegration:
             pos=12345,
             ref="A",
             alt="T",
-            acmg_criteria=ACMGCriteria(ba1=True),
+            acmg_criteria=ACMGCriteria(),
         )
         # Assuming variant has a classification property
         if hasattr(variant, "classification"):
@@ -302,7 +281,7 @@ def classify_variant(criteria: ACMGCriteria) -> PathogenicityClass:
 
     # Check for conflicting evidence
     if path_weight > 0 and benign_weight > 0:
-        return PathogenicityClass.UNCERTAIN
+        return PathogenicityClass.UNCERTAIN_SIGNIFICANCE
 
     # Benign classifications
     if criteria.ba1:
@@ -322,7 +301,7 @@ def classify_variant(criteria: ACMGCriteria) -> PathogenicityClass:
     if path_weight >= 6:
         return PathogenicityClass.LIKELY_PATHOGENIC
 
-    return PathogenicityClass.UNCERTAIN
+    return PathogenicityClass.UNCERTAIN_SIGNIFICANCE
 
 
 def calculate_pathogenic_weight(criteria: ACMGCriteria) -> int:

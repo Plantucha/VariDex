@@ -1,0 +1,4 @@
+# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/models.py
+# hypothesis_version: 6.150.3
+
+[0.001, 0.01, ' | ', '1', '12345', '=', 'AG', 'BP1', 'BRCA1', 'Benign', 'Likely Benign', 'Likely Pathogenic', 'No evidence', 'PM2', 'PP3', 'PVS1', 'Pathogenic', '__main__', 'annotation', 'classification', 'confidence', 'conflicts', 'evidence', 'frameshift', 'gene', 'genotype', 'inframe_deletion', 'inframe_insertion', 'initialized', 'missense', 'nonsense', 'rs123', 'rsid', 'stars', 'start_lost', 'stop_gained', 'stop_lost', 'timestamp', 'unknown', 'variant', 'variant_notation', 'zygosity']
