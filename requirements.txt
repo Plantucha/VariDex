@@ -11,6 +11,9 @@ tqdm>=4.62.0
 # HTTP requests for external APIs
 requests>=2.26.0
 
+# CLI framework for command-line interface
+click>=8.0.0
+
 # Testing dependencies
 hypothesis>=6.0.0
 
