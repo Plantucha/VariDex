@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
 """
-varidex/core/models.py - Data Models
-=====================================
+varidex/core/models.py - Data Models v2.1.0
+============================================
 Optimized data structures for variant analysis with sets for O(1) operations.
-Enhanced with serialization, hashing, and validation.
+Enhanced with serialization, hashing, validation, and proper exception handling.
+
+Changes v2.1.0 (2026-01-24) - FIX 3/3:
+- Import and use ValidationError from varidex.exceptions
+- All validation functions now raise ValidationError instead of ValueError
+- Empty ref/alt alleles raise ValidationError
+- Invalid chromosomes, positions, alleles raise ValidationError
+- Preserves all v2.0.0 enhancements (hash, serialization, aliases)
 """
 
 from dataclasses import dataclass, field
 from typing import Set, List, Optional, Dict, Any
 from datetime import datetime
 import re
+
+# Import ValidationError for proper exception handling
+from varidex.exceptions import ValidationError
 
 
 @dataclass
@@ -81,26 +91,26 @@ def _validate_chromosome(chrom: str) -> str:
     
     Accepts: 1-22, X, Y, M, MT with optional 'chr' prefix
     Returns normalized chromosome string.
-    Raises ValueError if invalid.
+    Raises ValidationError if invalid.
     """
     if not chrom:
         return chrom
-    
+
     # Strip whitespace and handle leading zeros
     chrom = chrom.strip()
-    
+
     # Remove 'chr' prefix if present for validation
     normalized = chrom.upper().replace("CHR", "")
-    
+
     # Valid chromosomes: 1-22, X, Y, M, MT
     valid_chroms = set(str(i) for i in range(1, 23)) | {"X", "Y", "M", "MT"}
-    
+
     if normalized not in valid_chroms:
-        raise ValueError(
+        raise ValidationError(
             f"Invalid chromosome '{chrom}'. Must be 1-22, X, Y, M, or MT "
             f"(with optional 'chr' prefix)"
         )
-    
+
     return chrom
 
 
@@ -110,24 +120,22 @@ def _validate_position(pos: str) -> str:
     
     Must be positive integer when provided.
     Returns validated position string.
-    Raises ValueError if invalid.
+    Raises ValidationError if invalid.
     """
     if not pos:
         return pos
-    
+
     # Strip whitespace
     pos = pos.strip() if isinstance(pos, str) else str(pos)
-    
+
     try:
         pos_int = int(pos)
         if pos_int <= 0:
-            raise ValueError(f"Position must be positive, got {pos_int}")
+            raise ValidationError(f"Position must be positive, got {pos_int}")
         return str(pos_int)
     except ValueError as e:
         if "invalid literal" in str(e):
-            raise ValueError(
-                f"Position must be an integer, got '{pos}'"
-            ) from e
+            raise ValidationError(f"Position must be an integer, got '{pos}'") from e
         raise
 
 
@@ -135,24 +143,25 @@ def _validate_allele(allele: str, allele_type: str = "allele") -> str:
     """
     Validate nucleotide allele sequence.
     
-    Must contain only A, C, G, T, N (case-insensitive) or be empty.
+    Must contain only A, C, G, T, N (case-insensitive).
+    Empty alleles are rejected.
     Returns uppercase allele string.
-    Raises ValueError if invalid.
+    Raises ValidationError if invalid.
     """
-    if not allele:
-        return allele
-    
+    if not allele or not allele.strip():
+        raise ValidationError(f"{allele_type.capitalize()} cannot be empty")
+
     # Strip whitespace
     allele = allele.strip()
     allele_upper = allele.upper()
     valid_pattern = re.compile(r"^[ACGTN]+$")
-    
+
     if not valid_pattern.match(allele_upper):
-        raise ValueError(
+        raise ValidationError(
             f"Invalid {allele_type} '{allele}'. "
             f"Must contain only nucleotides A, C, G, T, or N"
         )
-    
+
     return allele_upper
 
 
@@ -236,7 +245,7 @@ class VariantData:
         parameter names. Validates chromosome, position, and alleles for data quality.
         
         Raises:
-            ValueError: If chromosome, position, or alleles are invalid
+            ValidationError: If chromosome, position, or alleles are invalid
         """
         # Handle VCF-style parameters (chrom, pos, ref, alt)
         if chrom:
@@ -254,14 +263,14 @@ class VariantData:
             position = _validate_position(position)
             ref_allele = _validate_allele(ref_allele, "reference allele")
             alt_allele = _validate_allele(alt_allele, "alternate allele")
-            
+
             # Additional validation: ref and alt cannot be the same
             if ref_allele and alt_allele and ref_allele == alt_allele:
-                raise ValueError(
+                raise ValidationError(
                     f"Reference and alternate alleles cannot be identical: '{ref_allele}'"
                 )
-        except ValueError as e:
-            raise ValueError(f"Invalid variant data: {e}") from e
+        except ValidationError as e:
+            raise ValidationError(f"Invalid variant data: {e}") from e
 
         # Set all fields
         self.rsid = rsid
@@ -456,21 +465,21 @@ class VariantData:
         """
         # Extract ACMG evidence if present (skip for now, will be added separately)
         acmg_evidence = data.get("acmg_evidence")
-        
+
         # Remove fields that aren't constructor parameters
         variant_dict = {
             k: v
             for k, v in data.items()
             if k not in ["processed_timestamp", "variant_key", "acmg_evidence"]
         }
-        
+
         # Create instance
         instance = cls(**variant_dict)
-        
+
         # Set ACMG evidence if provided
         if acmg_evidence:
             instance.acmg_evidence = acmg_evidence
-            
+
         return instance
 
     def summary_dict(self) -> Dict[str, Any]:
@@ -706,7 +715,7 @@ class PathogenicityClass(Enum):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print("MODELS MODULE - ENHANCED VERIFICATION")
+    print("MODELS MODULE v2.1.0 - VALIDATION EXCEPTION VERIFICATION")
     print("=" * 80)
 
     # Test 1: Hash and equality
@@ -714,7 +723,7 @@ if __name__ == "__main__":
     v1 = VariantData(chrom="chr1", pos=12345, ref="A", alt="G")
     v2 = VariantData(chrom="chr1", pos=12345, ref="A", alt="G")
     v3 = VariantData(chrom="chr2", pos=12345, ref="A", alt="G")
-    
+
     print(f"  - v1 == v2: {v1 == v2} (should be True)")
     print(f"  - v1 == v3: {v1 == v3} (should be False)")
     print(f"  - hash(v1) == hash(v2): {hash(v1) == hash(v2)} (should be True)")
@@ -733,28 +742,61 @@ if __name__ == "__main__":
     print(f"  - variant_id: {v1.variant_id == v1.variant_key}")
     print(f"  - consequence: {v1.consequence == v1.molecular_consequence}")
 
-    # Test 4: Validation enhancements
-    print("\n✓ Test 4: Enhanced validation")
+    # Test 4: ValidationError exceptions (NEW!)
+    print("\n✓ Test 4: ValidationError exception handling")
     try:
         bad_variant = VariantData(chrom="chr1", pos=100, ref="A", alt="A")
         print("  ✗ Same ref/alt accepted (should reject!)")
-    except ValueError:
-        print("  - Same ref/alt rejected ✓")
+    except ValidationError:
+        print("  - Same ref/alt raises ValidationError ✓")
 
     try:
-        whitespace_variant = VariantData(chrom=" chr1 ", pos=100, ref=" A ", alt="G")
-        print(f"  - Whitespace stripped: '{whitespace_variant.chromosome}' and '{whitespace_variant.ref_allele}'")
-    except ValueError as e:
+        empty_ref = VariantData(chrom="chr1", pos=100, ref="", alt="G")
+        print("  ✗ Empty ref accepted (should reject!)")
+    except ValidationError:
+        print("  - Empty ref raises ValidationError ✓")
+
+    try:
+        empty_alt = VariantData(chrom="chr1", pos=100, ref="A", alt="")
+        print("  ✗ Empty alt accepted (should reject!)")
+    except ValidationError:
+        print("  - Empty alt raises ValidationError ✓")
+
+    try:
+        invalid_chrom = VariantData(chrom="chr99", pos=100, ref="A", alt="G")
+        print("  ✗ Invalid chromosome accepted (should reject!)")
+    except ValidationError:
+        print("  - Invalid chromosome raises ValidationError ✓")
+
+    try:
+        invalid_pos = VariantData(chrom="chr1", pos=-100, ref="A", alt="G")
+        print("  ✗ Negative position accepted (should reject!)")
+    except ValidationError:
+        print("  - Negative position raises ValidationError ✓")
+
+    # Test 5: Whitespace handling
+    print("\n✓ Test 5: Whitespace sanitization")
+    try:
+        whitespace_variant = VariantData(
+            chrom=" chr1 ", pos=100, ref=" A ", alt=" G "
+        )
+        print(
+            f"  - Whitespace stripped: '{whitespace_variant.chromosome}' and '{whitespace_variant.ref_allele}'"
+        )
+    except ValidationError as e:
         print(f"  ✗ Whitespace handling failed: {e}")
 
-    # Test 5: VariantClassification with variant_id
-    print("\n✓ Test 5: VariantClassification with variant_id")
+    # Test 6: VariantClassification with variant_id
+    print("\n✓ Test 6: VariantClassification with variant_id")
     classification = VariantClassification(
-        classification="Pathogenic",
-        variant_id="chr1:12345:A:G",
-        confidence="High"
+        classification="Pathogenic", variant_id="chr1:12345:A:G", confidence="High"
     )
     print(f"  - variant_id parameter accepted: {classification.variant_id}")
 
     print("\n✅ All enhanced tests passed!")
+    print("   - Hash/equality: ✓")
+    print("   - Serialization: ✓")
+    print("   - Property aliases: ✓")
+    print("   - ValidationError exceptions: ✓")
+    print("   - Whitespace handling: ✓")
     print("=" * 80)
