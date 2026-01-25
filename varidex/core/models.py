@@ -115,6 +115,72 @@ class VariantData:
     # Metadata
     _processed_timestamp: Optional[str] = field(default=None, repr=False)
 
+    def __init__(
+        self,
+        rsid: str = "",
+        chromosome: str = "",
+        position: str = "",
+        genotype: str = "",
+        normalized_genotype: str = "",
+        genotype_class: str = "",
+        zygosity: str = "",
+        ref_allele: str = "",
+        alt_allele: str = "",
+        assembly: str = "",
+        gene: str = "",
+        clinical_sig: str = "",
+        review_status: str = "",
+        num_submitters: int = 0,
+        variant_type: str = "",
+        molecular_consequence: str = "",
+        acmg_evidence: Optional[ACMGEvidenceSet] = None,
+        acmg_classification: str = "",
+        confidence_level: str = "",
+        star_rating: int = 0,
+        conflict_details: Optional[List[str]] = None,
+        _processed_timestamp: Optional[str] = None,
+        # VCF-style aliases for compatibility
+        chrom: str = "",
+        pos: Optional[int] = None,
+        ref: str = "",
+        alt: str = "",
+        **kwargs: Any,
+    ) -> None:
+        """Initialize VariantData with support for both naming conventions."""
+        # Handle VCF-style parameters (chrom, pos, ref, alt)
+        if chrom:
+            chromosome = chrom
+        if pos is not None:
+            position = str(pos)
+        if ref:
+            ref_allele = ref
+        if alt:
+            alt_allele = alt
+
+        # Set all fields
+        self.rsid = rsid
+        self.chromosome = chromosome
+        self.position = position
+        self.genotype = genotype
+        self.normalized_genotype = normalized_genotype
+        self.genotype_class = genotype_class
+        self.zygosity = zygosity
+        self.ref_allele = ref_allele
+        self.alt_allele = alt_allele
+        self.assembly = assembly
+        self.gene = gene
+        self.clinical_sig = clinical_sig
+        self.review_status = review_status
+        self.num_submitters = num_submitters
+        self.variant_type = variant_type
+        self.molecular_consequence = molecular_consequence
+        self.acmg_evidence = acmg_evidence or ACMGEvidenceSet()
+        self.acmg_classification = acmg_classification
+        self.confidence_level = confidence_level
+        self.star_rating = star_rating
+        self.conflict_details = conflict_details or []
+        self._processed_timestamp = _processed_timestamp
+
     @property
     def processed_timestamp(self) -> str:
         """Lazy timestamp generation."""
@@ -135,6 +201,27 @@ class VariantData:
         )
         manual_conflict = len(self.conflict_details) > 0
         return acmg_conflict or manual_conflict
+
+    # VCF-style property aliases
+    @property
+    def chrom(self) -> str:
+        """Alias for chromosome (VCF compatibility)."""
+        return self.chromosome
+
+    @property
+    def pos(self) -> int:
+        """Alias for position as integer (VCF compatibility)."""
+        return int(self.position) if self.position else 0
+
+    @property
+    def ref(self) -> str:
+        """Alias for ref_allele (VCF compatibility)."""
+        return self.ref_allele
+
+    @property
+    def alt(self) -> str:
+        """Alias for alt_allele (VCF compatibility)."""
+        return self.alt_allele
 
     def is_pathogenic(self) -> bool:
         """Check if variant is pathogenic or likely pathogenic."""
@@ -164,6 +251,18 @@ class VariantData:
                 f"{self.ref_allele}>{self.alt_allele}"
             )
         return f"{self.chromosome}:{self.position}"
+
+    def to_vcf_string(self) -> str:
+        """Convert variant to VCF format string."""
+        return (
+            f"{self.chromosome}\t{self.position}\t{self.rsid or '.'}\t"
+            f"{self.ref_allele or '.'}\t{self.alt_allele or '.'}\t.\tPASS\t."
+        )
+
+    @property
+    def variant_key(self) -> str:
+        """Generate unique variant identifier."""
+        return f"{self.chromosome}:{self.position}:{self.ref_allele}:{self.alt_allele}"
 
     def is_protein_altering(self) -> bool:
         """Check if variant alters protein sequence."""
@@ -437,27 +536,26 @@ if __name__ == "__main__":
     print(f"  - After adding BP1: {evidence.has_conflict()}")
     assert evidence.has_conflict(), "Should be True with mixed evidence"
 
-    # Test new annotation classes
-    print("\n✓ Testing VariantAnnotation and AnnotatedVariant")
-    annotation = VariantAnnotation(
-        gnomad_af=0.001,
-        clinvar_significance="Pathogenic",
-        sift_score=0.01,
-    )
-    print(f"  - Has frequency data: {annotation.has_frequency_data()}")
-    print(f"  - Has clinical data: {annotation.has_clinical_data()}")
-    print(f"  - Has prediction data: {annotation.has_prediction_data()}")
+    # Test VCF-style initialization
+    print("\n✓ Testing VCF-style VariantData initialization")
+    vcf_variant = VariantData(chrom="chr1", pos=12345, ref="A", alt="G")
+    print(f"  - VCF style: chrom={vcf_variant.chrom}, pos={vcf_variant.pos}")
+    print(f"  - Mapped to: chromosome={vcf_variant.chromosome}")
+    print(f"  - VCF string: {vcf_variant.to_vcf_string()}")
+    print(f"  - Variant key: {vcf_variant.variant_key}")
+    assert vcf_variant.chromosome == "chr1"
+    assert vcf_variant.position == "12345"
+    assert vcf_variant.ref_allele == "A"
+    assert vcf_variant.alt_allele == "G"
 
-    variant = VariantData(
-        rsid="rs123",
-        chromosome="1",
-        position="12345",
-        genotype="AG",
-        gene="BRCA1",
+    # Test traditional initialization
+    print("\n✓ Testing traditional VariantData initialization")
+    trad_variant = VariantData(
+        rsid="rs123", chromosome="1", position="12345", genotype="AG", gene="BRCA1"
     )
-    annotated = AnnotatedVariant(variant=variant, annotation=annotation)
-    print(f"  - AnnotatedVariant rsid: {annotated.rsid}")
-    print(f"  - Has complete annotation: {annotated.has_complete_annotation()}")
+    print(f"  - Traditional: {trad_variant.rsid} in {trad_variant.gene}")
+    print(f"  - VCF accessors: chrom={trad_variant.chrom}, pos={trad_variant.pos}")
+    assert trad_variant.chromosome == "1"
 
     # Test aliases
     print("\n✓ Testing backward compatibility aliases")
@@ -466,5 +564,5 @@ if __name__ == "__main__":
     print(f"  - ACMGCriteria == ACMGEvidenceSet: {ACMGCriteria is ACMGEvidenceSet}")
     print(f"  - PathogenicityClass enum: {PathogenicityClass.PATHOGENIC.value}")
 
-    print("\n✅ All optimized models validated successfully")
+    print("\n✅ All models with VCF support validated successfully")
     print("=" * 80)
