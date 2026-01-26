@@ -56,7 +56,7 @@ def sanitize_csv_cell(value: str) -> str:
     return value_str
 
 
-size = def format_file_size(size_bytes: int) -> str:
+def format_file_size(size_bytes: int) -> str:
     """Format file size for display (e.g., 2.5 MB)."""
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:

@@ -7,9 +7,9 @@ import time
 from varidex.core.models import VariantData
 from varidex.exceptions import ValidationError, ReportError
 from varidex.core.config import ACMG_TIERS
-from varidex.reports.formatters import (
-            from tqdm import tqdm
 from varidex.core.models import ACMGEvidenceSet
+from varidex.reports.formatters import format_file_size, escape_html
+from tqdm import tqdm
 
 #!/usr/bin/env python3
 """
@@ -29,9 +29,11 @@ Changes: Added ReportGenerator class for test compatibility
 
 # Import exceptions with fallback
 try:
+    from varidex.exceptions import ValidationError, ReportError
 except ImportError:
-
     class ValidationError(Exception):
+        pass
+    class ReportError(Exception):
         pass
 
     class ReportError(Exception):
@@ -40,22 +42,21 @@ except ImportError:
 
 # Import ACMG_TIERS from config
 try:
+    from varidex.core.config import ACMG_TIERS
 except ImportError:
+    ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
+
     ACMG_TIERS = {
-        "Pathogenic": {"icon": "🔴", "priority": 1},
-        "Likely Pathogenic": {"icon": "🟠", "priority": 2},
-        "Uncertain Significance": {"icon": "⚪", "priority": 3},
-        "Likely Benign": {"icon": "🟢", "priority": 4},
-        "Benign": {"icon": "🔵", "priority": 5},
+        "P": "🔴", "LP": "🟠", "VUS": "⚪", 
+        "LB": "🟢", "B": "🟢🟢"
     }
 
-# Fallback imports for formatters
-try:
+    REPORTS = [
         generate_csv_report,
         generate_json_report,
-        generate_html_report,
-        generate_conflict_report,
-    )
+        generate_html_report
+    ]
+
 
     FORMATTERS_AVAILABLE = True
 except ImportError:
