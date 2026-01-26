@@ -1,4 +1,4 @@
-from varidex.reports import generate_all_reports
+#from varidex.reports import generate_all_reports
 from varidex.version import get_version
 from varidex.reports.generator import generate_all_reports as _generate
 
@@ -28,3 +28,4 @@ def generate_all_reports(*args, **kwargs):
 
 
 __all__ = ["generate_all_reports"]
+from .generator import generate_all_reports
