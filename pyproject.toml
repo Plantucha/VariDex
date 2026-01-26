@@ -26,6 +26,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 keywords = ["genomics", "variant", "classification", "ACMG", "ClinVar", "bioinformatics"]
+dependencies = [
+    "pandas>=1.3.0",
+    "numpy>=1.21.0",
+    "psutil>=5.8.0",
+    "tqdm>=4.62.0",
+    "requests>=2.26.0",
+    "click>=8.0.0",
+    "hypothesis>=6.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/Plantucha/VariDex"
