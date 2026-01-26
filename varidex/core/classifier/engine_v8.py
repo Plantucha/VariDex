@@ -122,6 +122,45 @@ class ACMGClassifierV8(ACMGClassifierV7):
         # Get base evidence from parent (PVS1, PM2, PM4, PP2, BA1, BS1, BP1, BP3)
         evidence = super().assign_evidence(variant)
 
+        # V8 TRIPLE MATCHING ENGINE (ClinVar + dbNSFP + gnomAD)
+        try:
+            from varidex.io.matching import VariantMatcherV8
+            from pathlib import Path
+
+	# PM1 SpliceAI (ACMG Phase 1)
+            from varidex.acmg.splice import SpliceACMG
+            splice = SpliceACMG()
+            result = splice.score(variant.chrom, variant.pos, variant.ref, variant.alt)
+            if result["pm1"]:
+                evidence.pm.add(result["pm1"])
+                logger.info(f"PM1 {result['pm1']}: delta={result['delta']:.3f}")
+        except Exception as e:
+            logger.debug(f"PM1 unavailable: {e}")
+
+
+            matcher = VariantMatcherV8(Path("./clinvar"))
+            match_key = f"{variant.chrom}:{variant.pos}:{variant.ref}:{variant.alt}"
+            variant.match_data = matcher.match_triple_sources(match_key)
+            logger.debug(
+                f"V8 matching OK: {variant.match_data.get('match_strength', 0)} sources"
+            )
+        except Exception as e:
+            logger.debug(f"V8 matching unavailable: {e}")
+
+        # PM1 SpliceAI (ACMG Phase 1: 12 → 15/28 codes)
+        try:
+            from varidex.acmg.splice import SpliceACMG
+
+            splice = SpliceACMG()
+            result = splice.score(
+                variant.chrom, int(variant.pos), variant.ref, variant.alt
+            )
+            if result["pm1"]:
+                evidence.pm.add(result["pm1"])
+                logger.info(f"PM1 {result['pm1']}: delta={result['delta']:.3f}")
+        except Exception as e:
+            logger.debug(f"PM1 SpliceAI unavailable: {e}")
+
         # Add computational prediction evidence if enabled
         if self.enable_predictions and self.prediction_service:
             try:
