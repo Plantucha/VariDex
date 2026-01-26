@@ -1,1 +1,33 @@
-python3 -m pytest tests/ --cov-fail-under=70 --deselect tests/test_property_based.py
+name: CI  # Lint/test VariDex genome code on push/PR
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # Avoid Windows mypy path issues
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies  # Dev-only; no raw data changes
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt || pip install -r requirements-dev.txt || true
+        pip install pytest black flake8 mypy  # Ensures all linters
+    - name: Lint  # Fails on errors (mypy exits non-0)
+      run: |
+        black --check .
+        flake8 .
+        mypy src/ . --config-file=mypy.ini --strict || exit 1  # Explicit fail; config ignores raw
+    - name: Test with Coverage  # >=70% or fail; deselect flaky
+      run: |
+        pip install pytest-cov  # Ensures cov plugin
+        python3 -m pytest tests/ --cov-fail-under=70 --deselect tests/test_property_based.py -v --cov-report=xml:coverage.xml
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v4
