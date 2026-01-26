@@ -56,7 +56,7 @@ def sanitize_csv_cell(value: str) -> str:
     return value_str
 
 
-def size = format_file_size(size_bytes: int) -> str:
+def format_file_size(size_bytes: int) -> str:
     """Format file size for display (e.g., 2.5 MB)."""
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:
@@ -87,7 +87,7 @@ def generate_csv_report(
     with open(output_path, "w", encoding="utf-8-sig") as f:
         df.to_csv(f, index=False, quoting=csv.QUOTE_NONNUMERIC)
 
-    size = format_file_size(output_path.stat().st_size)
+    format_file_size(output_path.stat().st_size)
     logger.info("CSV report generated: {output_path.name} ({size})")
     return output_path
 
@@ -122,7 +122,7 @@ def generate_json_report(
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2)
 
-    size = format_file_size(output_path.stat().st_size)
+    format_file_size(output_path.stat().st_size)
     logger.info("JSON report generated: {output_path.name} ({size})")
     return output_path
 
@@ -230,7 +230,7 @@ def generate_html_report(
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    size = format_file_size(output_path.stat().st_size)
+    format_file_size(output_path.stat().st_size)
     logger.info("HTML report generated: {output_path.name} ({size})")
     return output_path
 
