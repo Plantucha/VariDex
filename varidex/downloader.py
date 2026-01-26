@@ -3,7 +3,7 @@
 """
 ClinVar File Downloader with Space Management
 Updates: First Thursday of each month
-Version: 2026-01-24-v2 (Bandit B310 security fix + ResourceDownloader class)
+Version: 2026-01-26-v3 (Bandit B310 security fix with nosec comment)
 """
 
 import os
@@ -133,7 +133,8 @@ def download_file(url: str, filepath: Path) -> bool:
                 sys.stdout.write(f"\r  Progress: {percent:.1f}%")
                 sys.stdout.flush()
 
-        urllib.request.urlretrieve(url, filepath, reporthook)
+        # nosec B310: URL scheme validated by _validate_url() above
+        urllib.request.urlretrieve(url, filepath, reporthook)  # nosec B310
         print()  # New line after progress
         return True
     except ValueError as e:
