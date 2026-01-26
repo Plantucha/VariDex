@@ -35,8 +35,8 @@ def generate_summary_cards(stats: Dict[str, int]) -> str:
     Returns:
         HTML string for summary cards and classification grid
     """
+    total = stats.get("total", 0)
     stats.get("total", 0)
-    total = 
     pathogenic = stats.get("pathogenic", 0)
     likely_pathogenic = stats.get("likely_pathogenic", 0)
     stats.get("vus", 0)
