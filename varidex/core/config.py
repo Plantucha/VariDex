@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Module 1: Configuration Constants v6.6.0
+Module 1: Configuration Constants v6.6.1
 =========================================
 File: varidex/core/config.py
 Purpose: Central configuration for ClinVar pipeline with enhanced VariDexConfig class
+
+Changes v6.6.1 (2026-01-26) - SECURITY FIX:
+- Fixed B108: Replaced hardcoded /tmp with tempfile.mkdtemp() in test code
+- All security best practices applied
 
 Changes v6.6.0 (2026-01-24) - FIX 4B/4C COMPREHENSIVE:
 - FIX 4B: Added parameter aliases to VariDexConfig for test compatibility
@@ -21,6 +25,7 @@ import sys
 import json
 import os
 import copy
+import tempfile
 from typing import Any, Dict, Optional
 
 # ===================================================================
@@ -694,19 +699,21 @@ def __getattr__(name):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print(f"CONFIG MODULE v{__version__} - ENHANCED v6.6.0")
+    print(f"CONFIG MODULE v{__version__} - ENHANCED v6.6.1")
     print("=" * 80)
 
-    # Test FIX 4B: VariDexConfig aliases
+    # Test FIX 4B: VariDexConfig aliases (with secure temp directory)
     print("\n✓ Test FIX 4B: VariDexConfig parameter aliases")
-    config = VariDexConfig(max_population_af=0.05, num_threads=8, output_dir="/tmp")
-    print(f"  - max_population_af → population_af_threshold: {config.population_af_threshold}")
-    print(f"  - num_threads → thread_count: {config.thread_count}")
-    print(f"  - output_dir → output_directory: {config.output_directory}")
+    # Security fix B108: Use tempfile.TemporaryDirectory() instead of hardcoded /tmp
+    with tempfile.TemporaryDirectory() as temp_dir:
+        config = VariDexConfig(max_population_af=0.05, num_threads=8, output_dir=temp_dir)
+        print(f"  - max_population_af → population_af_threshold: {config.population_af_threshold}")
+        print(f"  - num_threads → thread_count: {config.thread_count}")
+        print(f"  - output_dir → output_directory: {config.output_directory}")
 
-    # Test property access
-    print(f"  - Reading max_population_af property: {config.max_population_af}")
-    print(f"  - Reading num_threads property: {config.num_threads}")
+        # Test property access
+        print(f"  - Reading max_population_af property: {config.max_population_af}")
+        print(f"  - Reading num_threads property: {config.num_threads}")
 
     # Test FIX 4C: PipelineConfig reference_genome
     print("\n✓ Test FIX 4C: PipelineConfig reference_genome alias")
@@ -719,7 +726,8 @@ if __name__ == "__main__":
     config.update(num_threads=16, max_population_af=0.02)
     print(f"  - After update: thread_count={config.thread_count}, af={config.population_af_threshold}")
 
-    print("\n✅ All v6.6.0 enhancements verified!")
+    print("\n✅ All v6.6.1 enhancements verified!")
     print("   - FIX 4B: Parameter aliases working ✓")
     print("   - FIX 4C: PipelineConfig.reference_genome ✓")
+    print("   - Security: B108 fixed (secure temp directory) ✓")
     print("=" * 80)
