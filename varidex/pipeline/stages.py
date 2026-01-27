@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/stages.py v6.2.0 OPTIMIZED - Efficiency: 10/10
+varidex/pipeline/stages.py v6.2.1-dev OPTIMIZED
 
-CRITICAL FIXES:
-- Removed expensive hash (saves 3+ sec) → row count only
-- Non-blocking CPU measurement (saves 600ms) → interval=0
-- Thread safety locks for parallel execution
-- Memory management after checkpoints (frees 2GB+)
-- Batch-parallel ACMG classification (40-50% speedup)
-- Removed duplicate validation (saves 600ms)
-- zstd compression (5-10x better than snappy)
-- Progress bars for long operations
-- Enhanced dry-run with input validation
-- ProcessPoolExecutor for CPU-bound work
+Pipeline stage execution with performance optimization.
+
+Development version - not for production use.
 """
 
 import pandas as pd
@@ -58,11 +50,12 @@ class StageMetrics:
 class StageCheckpoint:
     stage_id: int
     timestamp: float
-    row_count: int  # OPTIMIZED: no expensive hash
+    row_count: int
     file_path: Optional[Path] = None
 
 
 STAGE_DEPENDENCIES = {2: [], 3: [], 4: [2, 3], 5: [4], 6: [5], 7: [6]}
+
 STAGE_REQUIRED_COLUMNS = {
     2: ["rsid", "chromosome", "position"],
     3: ["chromosome", "position"],
@@ -87,7 +80,6 @@ def validate_stage_input(
     df: pd.DataFrame, stage_id: int, stage_name: str
 ) -> Tuple[bool, str]:
     from varidex.utils.helpers import DataValidator
-
     required_cols = STAGE_REQUIRED_COLUMNS.get(stage_id, [])
     if not required_cols:
         return True, ""
@@ -106,7 +98,7 @@ class StageProfiler:
     def start_stage(self, stage_id: int, stage_name: str, input_rows: int = 0) -> Dict:
         if not self.enabled:
             return {}
-        self.process.cpu_percent(interval=0)  # Reset
+        self.process.cpu_percent(interval=0)
         return {
             "stage_id": stage_id,
             "stage_name": stage_name,
@@ -126,7 +118,7 @@ class StageProfiler:
             return
         duration = time.time() - context["start_time"]
         memory = self.process.memory_info().rss / 1024 / 1024 - context["start_memory"]
-        cpu = self.process.cpu_percent(interval=0)  # OPTIMIZED: non-blocking
+        cpu = self.process.cpu_percent(interval=0)
 
         metric = StageMetrics(
             stage_id=context["stage_id"],
@@ -140,8 +132,9 @@ class StageProfiler:
             error=error,
         )
 
-        with self._lock:  # OPTIMIZED: thread-safe
+        with self._lock:
             self.metrics.append(metric)
+
         logger.info(
             f"⏱ {metric.stage_name}: {metric.duration_sec}s, {metric.memory_mb}MB, {metric.output_rows} rows"
         )
@@ -176,23 +169,25 @@ class CheckpointManager:
         file_path = self.checkpoint_dir / f"stage_{stage_id}_{stage_name}.parquet"
         df.to_parquet(
             file_path, index=False, compression="zstd", compression_level=3
-        )  # OPTIMIZED
+        )
 
         checkpoint = StageCheckpoint(
             stage_id=stage_id,
             timestamp=time.time(),
             row_count=len(df),
-            file_path=file_path,  # OPTIMIZED: no hash
+            file_path=file_path,
         )
+
         self.checkpoints[stage_id] = checkpoint
         logger.debug(f"💾 Checkpoint saved: Stage {stage_id} ({len(df):,} rows)")
 
-        if self.free_memory:  # OPTIMIZED: memory management
+        if self.free_memory:
             df_copy = df.copy()
             del df
             gc.collect()
             logger.debug(f"♻️ Memory freed for stage {stage_id}")
             return df_copy
+
         return df
 
     def load_checkpoint(self, stage_id: int) -> Optional[pd.DataFrame]:
@@ -226,7 +221,7 @@ class StageExecutor:
         self.completed_stages: Set[int] = set()
 
     def _validate_dry_run_inputs(self, stage_id: int, *args, **kwargs):
-        """OPTIMIZED: Validate inputs during dry-run."""
+        """Validate inputs during dry-run."""
         if stage_id == 2:
             clinvar_file = args[0] if args else kwargs.get("clinvar_file")
             if clinvar_file and not clinvar_file.exists():
@@ -264,7 +259,6 @@ class StageExecutor:
         try:
             logger.info(f"▶ Stage {stage_id}: {stage_name}")
             result = stage_func(*args, **kwargs)
-
             output_rows = len(result) if isinstance(result, pd.DataFrame) else 0
             self.profiler.end_stage(ctx, output_rows=output_rows, status="success")
 
@@ -275,6 +269,7 @@ class StageExecutor:
 
             self.completed_stages.add(stage_id)
             return result
+
         except Exception as e:
             self.profiler.end_stage(ctx, status="failed", error=str(e))
             logger.error(f"❌ Stage {stage_id} failed: {e}")
@@ -284,7 +279,7 @@ class StageExecutor:
 def execute_stage2_load_clinvar(
     clinvar_file: Path, checkpoint_dir: Path, loader: Any, safeguard_config: Dict
 ) -> pd.DataFrame:
-    """STAGE 2: Load ClinVar - validation removed (handled by StageExecutor)."""
+    """STAGE 2: Load ClinVar."""
     clinvar_df = loader.load_clinvar_file(clinvar_file, checkpoint_dir=checkpoint_dir)
     logger.info(f"✓ Loaded {len(clinvar_df):,} ClinVar variants")
     return clinvar_df
@@ -296,7 +291,7 @@ def execute_stage3_load_user_data(
     """STAGE 3: Load user genome data."""
     if user_type == "23andme":
         user_df = loader.load_23andme_file(user_file)
-    elif user_type == "vc":
+    elif user_type == "vcf":
         if hasattr(loader, "load_vcf_file") and loader.load_vcf_file:
             user_df = loader.load_vcf_file(user_file)
         else:
@@ -308,13 +303,14 @@ def execute_stage3_load_user_data(
                         "#CHROM": "chromosome",
                         "POS": "position",
                         "ID": "rsid",
-                        "REF": "re",
+                        "REF": "ref",
                         "ALT": "alt",
                     },
                     inplace=True,
                 )
     else:
         user_df = pd.read_csv(user_file, sep="\t", low_memory=False)
+
     logger.info(f"✓ Loaded {len(user_df):,} user variants")
     return user_df
 
@@ -326,15 +322,18 @@ def execute_stage4_hybrid_matching(
     user_type: str,
     loader: Any,
     safeguard_config: Dict,
+    import_mode: str = "centralized",
 ) -> pd.DataFrame:
-    """STAGE 4: Match variants with progress bar."""
+    """STAGE 4: Match variants."""
     with tqdm(total=len(user_df), desc="Matching variants", unit="var") as pbar:
         matched_df = loader.match_variants_hybrid(
             clinvar_df, user_df, clinvar_type, user_type
         )
         pbar.update(len(matched_df))
+
     if len(matched_df) == 0:
         raise ValueError("No matches found! Check file formats and genomic coordinates")
+
     logger.info(f"✓ Matched {len(matched_df):,} variants")
     return matched_df
 
@@ -342,7 +341,6 @@ def execute_stage4_hybrid_matching(
 def _classify_batch(batch_data):
     """Helper for parallel ACMG classification."""
     from varidex.utils.helpers import classify_variants_production
-
     batch_df, safeguard_config, clinvar_type, user_type = batch_data
     return classify_variants_production(
         batch_df, safeguard_config, clinvar_type, user_type
@@ -354,10 +352,11 @@ def execute_stage5_acmg_classification(
     safeguard_config: Dict,
     clinvar_type: str,
     user_type: str,
+    import_mode: str = "centralized",
     parallel: bool = True,
     batch_size: int = 1000,
 ) -> Tuple[List, Dict]:
-    """STAGE 5: ACMG classification - OPTIMIZED with batch parallelization."""
+    """STAGE 5: ACMG classification."""
     from varidex.utils.helpers import classify_variants_production
 
     if parallel and len(matched_df) > batch_size:
@@ -366,6 +365,7 @@ def execute_stage5_acmg_classification(
             matched_df.iloc[i : i + batch_size]
             for i in range(0, len(matched_df), batch_size)
         ]
+
         batch_data = [
             (batch, safeguard_config, clinvar_type, user_type) for batch in batches
         ]
@@ -381,14 +381,17 @@ def execute_stage5_acmg_classification(
                     executor.submit(_classify_batch, data): i
                     for i, data in enumerate(batch_data)
                 }
+
                 for future in as_completed(futures):
                     batch_classified, batch_stats = future.result()
                     classified_variants.extend(batch_classified)
                     for key, value in batch_stats.items():
                         combined_stats[key] = combined_stats.get(key, 0) + value
                     pbar.update(1)
+
         logger.info(f"✓ Classified {len(classified_variants):,} variants (parallel)")
         return classified_variants, combined_stats
+
     else:
         with tqdm(
             total=len(matched_df), desc="Classifying variants", unit="var"
@@ -397,8 +400,10 @@ def execute_stage5_acmg_classification(
                 matched_df, safeguard_config, clinvar_type, user_type
             )
             pbar.update(len(classified_variants))
+
         if not classified_variants:
             raise ValueError("Classification failed: no variants classified")
+
         logger.info(f"✓ Classified {len(classified_variants):,} variants")
         return classified_variants, stats
 
@@ -415,19 +420,16 @@ def execute_stage6_create_results(
 def execute_stage7_generate_reports(
     results_df: pd.DataFrame, stats: Dict, output_dir: Path, reports: Any
 ) -> Dict[str, Path]:
-    """STAGE 7: Generate reports.
-    
-    Note: stats parameter is accepted for compatibility but not passed to 
-    generate_all_reports as it calculates its own statistics internally.
-    """
+    """STAGE 7: Generate reports."""
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
+
     with tqdm(total=3, desc="Generating reports", unit="file") as pbar:
         report_files = reports.generate_all_reports(
-            results_df=results_df,
-            output_dir=output_dir
+            results_df, stats, output_dir=output_dir
         )
         pbar.update(3)
+
     logger.info(f"✓ Reports generated in: {output_dir.absolute()}/")
     return report_files
 
@@ -443,6 +445,7 @@ def execute_stages_2_3_parallel(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Execute Stages 2 and 3 in parallel."""
     logger.info("🔀 Starting parallel execution: Stages 2 & 3")
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_clinvar = executor.submit(
             execute_stage2_load_clinvar,
@@ -454,75 +457,17 @@ def execute_stages_2_3_parallel(
         future_user = executor.submit(
             execute_stage3_load_user_data, user_file, user_type, loader
         )
+
         clinvar_df = future_clinvar.result()
         user_df = future_user.result()
+
     logger.info("✓ Parallel loading complete")
     return clinvar_df, user_df
 
 
-if __name__ == "__main__":
-    print("=" * 70)
-    print("PIPELINE STAGES v6.2.0 OPTIMIZED - Self-Test")
-    print("=" * 70)
-
-    stages = [
-        (2, execute_stage2_load_clinvar),
-        (3, execute_stage3_load_user_data),
-        (4, execute_stage4_hybrid_matching),
-        (5, execute_stage5_acmg_classification),
-        (6, execute_stage6_create_results),
-        (7, execute_stage7_generate_reports),
-    ]
-    for stage_id, stage_func in stages:
-        assert callable(stage_func)
-        print(f"✓ Test {stage_id}: {stage_func.__name__}")
-
-    for stage_id, deps in STAGE_DEPENDENCIES.items():
-        assert isinstance(deps, list)
-    print("✓ Dependencies validated")
-
-    profiler = StageProfiler(enabled=True)
-    assert hasattr(profiler, "_lock")
-    print("✓ StageProfiler thread-safe")
-
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        ckpt = CheckpointManager(Path(tmpdir), enabled=True, free_memory=True)
-        assert ckpt.free_memory
-    print("✓ CheckpointManager memory optimization")
-
-    import inspect
-
-    assert "parallel" in inspect.getsource(execute_stage5_acmg_classification)
-    print("✓ Batch-parallel ACMG")
-    assert "hash_pandas_object" not in inspect.getsource(
-        CheckpointManager.save_checkpoint
-    )
-    print("✓ No expensive hash")
-    assert "interval=0" in inspect.getsource(StageProfiler.end_stage)
-    print("✓ Non-blocking CPU")
-    assert "tqdm" in inspect.getsource(execute_stage4_hybrid_matching)
-    print("✓ Progress bars")
-    assert "zstd" in inspect.getsource(CheckpointManager.save_checkpoint)
-    print("✓ zstd compression")
-    assert "FileNotFoundError" in inspect.getsource(
-        StageExecutor._validate_dry_run_inputs
-    )
-    print("✓ Dry-run validation")
-
-    print("=" * 70)
-    print("Self-test: 16/16 passed | EFFICIENCY: 10/10 ✅")
-    print("=" * 70)
-
-
+# Test compatibility stubs
 class ValidationStage:
-    """
-    Pipeline validation stage.
-
-    Validates input data before processing.
-    This is a stub implementation for test compatibility.
-    """
+    """Pipeline validation stage stub."""
 
     def __init__(self, validators: list = None):
         """Initialize with list of validators."""

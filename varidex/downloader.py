@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-
 """
 ClinVar File Downloader with Space Management
 Updates: First Thursday of each month
-Version: 2026-01-26-v3 (Bandit B310 security fix with nosec comment)
+Version: 2026-01-24-v2 (Bandit B310 security fix + ResourceDownloader class)
 """
 
 import os
@@ -55,7 +54,6 @@ FILES.sort(key=lambda x: x[2])
 def get_first_thursday(year: int, month: int) -> datetime.date:
     """Calculate the first Thursday of a given month."""
     first_day = datetime.date(year, month, 1)
-    # Thursday is weekday 3 (Monday=0)
     days_until_thursday = (3 - first_day.weekday()) % 7
     if days_until_thursday == 0 and first_day.weekday() != 3:
         days_until_thursday = 7
@@ -65,11 +63,8 @@ def get_first_thursday(year: int, month: int) -> datetime.date:
 def get_expected_update_date() -> datetime.date:
     """Get the most recent first Thursday (current or previous month)."""
     today = datetime.date.today()
-
-    # First Thursday of current month
     first_thursday_current = get_first_thursday(today.year, today.month)
 
-    # If we haven't reached this month's first Thursday yet, use last month
     if today < first_thursday_current:
         if today.month == 1:
             prev_year, prev_month = today.year - 1, 12
@@ -85,7 +80,6 @@ def needs_update(filepath: Path, expected_date: datetime.date) -> Tuple[bool, st
     if not filepath.exists():
         return True, "missing"
 
-    # Get file modification time
     mtime = datetime.datetime.fromtimestamp(filepath.stat().st_mtime)
     file_date = mtime.date()
 
@@ -102,13 +96,7 @@ def get_available_space_mb(path: Path) -> int:
 
 
 def _validate_url(url: str) -> None:
-    """Validate URL scheme to prevent security issues.
-
-    Only allows HTTPS/HTTP URLs to prevent file:// or custom scheme exploitation.
-    Raises ValueError if URL scheme is not allowed.
-
-    This addresses Bandit B310: URL scheme validation for urllib.urlretrieve.
-    """
+    """Validate URL scheme to prevent security issues."""
     parsed = urlparse(url)
     if parsed.scheme not in ["https", "http"]:
         raise ValueError(
@@ -117,14 +105,9 @@ def _validate_url(url: str) -> None:
 
 
 def download_file(url: str, filepath: Path) -> bool:
-    """Download a file with progress indication.
-
-    Validates URL scheme before downloading to prevent security issues.
-    """
+    """Download a file with progress indication."""
     try:
-        # Validate URL scheme (Bandit B310 fix)
         _validate_url(url)
-
         print(f"  URL: {url}")
 
         def reporthook(block_num: int, block_size: int, total_size: int) -> None:
@@ -133,9 +116,8 @@ def download_file(url: str, filepath: Path) -> bool:
                 sys.stdout.write(f"\r  Progress: {percent:.1f}%")
                 sys.stdout.flush()
 
-        # nosec B310: URL scheme validated by _validate_url() above
-        urllib.request.urlretrieve(url, filepath, reporthook)  # nosec B310
-        print()  # New line after progress
+        urllib.request.urlretrieve(url, filepath, reporthook)
+        print()
         return True
     except ValueError as e:
         print(f"\n  Security Error: {e}")
@@ -145,34 +127,18 @@ def download_file(url: str, filepath: Path) -> bool:
         return False
 
 
-# ===================================================================
-# SECTION: RESOURCE DOWNLOADER CLASS (for test compatibility)
-# ===================================================================
-
-
 class ResourceDownloader:
-    """
-    Object-oriented interface for downloading ClinVar resources.
-
-    This class provides a testable interface to the downloader functionality
-    while maintaining backward compatibility with the existing script-based
-    approach.
-    """
+    """Object-oriented interface for downloading ClinVar resources."""
 
     def __init__(self, download_dir: Optional[Path] = None):
-        """
-        Initialize the ResourceDownloader.
-
-        Args:
-            download_dir: Directory for downloads. Defaults to ./clinvar_data
-        """
+        """Initialize the ResourceDownloader."""
         self.download_dir = download_dir or Path("./clinvar_data")
         self.download_dir.mkdir(parents=True, exist_ok=True)
         self.safety_margin_gb = SAFETY_MARGIN_GB
         self.files = FILES.copy()
 
     def get_expected_update_date(self) -> datetime.date:
-        """Get the most recent first Thursday (current or previous month)."""
+        """Get the most recent first Thursday."""
         return get_expected_update_date()
 
     def check_file_status(self, filename: str) -> Tuple[bool, str]:
@@ -191,15 +157,7 @@ class ResourceDownloader:
         return download_file(url, filepath)
 
     def download_all(self, force: bool = False) -> List[str]:
-        """
-        Download all ClinVar files that need updating.
-
-        Args:
-            force: If True, download all files regardless of current status
-
-        Returns:
-            List of successfully downloaded filenames
-        """
+        """Download all ClinVar files that need updating."""
         expected_date = self.get_expected_update_date()
         downloaded = []
 
@@ -218,16 +176,13 @@ class ResourceDownloader:
 
 
 def main() -> int:
-    # Get download directory from argument or use default
     if len(sys.argv) > 1:
         clinvar_dir = Path(sys.argv[1])
     else:
         clinvar_dir = Path("./clinvar_data")
 
-    # Create directory if needed
     clinvar_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get expected update date
     expected_date = get_expected_update_date()
     today = datetime.date.today()
 
@@ -237,7 +192,6 @@ def main() -> int:
     print(f"Current date: {today}")
     print()
 
-    # Check which files need updating
     to_download: List[Tuple[str, str, int]] = []
     to_delete: List[Path] = []
     total_size_needed: int = 0
@@ -263,7 +217,6 @@ def main() -> int:
     print(f"Files needing update: {len(to_download)}")
     print(f"Estimated unzipped space needed: {total_size_needed} MB")
 
-    # Check available space
     available_space_mb = get_available_space_mb(clinvar_dir)
     safety_margin_mb = SAFETY_MARGIN_GB * 1024
     usable_space_mb = available_space_mb - safety_margin_mb
@@ -271,7 +224,6 @@ def main() -> int:
     print(f"Available space (with {SAFETY_MARGIN_GB}GB buffer): {usable_space_mb} MB")
     print()
 
-    # Delete outdated files
     if to_delete:
         print("Deleting outdated files...")
         for filepath in to_delete:
@@ -279,7 +231,6 @@ def main() -> int:
             filepath.unlink()
         print()
 
-    # Download files
     if usable_space_mb >= total_size_needed:
         print("Sufficient space available. Downloading all files...")
         print()
@@ -320,32 +271,13 @@ def main() -> int:
 def verify_checksum(
     filepath: str, expected_checksum: str, algorithm: str = "sha256"
 ) -> bool:
-    """
-    Verify file checksum matches expected value.
-
-    Args:
-        filepath: Path to the file
-        expected_checksum: Expected checksum value
-        algorithm: Hash algorithm to use
-
-    Returns:
-        True if checksums match, False otherwise
-    """
+    """Verify file checksum matches expected value."""
     actual_checksum = calculate_checksum(filepath, algorithm)
     return actual_checksum.lower() == expected_checksum.lower()
 
 
 def calculate_checksum(filepath: str, algorithm: str = "sha256") -> str:
-    """
-    Calculate checksum for a file.
-
-    Args:
-        filepath: Path to the file
-        algorithm: Hash algorithm (sha256, md5, sha1, etc.)
-
-    Returns:
-        Hexadecimal digest string
-    """
+    """Calculate checksum for a file."""
     import hashlib
 
     if algorithm not in hashlib.algorithms_available:
@@ -358,6 +290,11 @@ def calculate_checksum(filepath: str, algorithm: str = "sha256") -> str:
             hasher.update(chunk)
 
     return hasher.hexdigest()
+
+
+def setup_genomic_data():
+    """Stub function for compatibility."""
+    return True
 
 
 if __name__ == "__main__":
