@@ -57,7 +57,7 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
     matched = user_df.merge(
         clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar")
     )
-    logger.info("rsID matches: {len(matched):,}")
+    logger.info(f"rsID matches: {len(matched):,}")
     return matched
 
 
@@ -97,7 +97,7 @@ def match_by_coordinates(
     matched = user_df.merge(
         clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar")
     )
-    logger.info("Coordinate matches: {len(matched):,}")
+    logger.info(f"Coordinate matches: {len(matched):,}")
     return matched
 
 
@@ -132,9 +132,9 @@ def match_variants_hybrid(
     if clinvar_df is None or len(clinvar_df) == 0:
         raise ValueError("ClinVar DataFrame is empty")
 
-    logger.info("{'='*60}")
-    logger.info("MATCHING: {clinvar_type} × {user_type}")
-    logger.info("{'='*60}")
+    logger.info(f"{'='*60}")
+    logger.info(f"MATCHING: {clinvar_type} × {user_type}")
+    logger.info(f"{'='*60}")
 
     matches: List[pd.DataFrame] = []
     rsid_count: int = 0
@@ -147,7 +147,7 @@ def match_variants_hybrid(
         if len(rsid_matched) > 0:
             matches.append(rsid_matched)
             rsid_count = len(rsid_matched)
-            logger.info("✓ rsID: {rsid_count:,} matches")
+            logger.info(f"✓ rsID: {rsid_count:,} matches")
 
     # Try coordinate matching for unmatched variants
     if clinvar_type in ["vc", "vcf_tsv"]:
@@ -162,11 +162,13 @@ def match_variants_hybrid(
             if len(coord_matched) > 0:
                 matches.append(coord_matched)
                 coord_count = len(coord_matched)
-                logger.info("✓ Coordinate: {coord_count:,} matches")
+                logger.info(f"✓ Coordinate: {coord_count:,} matches")
 
     # Combine all matches
     if not matches:
-        raise ValueError("No matches found. ClinVar: {clinvar_type}, User: {user_type}")
+        raise ValueError(
+            f"No matches found. ClinVar: {clinvar_type}, User: {user_type}"
+        )
 
     combined = pd.concat(matches, ignore_index=True)
 
@@ -176,10 +178,10 @@ def match_variants_hybrid(
     elif "rsid" in combined.columns:
         combined = combined.drop_duplicates(subset="rsid", keep="first")
 
-    len(combined) / len(user_df) * 100
-    logger.info("{'='*60}")
-    logger.info("TOTAL: {len(combined):,} matches ({coverage:.1f}% coverage)")
-    logger.info("{'='*60}")
+    coverage = len(combined) / len(user_df) * 100
+    logger.info(f"{'='*60}")
+    logger.info(f"TOTAL: {len(combined):,} matches ({coverage:.1f}% coverage)")
+    logger.info(f"{'='*60}")
 
     # Reconcile column names for classification
     if (
