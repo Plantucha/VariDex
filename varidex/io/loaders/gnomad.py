@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Optional, Dict, List, Any, Tuple
 from tqdm import tqdm
 from dataclasses import dataclass
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +120,7 @@ class GnomADLoader:
         self.available_chroms = self._scan_chromosome_files()
         logger.info(
             f"   Found {len(self.available_chroms)} chromosome files: "
-            f"{', '.join(sorted(self.available_chroms, key=lambda x: (x.isdigit(), x)))}"
+            f"{', '.join(sorted(self.available_chroms, key=lambda x: (not x.isdigit(), x)))}"
         )
 
     def _scan_chromosome_files(self) -> List[str]:
@@ -397,7 +396,7 @@ class GnomADLoader:
             "directory": str(self.gnomad_dir),
             "available_chromosomes": len(self.available_chroms),
             "chromosomes": sorted(
-                self.available_chroms, key=lambda x: (x.isdigit(), x)
+                self.available_chroms, key=lambda x: (not x.isdigit(), x)
             ),
             "open_handles": len(self.vcf_handles),
         }
