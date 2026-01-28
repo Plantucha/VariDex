@@ -290,7 +290,7 @@ class VariantData:
             # Additional validation: ref and alt cannot be the same (if both provided)
             if ref_allele and alt_allele and ref_allele == alt_allele:
                 raise ValidationError(
-                    f"Reference and alternate alleles cannot be identical: '{ref_alle\le}'"
+                    f"Reference and alternate alleles cannot be identical: '{ref_allele}'"
                 )
         except ValidationError as e:
             raise ValidationError(f"Invalid variant data: {e}") from e
@@ -841,7 +841,8 @@ if __name__ == "__main__":
     try:
         annotated = AnnotatedVariant(chrom="chr1", pos=100, ref="A", alt="G")
         print(
-            f"  - Direct creation successful: {annotated.variant.variant_key if annot\ated.variant else 'None'}"
+            f"  - Direct creation successful: "
+            f"{annotated.variant.variant_key if annotated.variant else 'None'}"
         )
     except Exception as e:
         print(f"  ✗ Failed: {e}")
