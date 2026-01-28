@@ -82,7 +82,7 @@ if __name__ == "__main__":
     g = (
         sys.argv[1]
         if len(sys.argv) > 1
-        else "/media/michal/647A504F7A50205A/GENOME/Michal/genome_Julia_Planicka_v5_Full_20260116121126.zip"
+        else "/media/michal/647A504F7A50205A/GENOME/Michal/raw.txt"
     )
     o = sys.argv[2] if len(sys.argv) > 2 else "results_v6.1.6"
     main(c, g, o)
