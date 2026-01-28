@@ -25,39 +25,6 @@ __all__: List[str] = [
     "validate_type",
 ]
 
-if __name__ == "__main__":
-    # Clean, static string to avoid Black / f-string issues
-    print("VariDex Exceptions v6.0.0 - All systems OK")
-
-    # Optional: also run basic self-test of all exception classes
-    try:
-        from varidex.core.exceptions import (
-            ValidationError,
-            DataLoadError,
-            DataProcessingError,
-            ClassificationError,
-            ReportError,
-            FileProcessingError,
-        )
-
-        test_classes: List[Type[Exception]] = [
-            ValidationError,
-            DataLoadError,
-            DataProcessingError,
-            ClassificationError,
-            ReportError,
-            FileProcessingError,
-        ]
-
-        for cls in test_classes:
-            instance = cls("test message")
-            assert isinstance(instance, Exception)
-        print("Self-test passed: all exception classes instantiable")
-
-    except Exception as e:
-        print(f"Self-test failed: {e}")
-
-
 class ErrorCode(Enum):
     """Error codes for categorizing exceptions."""
 
