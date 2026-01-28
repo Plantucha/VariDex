@@ -25,6 +25,7 @@ __all__: List[str] = [
     "validate_type",
 ]
 
+
 class ErrorCode(Enum):
     """Error codes for categorizing exceptions."""
 
