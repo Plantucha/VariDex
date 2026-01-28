@@ -285,7 +285,7 @@ def load_clinvar_vcf(
             return result
 
         tqdm.pandas(desc="  Parsing", leave=False)
-        info_parsed: pd.Series = df["INFO"].progress_apply(parse_info)
+        info_parsed: pd.Series = df["INFO"].apply(parse_info)
         df["clinical_sig"] = info_parsed.apply(lambda x: x["CLNSIG"])
         df["review_status"] = info_parsed.apply(lambda x: x["CLNREVSTAT"])
         print("  ✓ INFO fields parsed\n")
@@ -318,7 +318,7 @@ def load_clinvar_vcf(
         if "INFO" in df.columns:
             print("🆔 Extracting rsIDs from INFO field...")
             tqdm.pandas(desc="  Extracting", leave=False)
-            df["rsid"] = df["INFO"].progress_apply(extract_rsid_from_info)
+            df["rsid"] = df["INFO"].apply(extract_rsid_from_info)
             rsid_count: int = df["rsid"].notna().sum()
             print(
                 f"  ✓ Extracted {rsid_count:,} rsIDs "

@@ -5,7 +5,7 @@ Data loading utilities for ClinVar and user genome files.
 """
 
 # Lazy loading to avoid circular imports
-__all__ = ["load_clinvar_file", "load_user_file", "load_vcf_file"]
+__all__ = ["load_clinvar_file", "load_user_file", "load_vcf_file", "match_variants_hybrid"]
 
 
 def load_clinvar_file(*args, **kwargs):
@@ -44,3 +44,10 @@ def load_vcf_file(*args, **kwargs):
         from varidex.io.loaders.user import load_user_file
 
         return load_user_file(*args, **kwargs)
+
+
+def match_variants_hybrid(*args, **kwargs):
+    """Match variants using hybrid strategy. Lazy import wrapper."""
+    from varidex.io.matching import match_variants_hybrid as _match
+
+    return _match(*args, **kwargs)
