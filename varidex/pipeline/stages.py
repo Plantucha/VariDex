@@ -537,42 +537,44 @@ def execute_stage4b_gnomad_annotation(
 ) -> pd.DataFrame:
     """
     Stage 4b: Annotate variants with gnomAD population frequencies.
-    
+
     Applies BA1, BS1, PM2 ACMG criteria based on allele frequencies.
-    
+
     Args:
         matched_df: DataFrame with matched variants
         gnomad_dir: Path to gnomAD VCF files
         logger: Optional logger instance
-        
+
     Returns:
         DataFrame with gnomad_af, BA1, BS1, PM2 columns added
     """
     if logger:
         logger.info("Stage 4b: gnomAD annotation...")
-    
+
     from varidex.pipeline.gnomad_annotator import (
         annotate_with_gnomad,
         apply_frequency_acmg_criteria,
     )
-    
+
     # Ensure ref/alt columns exist
-    if 'ref' not in matched_df.columns and 'ref_allele' in matched_df.columns:
-        matched_df['ref'] = matched_df['ref_allele']
-    if 'alt' not in matched_df.columns and 'alt_allele' in matched_df.columns:
-        matched_df['alt'] = matched_df['alt_allele']
-    
+    if "ref" not in matched_df.columns and "ref_allele" in matched_df.columns:
+        matched_df["ref"] = matched_df["ref_allele"]
+    if "alt" not in matched_df.columns and "alt_allele" in matched_df.columns:
+        matched_df["alt"] = matched_df["alt_allele"]
+
     # Annotate with gnomAD
     result = annotate_with_gnomad(matched_df, gnomad_dir)
-    
+
     # Apply frequency criteria
     result = apply_frequency_acmg_criteria(result)
-    
+
     if logger:
-        with_af = result['gnomad_af'].notna().sum()
+        with_af = result["gnomad_af"].notna().sum()
         logger.info(f"  ✓ {with_af:,} variants with gnomAD frequency")
-        logger.info(f"  ✓ BA1: {result['BA1'].sum():,}, BS1: {result['BS1'].sum():,}, PM2: {result['PM2'].sum():,}")
-    
+        logger.info(
+            f"  ✓ BA1: {result['BA1'].sum():,}, BS1: {result['BS1'].sum():,}, PM2: {result['PM2'].sum():,}"
+        )
+
     return result
 
 
@@ -582,37 +584,39 @@ def execute_stage4c_consequence_criteria(
 ) -> pd.DataFrame:
     """
     Stage 4c: Apply consequence-based ACMG criteria (PVS1, BP7).
-    
+
     Args:
         annotated_df: DataFrame with variants and gnomAD annotations
         logger: Optional logger instance
-        
+
     Returns:
         DataFrame with PVS1, BP7, acmg_final_auto columns added
     """
     if logger:
         logger.info("Stage 4c: Consequence-based ACMG criteria...")
-    
+
     from scripts.add_consequence_criteria import (
         apply_consequence_criteria,
         update_acmg_classification,
     )
-    
+
     # Apply PVS1 and BP7
     result = apply_consequence_criteria(annotated_df)
-    
+
     # Generate automated classification
-    result['acmg_final_auto'] = result.apply(update_acmg_classification, axis=1)
-    
+    result["acmg_final_auto"] = result.apply(update_acmg_classification, axis=1)
+
     if logger:
-        pvs1 = result['PVS1'].sum()
-        bp7 = result['BP7'].sum()
+        pvs1 = result["PVS1"].sum()
+        bp7 = result["BP7"].sum()
         logger.info(f"  ✓ PVS1: {pvs1:,}, BP7: {bp7:,}")
-        
-        pathogenic = result['acmg_final_auto'].str.contains('Pathogenic', na=False).sum()
-        benign = result['acmg_final_auto'].str.contains('Benign', na=False).sum()
+
+        pathogenic = (
+            result["acmg_final_auto"].str.contains("Pathogenic", na=False).sum()
+        )
+        benign = result["acmg_final_auto"].str.contains("Benign", na=False).sum()
         logger.info(f"  ✓ Auto-classified: {pathogenic:,} P/LP, {benign:,} B/LB")
-    
+
     return result
 
 
@@ -623,42 +627,44 @@ def execute_stage4b_gnomad_annotation(
 ) -> pd.DataFrame:
     """
     Stage 4b: Annotate variants with gnomAD population frequencies.
-    
+
     Applies BA1, BS1, PM2 ACMG criteria based on allele frequencies.
-    
+
     Args:
         matched_df: DataFrame with matched variants
         gnomad_dir: Path to gnomAD VCF files
         logger: Optional logger instance
-        
+
     Returns:
         DataFrame with gnomad_af, BA1, BS1, PM2 columns added
     """
     if logger:
         logger.info("Stage 4b: gnomAD annotation...")
-    
+
     from varidex.pipeline.gnomad_annotator import (
         annotate_with_gnomad,
         apply_frequency_acmg_criteria,
     )
-    
+
     # Ensure ref/alt columns exist
-    if 'ref' not in matched_df.columns and 'ref_allele' in matched_df.columns:
-        matched_df['ref'] = matched_df['ref_allele']
-    if 'alt' not in matched_df.columns and 'alt_allele' in matched_df.columns:
-        matched_df['alt'] = matched_df['alt_allele']
-    
+    if "ref" not in matched_df.columns and "ref_allele" in matched_df.columns:
+        matched_df["ref"] = matched_df["ref_allele"]
+    if "alt" not in matched_df.columns and "alt_allele" in matched_df.columns:
+        matched_df["alt"] = matched_df["alt_allele"]
+
     # Annotate with gnomAD
     result = annotate_with_gnomad(matched_df, gnomad_dir)
-    
+
     # Apply frequency criteria
     result = apply_frequency_acmg_criteria(result)
-    
+
     if logger:
-        with_af = result['gnomad_af'].notna().sum()
+        with_af = result["gnomad_af"].notna().sum()
         logger.info(f"  ✓ {with_af:,} variants with gnomAD frequency")
-        logger.info(f"  ✓ BA1: {result['BA1'].sum():,}, BS1: {result['BS1'].sum():,}, PM2: {result['PM2'].sum():,}")
-    
+        logger.info(
+            f"  ✓ BA1: {result['BA1'].sum():,}, BS1: {result['BS1'].sum():,}, PM2: {result['PM2'].sum():,}"
+        )
+
     return result
 
 
@@ -668,35 +674,37 @@ def execute_stage4c_consequence_criteria(
 ) -> pd.DataFrame:
     """
     Stage 4c: Apply consequence-based ACMG criteria (PVS1, BP7).
-    
+
     Args:
         annotated_df: DataFrame with variants and gnomAD annotations
         logger: Optional logger instance
-        
+
     Returns:
         DataFrame with PVS1, BP7, acmg_final_auto columns added
     """
     if logger:
         logger.info("Stage 4c: Consequence-based ACMG criteria...")
-    
+
     from scripts.add_consequence_criteria import (
         apply_consequence_criteria,
         update_acmg_classification,
     )
-    
+
     # Apply PVS1 and BP7
     result = apply_consequence_criteria(annotated_df)
-    
+
     # Generate automated classification
-    result['acmg_final_auto'] = result.apply(update_acmg_classification, axis=1)
-    
+    result["acmg_final_auto"] = result.apply(update_acmg_classification, axis=1)
+
     if logger:
-        pvs1 = result['PVS1'].sum()
-        bp7 = result['BP7'].sum()
+        pvs1 = result["PVS1"].sum()
+        bp7 = result["BP7"].sum()
         logger.info(f"  ✓ PVS1: {pvs1:,}, BP7: {bp7:,}")
-        
-        pathogenic = result['acmg_final_auto'].str.contains('Pathogenic', na=False).sum()
-        benign = result['acmg_final_auto'].str.contains('Benign', na=False).sum()
+
+        pathogenic = (
+            result["acmg_final_auto"].str.contains("Pathogenic", na=False).sum()
+        )
+        benign = result["acmg_final_auto"].str.contains("Benign", na=False).sum()
         logger.info(f"  ✓ Auto-classified: {pathogenic:,} P/LP, {benign:,} B/LB")
-    
+
     return result

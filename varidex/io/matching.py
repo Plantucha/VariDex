@@ -150,19 +150,27 @@ def match_variants_hybrid(
             logger.info(f"✓ rsID: {rsid_count:,} matches")
 
     # Try coordinate matching for unmatched variants
-    if clinvar_type in ["vc", "vcf_tsv"]:
-        if rsid_count > 0 and "rsid" in user_df.columns:
-            matched_rsids: Set[Any] = set(rsid_matched["rsid"])
-            unmatched = user_df[~user_df["rsid"].isin(matched_rsids)]
-        else:
-            unmatched = user_df
+    if rsid_count > 0 and "rsid" in user_df.columns:
+        matched_rsids: Set[Any] = set(rsid_matched["rsid"])
+        unmatched = user_df[~user_df["rsid"].isin(matched_rsids)]
+    else:
+        unmatched = user_df
 
-        if len(unmatched) > 0:
+    if len(unmatched) > 0:
+        logger.info(
+            f"Attempting position matching on {len(unmatched):,} unmatched variants..."
+        )
+        # Use position-only matching for 23andMe (no ref/alt available)
+        if user_type == "23andme":
+            coord_matched = match_by_position_23andme(unmatched, clinvar_df)
+            logger.info(f"Position matching returned {len(coord_matched):,} matches")
+        else:
             coord_matched = match_by_coordinates(unmatched, clinvar_df)
-            if len(coord_matched) > 0:
-                matches.append(coord_matched)
-                coord_count = len(coord_matched)
-                logger.info(f"✓ Coordinate: {coord_count:,} matches")
+
+        if len(coord_matched) > 0:
+            matches.append(coord_matched)
+            coord_count = len(coord_matched)
+            logger.info(f"✓ Coordinate: {coord_count:,} matches")
 
     # Combine all matches
     if not matches:
@@ -172,10 +180,22 @@ def match_variants_hybrid(
 
     combined = pd.concat(matches, ignore_index=True)
 
-    # Deduplicate (prefer rsID matches if duplicate coord_key)
-    if "coord_key" in combined.columns:
+    # Deduplicate by user variant (not ClinVar rsID which causes false deduplication)
+    # Use user-side coordinates to identify unique user variants
+    if "chromosome_user" in combined.columns and "position_user" in combined.columns:
+        combined["_user_key"] = (
+            combined["chromosome_user"].astype(str)
+            + ":"
+            + combined["position_user"].astype(str)
+        )
+        combined = combined.drop_duplicates(subset="_user_key", keep="first")
+        combined = combined.drop(columns=["_user_key"])
+        logger.info(f"After deduplication by user position: {len(combined):,}")
+    elif "coord_key" in combined.columns:
         combined = combined.drop_duplicates(subset="coord_key", keep="first")
-    elif "rsid" in combined.columns:
+    elif "rsid" in combined.columns and "chromosome" in combined.columns:
+        # Fallback: deduplicate by rsid but this may lose some variants
+        logger.warning("Deduplicating by rsID - may lose position-only matches")
         combined = combined.drop_duplicates(subset="rsid", keep="first")
 
     coverage = len(combined) / len(user_df) * 100
@@ -478,3 +498,48 @@ if __name__ == "__main__":
     matcher = VariantMatcherV8(Path("./clinvar"))
     result = matcher.match_triple_sources("1:10000:A:G")
     print(f"V8 Matcher ready: {result['match_strength']} sources matched")
+
+
+def match_by_position_23andme(
+    user_df: pd.DataFrame, clinvar_df: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Match 23andMe variants by position only (chr:pos).
+    23andMe doesn't provide ref/alt, just genotype.
+
+    Args:
+        user_df: 23andMe DataFrame with chromosome, position, genotype
+        clinvar_df: ClinVar DataFrame with chromosome, position, ref_allele, alt_allele
+
+    Returns:
+        Merged DataFrame with position-matched variants
+    """
+    if not all(col in user_df.columns for col in ["chromosome", "position"]):
+        logger.warning("User DataFrame missing position columns")
+        return pd.DataFrame()
+
+    if not all(col in clinvar_df.columns for col in ["chromosome", "position"]):
+        logger.warning("ClinVar DataFrame missing position columns")
+        return pd.DataFrame()
+
+    # Create position keys
+    user_df = user_df.copy()
+    clinvar_df = clinvar_df.copy()
+
+    user_df["_pos_key"] = (
+        user_df["chromosome"].astype(str) + ":" + user_df["position"].astype(str)
+    )
+    clinvar_df["_pos_key"] = (
+        clinvar_df["chromosome"].astype(str) + ":" + clinvar_df["position"].astype(str)
+    )
+
+    # Merge on position
+    merged = user_df.merge(
+        clinvar_df, on="_pos_key", how="inner", suffixes=("_user", "_clinvar")
+    )
+
+    # Clean up
+    merged = merged.drop(columns=["_pos_key"])
+
+    logger.info(f"Position matching: {len(merged):,} matches")
+    return merged
