@@ -39,3 +39,8 @@ analysis_log.txt
 tatus
 olete*
 results/
+
+# Genomic reference data (large files - download separately)
+gnomad/
+*.vcf.bgz
+*.vcf.bgz.tbi
