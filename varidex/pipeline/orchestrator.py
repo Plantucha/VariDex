@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-
 """
 varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.0-dev
+
 Main 7-stage pipeline coordinator (coordination only).
+
 Development version - not for production use.
 """
 
@@ -11,6 +12,7 @@ import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, List, Any
+
 import pandas as pd
 
 
@@ -35,14 +37,12 @@ from varidex.pipeline.pipeline_config import (
     get_safeguard_config,
     get_config_value,
 )
-
 from varidex.pipeline.file_utils import (
     FileTypeDetectionError,
     validate_input_path,
     detect_data_file_type,
     check_clinvar_freshness,
 )
-
 from varidex.pipeline.cli_helpers import (
     print_pipeline_header,
     print_stage_header,
@@ -61,6 +61,7 @@ try:
     PipelineState = models.PipelineState
     logger.info("✓ Centralized imports loaded")
     _IMPORT_MODE: str = "centralized"
+
 except ImportError as e:
     logger.warning(f"Import manager unavailable: {e}")
     logger.info("✓ Falling back to direct imports")
@@ -127,6 +128,7 @@ def main(
     try:
         # STAGE 1: FILE ANALYSIS
         print_stage_header(1, 7, "📋 FILE ANALYSIS")
+
         clinvar_file: Path = validate_input_path(Path(clinvar_path), "ClinVar")
         user_file: Path = validate_input_path(Path(user_data_path), "User data")
 
@@ -150,30 +152,36 @@ def main(
 
         # STAGE 2: LOAD CLINVAR
         print_stage_header(2, 7, "📥 LOADING CLINVAR DATABASE")
+
         checkpoint_dir: Path = Path(
             get_config_value(config, "CHECKPOINT_DIR", Path(".varidex_cache"))
         )
+
         clinvar_df: pd.DataFrame = execute_stage2_load_clinvar(
             clinvar_file, checkpoint_dir, loader, safeguard_config, _IMPORT_MODE
         )
+
         state.variants_loaded = len(clinvar_df)
         logger.info(f"✓ Loaded {state.variants_loaded:,} ClinVar variants")
         print(f"  ✓ Loaded: {state.variants_loaded:,} variants")
 
         # STAGE 3: LOAD USER DATA
         print_stage_header(3, 7, "📥 LOADING USER GENOMIC DATA")
+
         user_df: pd.DataFrame = execute_stage3_load_user_data(user_file, user_type, loader)
+
         state.user_variants = len(user_df)
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
         print(f"  ✓ Loaded: {state.user_variants:,} variants")
 
         # STAGE 4: HYBRID MATCHING
         print_stage_header(4, 7, "🔗 MATCHING VARIANTS")
+
         matched_df: pd.DataFrame = execute_stage4_hybrid_matching(
             clinvar_df, user_df, clinvar_type, user_type, loader, safeguard_config, _IMPORT_MODE
         )
-        state.matches = len(matched_df)
 
+        state.matches = len(matched_df)
         if state.matches == 0:
             raise ValueError(
                 f"No matches between ClinVar ({clinvar_type}) and user data ({user_type}).\n"
@@ -188,8 +196,10 @@ def main(
 
         # STAGE 5: ACMG CLASSIFICATION
         print_stage_header(5, 7, "🧬 ACMG CLASSIFICATION")
+
         classified_variants: List[Dict[str, Any]]
         classification_stats: Dict[str, int]
+
         classified_variants, classification_stats = execute_stage5_acmg_classification(
             matched_df, safeguard_config, clinvar_type, user_type, _IMPORT_MODE
         )
@@ -199,24 +209,28 @@ def main(
 
         logger.info(f"✓ Classified {len(classified_variants):,} variants")
         print(f"  ✓ Classified: {len(classified_variants):,} variants")
-        print(f"   • Pathogenic: {classification_stats.get('pathogenic', 0):,}")
-        print(f"   • Likely Pathogenic: {classification_stats.get('likely_pathogenic', 0):,}")
-        print(f"   • VUS: {classification_stats.get('vus', 0):,}")
-        print(f"   • Likely Benign: {classification_stats.get('likely_benign', 0):,}")
-        print(f"   • Benign: {classification_stats.get('benign', 0):,}")
+        print(f"    • Pathogenic: {classification_stats.get('pathogenic', 0):,}")
+        print(f"    • Likely Pathogenic: {classification_stats.get('likely_pathogenic', 0):,}")
+        print(f"    • VUS: {classification_stats.get('vus', 0):,}")
+        print(f"    • Likely Benign: {classification_stats.get('likely_benign', 0):,}")
+        print(f"    • Benign: {classification_stats.get('benign', 0):,}")
 
         if classification_stats.get("conflicts", 0) > 0:
-            print(f"   ⚠️ Conflicts: {classification_stats['conflicts']:,}")
+            print(f"    ⚠️  Conflicts: {classification_stats['conflicts']:,}")
 
         # STAGE 6: CREATE RESULTS
         print_stage_header(6, 7, "📊 CREATING RESULTS")
+
         results_df: pd.DataFrame = execute_stage6_create_results(classified_variants, reports)
+
         logger.info(f"✓ Results DataFrame: {len(results_df):,} rows")
         print(f"  ✓ DataFrame: {len(results_df):,} variants")
 
         # STAGE 7: GENERATE REPORTS
         print_stage_header(7, 7, "📄 GENERATING REPORTS")
+
         output_dir.mkdir(exist_ok=True, parents=True)
+
         report_files: Dict[str, Path] = execute_stage7_generate_reports(
             results_df, classification_stats, output_dir, reports
         )
@@ -225,7 +239,7 @@ def main(
         print(f"  ✓ Reports saved to: {output_dir.absolute()}/")
         for report_type, file_path in report_files.items():
             size_kb: float = file_path.stat().st_size / 1024
-            print(f"   • {report_type.upper()}: {file_path.name} ({size_kb:.1f} KB)")
+            print(f"    • {report_type.upper()}: {file_path.name} ({size_kb:.1f} KB)")
 
         # COMPLETION
         print_completion_summary(state, match_rate, classification_stats, report_files)
@@ -234,28 +248,28 @@ def main(
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
-        print(f"\n❌ ERROR: File not found\n  {e}")
+        print(f"\n❌ ERROR: File not found\n   {e}")
         return False
 
     except FileTypeDetectionError as e:
         logger.error(f"Detection failed: {e}")
-        print(f"\n❌ ERROR: Cannot determine file format\n  {e}")
+        print(f"\n❌ ERROR: Cannot determine file format\n   {e}")
         return False
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
-        print(f"\n❌ ERROR: Validation failed\n  {e}")
+        print(f"\n❌ ERROR: Validation failed\n   {e}")
         return False
 
     except ImportError as e:
         logger.error(f"Import error: {e}")
-        print(f"\n❌ ERROR: Missing dependency\n  {e}")
-        print("  Install: pip install -r requirements.txt")
+        print(f"\n❌ ERROR: Missing dependency\n   {e}")
+        print("   Install: pip install -r requirements.txt")
         return False
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}", exc_info=True)
-        print(f"\n❌ UNEXPECTED ERROR: {e}\n  Check {log_path}")
+        print(f"\n❌ UNEXPECTED ERROR: {e}\n   Check {log_path}")
         return False
 
 
