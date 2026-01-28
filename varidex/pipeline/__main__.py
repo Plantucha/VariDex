@@ -44,9 +44,38 @@ def main() -> None:
     clinvar_data = load_clinvar_file(args.clinvar)
     user_data = load_user_file(args.user_genome)
 
-    results: List[Any] = execute_stage5_acmg_classification(
-        state, clinvar_data, user_data
+
+    # Match variants first
+    from varidex.io.matching import match_variants_hybrid
+    
+    result = match_variants_hybrid(
+        clinvar_data, 
+        user_data, 
+        clinvar_type='vcf',
+        user_type='23andme'
     )
+    
+    # Handle whatever is returned
+    if isinstance(result, tuple):
+        matched_df = result[0]
+    else:
+        matched_df = result
+    
+    print(f"✅ Matched: {len(matched_df):,} variants")
+    
+    # Now run ACMG classification on matched variants
+    safeguard_config = {
+        "max_variants": 1000000,
+        "allow_parallel": True
+    }
+    
+    results: List[Any] = execute_stage5_acmg_classification(
+        matched_df, 
+        safeguard_config=safeguard_config,
+        clinvar_type="vcf",
+        user_type="23andme"
+    )
+
 
     # Save results
     Path(args.output).mkdir(exist_ok=True)

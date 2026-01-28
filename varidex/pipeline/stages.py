@@ -342,9 +342,7 @@ def _classify_batch(batch_data):
     """Helper for parallel ACMG classification."""
     from varidex.utils.helpers import classify_variants_production
     batch_df, safeguard_config, clinvar_type, user_type = batch_data
-    return classify_variants_production(
-        batch_df, safeguard_config, clinvar_type, user_type
-    )
+    return classify_variants_production(batch_df, safeguard_config)
 
 
 def execute_stage5_acmg_classification(
@@ -383,10 +381,9 @@ def execute_stage5_acmg_classification(
                 }
 
                 for future in as_completed(futures):
-                    batch_classified, batch_stats = future.result()
+                    batch_result = future.result()
+                    batch_classified = batch_result if isinstance(batch_result, list) else batch_result[0]
                     classified_variants.extend(batch_classified)
-                    for key, value in batch_stats.items():
-                        combined_stats[key] = combined_stats.get(key, 0) + value
                     pbar.update(1)
 
         logger.info(f"✓ Classified {len(classified_variants):,} variants (parallel)")
