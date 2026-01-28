@@ -1,13 +1,3 @@
-import os
-import secrets
-import logging
-import html
-from datetime import datetime
-from typing import Dict, Optional
-from varidex.version import __version__
-from varidex.reports.templates.components import (
-
-
 #!/usr/bin/env python3
 """
 varidex/reports/templates/builder.py - HTML Template Builder v6.0.0
@@ -16,18 +6,28 @@ Generates secure HTML reports with CSP Level 3 and XSS protection.
 VERSION: 6.0.0 | AUTHOR: VariDex Team
 """
 
-
-logger = logging.getLogger(__name__)
-
+import os
+import secrets
+import logging
+import html
+from datetime import datetime
+from typing import Dict, Optional
 
 try:
+    from varidex.version import __version__
 except ImportError:
     __version__ = "6.0.0"
 
+from varidex.reports.templates.components import (
     build_stats_dashboard,
     build_classification_legend,
     build_truncation_warning,
 )
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["generate_html_template", "generate_minimal_template"]
+
 
 __all__ = ["generate_html_template", "generate_minimal_template"]
 
@@ -115,7 +115,7 @@ def generate_html_template(
         current_date = dt.strftime("%Y-%m-%d")
     except Exception as e:
         logger.exception(e)
-        raisecurrent_time = current_date = "N/A"
+        current_time = current_date = "N/A"
 
     css_block = (
         f'<style nonce="{nonce}">{safe_custom_css}</style>' if safe_custom_css else ""
@@ -229,7 +229,7 @@ def generate_minimal_template(stats: Dict[str, int], table_rows: str = "") -> st
         current_date = dt.strftime("%Y-%m-%d")
     except Exception as e:
         logger.exception(e)
-        raisecurrent_time = current_date = "N/A"
+        current_time = current_date = "N/A"
 
     stats["pathogenic"] + stats["likely_pathogenic"]
 
