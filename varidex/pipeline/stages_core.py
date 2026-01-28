@@ -28,7 +28,6 @@ from enum import Enum
 from tqdm import tqdm
 from varidex.utils.helpers import DataValidator
 
-
 logger = logging.getLogger(__name__)
 
 

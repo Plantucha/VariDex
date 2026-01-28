@@ -99,26 +99,26 @@ def _validate_chromosome(chrom: Union[str, int, None]) -> str:
     Also accepts integers 1-22 (common in data files)
     Returns normalized chromosome string.
     Raises ValidationError if invalid.
-    
+
     Args:
         chrom: Chromosome identifier (str, int, or None)
-    
+
     Returns:
         Validated chromosome string
-    
+
     Raises:
         ValidationError: If chromosome format is invalid
     """
     # Handle None and empty values
     if chrom is None or chrom == "":
         return ""
-    
+
     # Convert to string first (handles int inputs) - CRITICAL FIX
     chrom_str = str(chrom)
-    
+
     # Strip whitespace
     chrom_str = chrom_str.strip()
-    
+
     # Handle empty string after stripping
     if not chrom_str:
         return ""
@@ -146,13 +146,13 @@ def _validate_position(pos: Union[str, int, None]) -> str:
     Must be positive integer when provided.
     Returns validated position string.
     Raises ValidationError if invalid.
-    
+
     Args:
         pos: Position value (str, int, or None)
-    
+
     Returns:
         Validated position as string
-    
+
     Raises:
         ValidationError: If position is invalid
     """
@@ -165,7 +165,7 @@ def _validate_position(pos: Union[str, int, None]) -> str:
 
     # Strip whitespace
     pos_str = pos_str.strip()
-    
+
     # Handle empty after stripping
     if not pos_str:
         return ""
@@ -177,7 +177,9 @@ def _validate_position(pos: Union[str, int, None]) -> str:
         return str(pos_int)
     except ValueError as e:
         if "invalid literal" in str(e):
-            raise ValidationError(f"Position must be an integer, got '{pos_str}'") from e
+            raise ValidationError(
+                f"Position must be an integer, got '{pos_str}'"
+            ) from e
         raise
 
 
@@ -196,17 +198,17 @@ def _validate_allele(
         allele: Allele sequence to validate (str or None)
         allele_type: Type name for error messages ("reference allele", "alternate allele")
         allow_empty: If True, allow empty alleles (for coordinate-only matching)
-    
+
     Returns:
         Validated uppercase allele string
-    
+
     Raises:
         ValidationError: If allele format is invalid
     """
     # Handle None - CRITICAL FIX
     if allele is None:
         allele = ""
-    
+
     if not allele or not allele.strip():
         if allow_empty:
             return ""

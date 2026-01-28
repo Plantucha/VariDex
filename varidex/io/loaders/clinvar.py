@@ -99,9 +99,7 @@ def detect_clinvar_file_type(filepath: Path) -> str:
         if not lines or not lines[0]:
             raise ValidationError("Empty file", context={"file": str(filepath)})
         first_line: str = lines[0].strip()
-        if first_line.startswith("##fileformat=VCF") or first_line.startswith(
-            "#CHROM"
-        ):
+        if first_line.startswith("##fileformat=VCF") or first_line.startswith("#CHROM"):
             return "vcf"
         header_lower: str = first_line.lower()
         vcf_markers: int = sum(
@@ -125,9 +123,7 @@ def validate_chromosome_consistency(df: pd.DataFrame) -> pd.DataFrame:
     if "chromosome" not in df.columns:
         return df
     df = df.copy()
-    df["chromosome"] = df["chromosome"].str.replace(
-        "^chr", "", regex=True, case=False
-    )
+    df["chromosome"] = df["chromosome"].str.replace("^chr", "", regex=True, case=False)
     nc_pattern: re.Pattern[str] = re.compile(r"^NC_0000(0[1-9]|1[0-9]|2[0-2])")
 
     def map_nc(c: Any) -> Any:
@@ -152,9 +148,7 @@ def validate_position_ranges(df: pd.DataFrame) -> pd.DataFrame:
     orig_len: int = len(df)
     invalid_mask: pd.Series = (df["position"] < 1) | df["position"].isna()
     for chrom, max_pos in CHROMOSOME_MAX_POSITIONS.items():
-        chrom_mask: pd.Series = (df["chromosome"] == chrom) & (
-            df["position"] > max_pos
-        )
+        chrom_mask: pd.Series = (df["chromosome"] == chrom) & (df["position"] > max_pos)
         if chrom_mask.any():
             logger.warning(
                 f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos}"
@@ -190,9 +184,7 @@ def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
             leave=False,
         ):
             try:
-                for alt in [
-                    a.strip() for a in str(row["ALT"]).split(",") if a.strip()
-                ]:
+                for alt in [a.strip() for a in str(row["ALT"]).split(",") if a.strip()]:
                     new_row: pd.Series = row.copy()
                     new_row["ALT"] = alt
                     new_row["alt_allele"] = alt.upper()
@@ -320,9 +312,7 @@ def load_clinvar_vcf(
         # Filter valid chromosomes
         orig_len: int = len(df)
         df = df[df["chromosome"].isin(VALID_CHROMOSOMES)]
-        print(
-            f"🔬 Filtered to valid chromosomes: {orig_len:,} → {len(df):,}\n"
-        )
+        print(f"🔬 Filtered to valid chromosomes: {orig_len:,} → {len(df):,}\n")
 
         # Extract rsIDs from INFO field
         if "INFO" in df.columns:
@@ -380,9 +370,7 @@ def load_clinvar_vcf_tsv(
         }
         for target, candidates in target_candidates.items():
             for col in df.columns:
-                if col in candidates or any(
-                    cand in col.lower() for cand in candidates
-                ):
+                if col in candidates or any(cand in col.lower() for cand in candidates):
                     col_map[col] = target
                     break
 
@@ -436,9 +424,7 @@ def load_variant_summary(
                 continue
 
         if sep is None:
-            raise ValidationError(
-                "Unknown separator", context={"file": str(filepath)}
-            )
+            raise ValidationError("Unknown separator", context={"file": str(filepath)})
 
         print("📖 Reading summary data...")
         df: pd.DataFrame = pd.read_csv(filepath, sep=sep, low_memory=False)
@@ -473,8 +459,7 @@ def load_variant_summary(
             print("⚠️  Checking for conflicts...")
             df["has_conflict"] = df["clinical_sig"].apply(
                 lambda x: any(
-                    kw in str(x).lower()
-                    for kw in ["conflict", "conflicting", "|"]
+                    kw in str(x).lower() for kw in ["conflict", "conflicting", "|"]
                 )
             )
             conflicts = df["has_conflict"].sum()
@@ -483,9 +468,7 @@ def load_variant_summary(
         if "rsid" in df.columns and df["rsid"].duplicated().any():
             print("🔗 Aggregating duplicate rsIDs...")
             agg_dict: Dict[str, Callable[..., str]] = {
-                "clinical_sig": lambda x: " | ".join(
-                    x.dropna().astype(str).unique()
-                ),
+                "clinical_sig": lambda x: " | ".join(x.dropna().astype(str).unique()),
                 "gene": lambda x: ";".join(x.dropna().astype(str).unique()),
             }
             for col in ["review_status", "variant_type"]:

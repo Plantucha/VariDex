@@ -80,6 +80,7 @@ def validate_stage_input(
     df: pd.DataFrame, stage_id: int, stage_name: str
 ) -> Tuple[bool, str]:
     from varidex.utils.helpers import DataValidator
+
     required_cols = STAGE_REQUIRED_COLUMNS.get(stage_id, [])
     if not required_cols:
         return True, ""
@@ -167,9 +168,7 @@ class CheckpointManager:
             return df
 
         file_path = self.checkpoint_dir / f"stage_{stage_id}_{stage_name}.parquet"
-        df.to_parquet(
-            file_path, index=False, compression="zstd", compression_level=3
-        )
+        df.to_parquet(file_path, index=False, compression="zstd", compression_level=3)
 
         checkpoint = StageCheckpoint(
             stage_id=stage_id,
@@ -196,7 +195,9 @@ class CheckpointManager:
         checkpoint = self.checkpoints[stage_id]
         if checkpoint.file_path and checkpoint.file_path.exists():
             df = pd.read_parquet(checkpoint.file_path)
-            logger.info(f"♻ Resumed from Stage {stage_id} checkpoint ({len(df):,} rows)")
+            logger.info(
+                f"♻ Resumed from Stage {stage_id} checkpoint ({len(df):,} rows)"
+            )
             return df
         return None
 
@@ -341,6 +342,7 @@ def execute_stage4_hybrid_matching(
 def _classify_batch(batch_data):
     """Helper for parallel ACMG classification."""
     from varidex.utils.helpers import classify_variants_production
+
     batch_df, safeguard_config, clinvar_type, user_type = batch_data
     return classify_variants_production(batch_df, safeguard_config)
 
@@ -382,7 +384,11 @@ def execute_stage5_acmg_classification(
 
                 for future in as_completed(futures):
                     batch_result = future.result()
-                    batch_classified = batch_result if isinstance(batch_result, list) else batch_result[0]
+                    batch_classified = (
+                        batch_result
+                        if isinstance(batch_result, list)
+                        else batch_result[0]
+                    )
                     classified_variants.extend(batch_classified)
                     pbar.update(1)
 
@@ -422,9 +428,7 @@ def execute_stage7_generate_reports(
     output_dir.mkdir(exist_ok=True, parents=True)
 
     with tqdm(total=3, desc="Generating reports", unit="file") as pbar:
-        report_files = reports.generate_all_reports(
-            results_df, output_dir=output_dir
-        )
+        report_files = reports.generate_all_reports(results_df, output_dir=output_dir)
         pbar.update(3)
 
     logger.info(f"✓ Reports generated in: {output_dir.absolute()}/")

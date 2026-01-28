@@ -13,9 +13,10 @@ from varidex.reports.formatters import (
     generate_csv_report,
     generate_json_report,
     generate_html_report,
-    generate_conflicts_report as generate_conflict_report
+    generate_conflicts_report as generate_conflict_report,
 )
 from tqdm import tqdm
+
 # Global constant for formatter availability
 FORMATTERS_AVAILABLE = True
 
@@ -35,13 +36,14 @@ Changes: Added ReportGenerator class for test compatibility
 """
 
 
-
 # Import exceptions with fallback
 try:
     from varidex.exceptions import ValidationError, ReportError
 except ImportError:
+
     class ValidationError(Exception):
         pass
+
     class ReportError(Exception):
         pass
 
@@ -55,17 +57,9 @@ try:
 except ImportError:
     ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
 
-    ACMG_TIERS = {
-        "P": "🔴", "LP": "🟠", "VUS": "⚪", 
-        "LB": "🟢", "B": "🟢🟢"
-    }
+    ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
 
-    REPORTS = [
-        generate_csv_report,
-        generate_json_report,
-        generate_html_report
-    ]
-
+    REPORTS = [generate_csv_report, generate_json_report, generate_html_report]
 
 
 except ImportError:
@@ -267,12 +261,8 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
         "likely_pathogenic": int(
             (results_df["classification"] == "Likely Pathogenic").sum()
         ),
-        "vus": int(
-            (results_df["classification"] == "Uncertain Significance").sum()
-        ),
-        "likely_benign": int(
-            (results_df["classification"] == "Likely Benign").sum()
-        ),
+        "vus": int((results_df["classification"] == "Uncertain Significance").sum()),
+        "likely_benign": int((results_df["classification"] == "Likely Benign").sum()),
         "benign": int((results_df["classification"] == "Benign").sum()),
         "conflicts": (
             int(results_df["has_conflicts"].sum())
@@ -375,10 +365,22 @@ def generate_all_reports(
         stats = {
             "total_variants": len(results_df),
             "classified": len(results_df),
-            "pathogenic": len(results_df[results_df['classification'].str.contains('Pathogenic', na=False, case=False)]),
-            "benign": len(results_df[results_df['classification'].str.contains('Benign', na=False, case=False)]),
+            "pathogenic": len(
+                results_df[
+                    results_df["classification"].str.contains(
+                        "Pathogenic", na=False, case=False
+                    )
+                ]
+            ),
+            "benign": len(
+                results_df[
+                    results_df["classification"].str.contains(
+                        "Benign", na=False, case=False
+                    )
+                ]
+            ),
         }
-        
+
         json_file = output_dir / f"classified_variants_{timestamp}.json"
         try:
             result = generate_json_report(results_df, stats, output_dir, timestamp)
@@ -503,7 +505,9 @@ class ReportGenerator:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
             filename = f"classified_variants_{timestamp}.csv"
         output_file = self.output_dir / filename
-        return generate_csv_report(results_df, self.output_dir, datetime.now().strftime("%Y%m%d_%H%M%S"))
+        return generate_csv_report(
+            results_df, self.output_dir, datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
 
     def generate_json(
         self, results_df: pd.DataFrame, filename: Optional[str] = None
@@ -523,7 +527,9 @@ class ReportGenerator:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
             filename = f"classified_variants_{timestamp}.html"
         output_file = self.output_dir / filename
-        return generate_html_report(results_df, {}, self.output_dir, datetime.now().strftime("%Y%m%d_%H%M%S"))
+        return generate_html_report(
+            results_df, {}, self.output_dir, datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
 
 
 __all__ = [

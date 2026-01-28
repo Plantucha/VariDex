@@ -11,6 +11,7 @@ try:
         AnnotationConfig,
         annotate_variants,
     )
+
     GNOMAD_ANNOTATOR_AVAILABLE = True
 except ImportError:
     GNOMAD_ANNOTATOR_AVAILABLE = False
@@ -20,6 +21,7 @@ try:
         GnomadClient,
         GnomadVariantFrequency,
     )
+
     GNOMAD_CLIENT_AVAILABLE = True
 except ImportError:
     GNOMAD_CLIENT_AVAILABLE = False

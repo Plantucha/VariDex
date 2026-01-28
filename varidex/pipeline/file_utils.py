@@ -48,7 +48,11 @@ def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
             logger.info("  → VCF format")
             return "vcf"
 
-        if "rsid" in first_line and "chromosome" in first_line and "genotype" in first_line:
+        if (
+            "rsid" in first_line
+            and "chromosome" in first_line
+            and "genotype" in first_line
+        ):
             logger.info("  → 23andMe format")
             return "23andme"
 

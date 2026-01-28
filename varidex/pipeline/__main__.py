@@ -44,39 +44,32 @@ def main() -> None:
     clinvar_data = load_clinvar_file(args.clinvar)
     user_data = load_user_file(args.user_genome)
 
-
     # Match variants first
     from varidex.io.matching import match_variants_hybrid
-    
+
     result = match_variants_hybrid(
-        clinvar_data, 
-        user_data, 
-        clinvar_type='vcf',
-        user_type='23andme'
+        clinvar_data, user_data, clinvar_type="vcf", user_type="23andme"
     )
-    
+
     # Handle whatever is returned
     if isinstance(result, tuple):
         matched_df = result[0]
     else:
         matched_df = result
-    
+
     print(f"✅ Matched: {len(matched_df):,} variants")
-    
+
     # Now run ACMG classification on matched variants
-    safeguard_config = {
-        "max_variants": 1000000,
-        "allow_parallel": True
-    }
-    
+    safeguard_config = {"max_variants": 1000000, "allow_parallel": True}
+
     # Stage 5 returns (classified_variants, stats)
     stage5_result = execute_stage5_acmg_classification(
-        matched_df, 
+        matched_df,
         safeguard_config=safeguard_config,
         clinvar_type="vcf",
-        user_type="23andme"
+        user_type="23andme",
     )
-    
+
     # Unpack the tuple
     if isinstance(stage5_result, tuple):
         results, classification_stats = stage5_result
@@ -84,36 +77,55 @@ def main() -> None:
         results = stage5_result
         classification_stats = {}
 
-
     # Stage 6: Convert to DataFrame (results are already dicts)
     import pandas as pd
+
     results_df = pd.DataFrame(results) if results else pd.DataFrame()
-    
+
     # Stage 7: Generate all reports (CSV, JSON, HTML)
     from varidex.pipeline.stages import execute_stage7_generate_reports
     import varidex.reports as reports
-    
+
     output_path = Path(args.output)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     stats = {
         "total": len(results_df),
-        "pathogenic": len(results_df[results_df.get("acmg_final", results_df.get("classification", "")) == "P"]) if len(results_df) > 0 else 0,
-        "likely_pathogenic": len(results_df[results_df.get("acmg_final", results_df.get("classification", "")) == "LP"]) if len(results_df) > 0 else 0
+        "pathogenic": (
+            len(
+                results_df[
+                    results_df.get("acmg_final", results_df.get("classification", ""))
+                    == "P"
+                ]
+            )
+            if len(results_df) > 0
+            else 0
+        ),
+        "likely_pathogenic": (
+            len(
+                results_df[
+                    results_df.get("acmg_final", results_df.get("classification", ""))
+                    == "LP"
+                ]
+            )
+            if len(results_df) > 0
+            else 0
+        ),
     }
-    
+
     report_files = execute_stage7_generate_reports(
         results_df, stats, output_path, reports
     )
-    
+
     print(f"\n🔴 PATHOGENIC: {stats.get('pathogenic', 0)}")
     print(f"🟠 LIKELY PATHOGENIC: {stats.get('likely_pathogenic', 0)}")
     print(f"📁 Reports: {output_path}/")
     for report_file in report_files:
-        print(f"   ✓ {report_file.name if hasattr(report_file, 'name') else Path(report_file).name}")
+        print(
+            f"   ✓ {report_file.name if hasattr(report_file, 'name') else Path(report_file).name}"
+        )
     print("\n✅ COMPLETE")
 
 
 if __name__ == "__main__":
     main()
-

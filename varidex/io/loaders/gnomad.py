@@ -135,18 +135,12 @@ class GnomADLoader:
                 index_path = Path(str(filepath) + ".tbi")
                 if not index_path.exists():
                     if self.auto_index:
-                        logger.info(
-                            f"🔨 Creating index for chromosome {chrom}..."
-                        )
+                        logger.info(f"🔨 Creating index for chromosome {chrom}...")
                         try:
-                            pysam.tabix_index(
-                                str(filepath), preset="vcf", force=True
-                            )
+                            pysam.tabix_index(str(filepath), preset="vcf", force=True)
                             logger.info(f"   ✓ Indexed chr{chrom}")
                         except Exception as e:
-                            logger.warning(
-                                f"   ✗ Failed to index chr{chrom}: {e}"
-                            )
+                            logger.warning(f"   ✗ Failed to index chr{chrom}: {e}")
                     else:
                         logger.warning(
                             f"⚠️  Missing index for chr{chrom}: {index_path}"
@@ -353,9 +347,7 @@ class GnomADLoader:
         frequencies = self.lookup_variants_batch(variants, show_progress)
 
         # Convert to records
-        freq_records = [
-            freq.to_dict() if freq else {} for freq in frequencies
-        ]
+        freq_records = [freq.to_dict() if freq else {} for freq in frequencies]
 
         # Create frequency DataFrame
         freq_df = pd.DataFrame(freq_records)
@@ -441,9 +433,9 @@ def load_gnomad_frequencies(
 
 if __name__ == "__main__":
     # Example usage
-    print("="*70)
+    print("=" * 70)
     print("gnomAD Multi-Chromosome Loader v1.0.0 DEVELOPMENT")
-    print("="*70)
+    print("=" * 70)
 
     # Test initialization
     gnomad_dir = Path("./gnomad")

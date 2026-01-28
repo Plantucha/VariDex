@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from varidex.io.loaders.gnomad import GnomADLoader
+
     LOADER_AVAILABLE = True
 except ImportError:
     LOADER_AVAILABLE = False
@@ -28,6 +29,7 @@ except ImportError:
 
 try:
     from varidex.integrations.gnomad_client import GnomadClient
+
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
@@ -126,9 +128,7 @@ class GnomADAnnotator:
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
 
-        logger.info(
-            f"🧬 Annotating {len(df):,} variants with gnomAD frequencies..."
-        )
+        logger.info(f"🧬 Annotating {len(df):,} variants with gnomAD frequencies...")
 
         # Try local loader first
         if self.loader:
@@ -343,9 +343,9 @@ def annotate_variants(
 
 if __name__ == "__main__":
     # Example usage
-    print("="*70)
+    print("=" * 70)
     print("🧬 gnomAD Unified Annotator v1.0.0 DEVELOPMENT")
-    print("="*70)
+    print("=" * 70)
 
     # Test with sample data
     test_df = pd.DataFrame(
@@ -357,9 +357,7 @@ if __name__ == "__main__":
         }
     )
 
-    config = AnnotationConfig(
-        use_local=True, gnomad_dir=Path("gnomad"), max_af=0.01
-    )
+    config = AnnotationConfig(use_local=True, gnomad_dir=Path("gnomad"), max_af=0.01)
 
     try:
         with GnomADAnnotator(config) as annotator:

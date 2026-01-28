@@ -147,6 +147,7 @@ CLINVAR_COLUMNS = {
     "molecular_consequence": ["MolecularConsequence", "Consequence", "MC"],
 }
 
+
 # ===================================================================
 # SECTION 6: ENUMS
 # ===================================================================
@@ -232,6 +233,7 @@ ACMG_TIERS = {
     "Likely Benign": {"icon": "🟢", "priority": 4},
     "Benign": {"icon": "🟢", "priority": 5},
 }
+
 
 # ===================================================================
 # SECTION 9: FUNCTIONS
@@ -345,9 +347,7 @@ class VariDexConfig:
 
         # Validate missing rate
         if not (0 <= max_missing_rate <= 1):
-            raise ValueError(
-                f"Invalid missing rate {max_missing_rate}. Must be 0-1"
-            )
+            raise ValueError(f"Invalid missing rate {max_missing_rate}. Must be 0-1")
         self.max_missing_rate = float(max_missing_rate)
 
         # Validate population AF
@@ -706,8 +706,12 @@ if __name__ == "__main__":
     print("\n✓ Test FIX 4B: VariDexConfig parameter aliases")
     # Security fix B108: Use tempfile.TemporaryDirectory() instead of hardcoded /tmp
     with tempfile.TemporaryDirectory() as temp_dir:
-        config = VariDexConfig(max_population_af=0.05, num_threads=8, output_dir=temp_dir)
-        print(f"  - max_population_af → population_af_threshold: {config.population_af_threshold}")
+        config = VariDexConfig(
+            max_population_af=0.05, num_threads=8, output_dir=temp_dir
+        )
+        print(
+            f"  - max_population_af → population_af_threshold: {config.population_af_threshold}"
+        )
         print(f"  - num_threads → thread_count: {config.thread_count}")
         print(f"  - output_dir → output_directory: {config.output_directory}")
 
@@ -724,7 +728,9 @@ if __name__ == "__main__":
     # Test update() with aliases
     print("\n✓ Test: update() with aliases")
     config.update(num_threads=16, max_population_af=0.02)
-    print(f"  - After update: thread_count={config.thread_count}, af={config.population_af_threshold}")
+    print(
+        f"  - After update: thread_count={config.thread_count}, af={config.population_af_threshold}"
+    )
 
     print("\n✅ All v6.6.1 enhancements verified!")
     print("   - FIX 4B: Parameter aliases working ✓")

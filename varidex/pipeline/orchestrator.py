@@ -248,7 +248,9 @@ def main(
             return False
 
         clinvar_type: str = loader.detect_clinvar_file_type(clinvar_file)
-        user_type: str = user_format or detect_data_file_type(user_file, strict=not force)
+        user_type: str = user_format or detect_data_file_type(
+            user_file, strict=not force
+        )
         match_mode: str = get_config_value(config, "MATCH_MODE", "hybrid")
 
         print(f"  ClinVar format: {clinvar_type}")
@@ -274,7 +276,9 @@ def main(
         # STAGE 3: LOAD USER DATA
         print_stage_header(3, 7, "📥 LOADING USER GENOMIC DATA")
 
-        user_df: pd.DataFrame = execute_stage3_load_user_data(user_file, user_type, loader)
+        user_df: pd.DataFrame = execute_stage3_load_user_data(
+            user_file, user_type, loader
+        )
 
         state.user_variants = len(user_df)
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
@@ -284,7 +288,13 @@ def main(
         print_stage_header(4, 7, "🔗 MATCHING VARIANTS")
 
         matched_df: pd.DataFrame = execute_stage4_hybrid_matching(
-            clinvar_df, user_df, clinvar_type, user_type, loader, safeguard_config, _IMPORT_MODE
+            clinvar_df,
+            user_df,
+            clinvar_type,
+            user_type,
+            loader,
+            safeguard_config,
+            _IMPORT_MODE,
         )
 
         state.matches = len(matched_df)
@@ -295,7 +305,9 @@ def main(
             )
 
         match_rate: float = (
-            (state.matches / state.user_variants * 100) if state.user_variants > 0 else 0.0
+            (state.matches / state.user_variants * 100)
+            if state.user_variants > 0
+            else 0.0
         )
         logger.info(f"✓ Matched {state.matches:,} variants ({match_rate:.1f}%)")
         print(f"  ✓ Matched: {state.matches:,} ({match_rate:.1f}%)")
@@ -316,7 +328,9 @@ def main(
         logger.info(f"✓ Classified {len(classified_variants):,} variants")
         print(f"  ✓ Classified: {len(classified_variants):,} variants")
         print(f"    • Pathogenic: {classification_stats.get('pathogenic', 0):,}")
-        print(f"    • Likely Pathogenic: {classification_stats.get('likely_pathogenic', 0):,}")
+        print(
+            f"    • Likely Pathogenic: {classification_stats.get('likely_pathogenic', 0):,}"
+        )
         print(f"    • VUS: {classification_stats.get('vus', 0):,}")
         print(f"    • Likely Benign: {classification_stats.get('likely_benign', 0):,}")
         print(f"    • Benign: {classification_stats.get('benign', 0):,}")
@@ -327,7 +341,9 @@ def main(
         # STAGE 6: CREATE RESULTS
         print_stage_header(6, 7, "📊 CREATING RESULTS")
 
-        results_df: pd.DataFrame = execute_stage6_create_results(classified_variants, reports)
+        results_df: pd.DataFrame = execute_stage6_create_results(
+            classified_variants, reports
+        )
 
         logger.info(f"✓ Results DataFrame: {len(results_df):,} rows")
         print(f"  ✓ DataFrame: {len(results_df):,} variants")

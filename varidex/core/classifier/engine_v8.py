@@ -127,8 +127,9 @@ class ACMGClassifierV8(ACMGClassifierV7):
             from varidex.io.matching import VariantMatcherV8
             from pathlib import Path
 
-	# PM1 SpliceAI (ACMG Phase 1)
+            # PM1 SpliceAI (ACMG Phase 1)
             from varidex.acmg.splice import SpliceACMG
+
             splice = SpliceACMG()
             result = splice.score(variant.chrom, variant.pos, variant.ref, variant.alt)
             if result["pm1"]:
@@ -136,7 +137,6 @@ class ACMGClassifierV8(ACMGClassifierV7):
                 logger.info(f"PM1 {result['pm1']}: delta={result['delta']:.3f}")
         except Exception as e:
             logger.debug(f"PM1 unavailable: {e}")
-
 
             matcher = VariantMatcherV8(Path("./clinvar"))
             match_key = f"{variant.chrom}:{variant.pos}:{variant.ref}:{variant.alt}"

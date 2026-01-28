@@ -54,10 +54,7 @@ def format_file_size(size_bytes: int) -> str:
 
 
 def generate_csv_report(
-    df: pd.DataFrame,
-    output_dir: Path,
-    timestamp: str,
-    excel_compatible: bool = True
+    df: pd.DataFrame, output_dir: Path, timestamp: str, excel_compatible: bool = True
 ) -> Path:
     """Generate CSV report with Excel compatibility."""
     output_path = output_dir / f"classified_variants_{timestamp}.csv"
@@ -113,10 +110,7 @@ def generate_json_report(
 
 
 def _generate_stratified_json(
-    df: pd.DataFrame,
-    stats: Dict,
-    output_dir: Path,
-    timestamp: str
+    df: pd.DataFrame, stats: Dict, output_dir: Path, timestamp: str
 ) -> Path:
     """Generate stratified JSON files for large datasets."""
     stratified = {
@@ -195,10 +189,7 @@ def generate_html_report(
         table_rows.append(escaped_row)
 
     html_content = generate_html_template(
-        title=title,
-        stats=stats,
-        variants=table_rows,
-        timestamp=timestamp
+        title=title, stats=stats, variants=table_rows, timestamp=timestamp
     )
 
     with open(output_path, "w") as f:
@@ -210,11 +201,7 @@ def generate_html_report(
 
 
 def _generate_basic_html(
-    df: pd.DataFrame,
-    stats: Dict,
-    output_dir: Path,
-    timestamp: str,
-    title: str
+    df: pd.DataFrame, stats: Dict, output_dir: Path, timestamp: str, title: str
 ) -> Path:
     """Generate basic HTML report when template builder unavailable."""
     output_path = output_dir / f"classified_variants_{timestamp}.html"
@@ -271,9 +258,7 @@ def _generate_basic_html(
 
 
 def generate_conflicts_report(
-    df: pd.DataFrame,
-    output_dir: Path,
-    timestamp: str
+    df: pd.DataFrame, output_dir: Path, timestamp: str
 ) -> Optional[Path]:
     """Generate text report of conflicting variant interpretations."""
     conflicts = df[df.get("has_conflict", False) == True]
@@ -350,6 +335,7 @@ class CSVFormatter:
     def format(self, data: dict) -> str:
         """Format data as CSV."""
         import io
+
         output = io.StringIO()
         if isinstance(data, dict):
             writer = csv.DictWriter(
