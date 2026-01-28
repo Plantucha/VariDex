@@ -1,46 +1,55 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/orchestrator.py - Pipeline Orchestrator v6.0.0
+varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.0-dev
 
-Main 7-stage pipeline coordinator.
+Main 7-stage pipeline coordinator (coordination only).
 
-Fixes from v5.3.0:
-- Centralized imports (varidex._imports)
-- Standardized config access
-- File detection with strict mode
-- User interaction flags (--force, --non-interactive)
-
-This file contains:
-- Import fallback system
-- Configuration helpers
-- Utility functions
-- Main coordination loop
-- CLI entry point
-
-Stage implementations are in varidex/pipeline/stages.py
+Development version - not for production use.
 """
 
 import sys
-import os
+import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional, Any, Tuple
+from typing import Dict, Optional, List, Any
 
-# ============================================================================
-# LOGGING - MUST BE FIRST
-# ============================================================================
-import logging
+import pandas as pd
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("pipeline.log"), logging.StreamHandler()],
+
+def configure_logging(log_path: Path = Path("pipeline.log")) -> logging.Logger:
+    """Configure logging for pipeline."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(str(log_path), encoding="utf-8"),
+            logging.StreamHandler(),
+        ],
+    )
+    return logging.getLogger(__name__)
+
+
+logger: logging.Logger = configure_logging()
+
+from varidex.pipeline.pipeline_config import (
+    FallbackConfig,
+    load_yaml_config,
+    get_safeguard_config,
+    get_config_value,
 )
-logger: logging.Logger = logging.getLogger(__name__)
-
-# ============================================================================
-# CENTRALIZED IMPORTS - PRESERVE EXACT LINES 36-78
-# ============================================================================
+from varidex.pipeline.file_utils import (
+    FileTypeDetectionError,
+    validate_input_path,
+    detect_data_file_type,
+    check_clinvar_freshness,
+)
+from varidex.pipeline.cli_helpers import (
+    print_pipeline_header,
+    print_stage_header,
+    print_mode_flags,
+    print_completion_summary,
+    print_usage,
+)
 
 try:
     from varidex import _imports
@@ -52,6 +61,7 @@ try:
     PipelineState = models.PipelineState
     logger.info("✓ Centralized imports loaded")
     _IMPORT_MODE: str = "centralized"
+
 except ImportError as e:
     logger.warning(f"Import manager unavailable: {e}")
     logger.info("✓ Falling back to direct imports")
@@ -66,7 +76,7 @@ except ImportError as e:
     )
     from varidex.reports.generator import create_results_dataframe, generate_all_reports
 
-    config = sys.modules[__name__]
+    config = FallbackConfig()
 
     class _LoaderWrapper:
         load_clinvar_file = staticmethod(load_clinvar_file)
@@ -83,7 +93,6 @@ except ImportError as e:
     reports = _ReportsWrapper()
     _IMPORT_MODE = "fallback"
 
-# Import stage implementations (new)
 from varidex.pipeline.stages import (
     execute_stage2_load_clinvar,
     execute_stage3_load_user_data,
@@ -93,139 +102,6 @@ from varidex.pipeline.stages import (
     execute_stage7_generate_reports,
 )
 
-# ============================================================================
-# YAML CONFIG - PRESERVE EXACT LINES 80-120
-# ============================================================================
-
-
-def load_yaml_config(config_path: Path = Path(".varidex.yaml")) -> Dict[str, Any]:
-    """Load YAML config file."""
-    if not config_path.exists():
-        return {}
-    try:
-        import yaml
-
-        with open(config_path, "r") as f:
-            cfg: Any = yaml.safe_load(f)
-        logger.info(f"✓ Loaded config: {config_path}")
-        return cfg or {}
-    except ImportError:
-        logger.warning("PyYAML not installed")
-        return {}
-    except Exception as e:
-        logger.warning(f"Config load failed: {e}")
-        return {}
-
-
-def get_safeguard_config(yaml_config: Dict[str, Any]) -> Dict[str, Any]:
-    """Merge ENV > YAML > defaults."""
-    defaults: Dict[str, Any] = {
-        "max_error_rate": 0.05,
-        "max_validation_error_rate": 0.10,
-        "abort_on_threshold": True,
-        "enable_validation": True,
-        "error_log_path": "results/classification_errors.log",
-        "clinvar_max_age_days": 45,
-    }
-    cfg: Dict[str, Any] = defaults.copy()
-    cfg.update(yaml_config.get("safeguards", {}))
-    cfg["max_error_rate"] = float(os.getenv("MAX_ERROR_RATE", cfg["max_error_rate"]))
-    cfg["max_validation_error_rate"] = float(
-        os.getenv("MAX_VALIDATION_ERROR_RATE", cfg["max_validation_error_rate"])
-    )
-    cfg["abort_on_threshold"] = os.getenv("GRACEFUL_MODE", "false").lower() != "true"
-    return cfg
-
-
-# ============================================================================
-# UTILITIES - PRESERVE EXACT LINES 122-190
-# ============================================================================
-
-
-class FileTypeDetectionError(Exception):
-    """Raised when file type is ambiguous."""
-
-
-def get_config_value(name: str, default: Any = None) -> Any:
-    """Get config value safely."""
-    try:
-        return getattr(config, name, default)
-    except (AttributeError, TypeError):
-        return default
-
-
-def detect_data_file_type(file_path: Path, strict: bool = True) -> str:
-    """Auto-detect format: vcf|23andme|position_tsv."""
-    logger.info(f"  Detecting: {file_path.name}")
-    try:
-        if str(file_path).endswith(".gz"):
-            import gzip
-
-            with gzip.open(file_path, "rt") as f:
-                first_line: str = f.readline().lower()
-        else:
-            with open(file_path, "r") as f:
-                first_line = f.readline().lower()
-
-        if first_line.startswith("##fileformat=vc") or first_line.startswith("#chrom"):
-            logger.info("    → VCF")
-            return "vc"
-        if (
-            "rsid" in first_line
-            and "chromosome" in first_line
-            and "genotype" in first_line
-        ):
-            logger.info("    → 23andMe")
-            return "23andme"
-        if "chromosome" in first_line and "position" in first_line:
-            logger.info("    → Position TSV")
-            return "position_tsv"
-
-        if strict:
-            raise FileTypeDetectionError(
-                f"Cannot detect file type for {file_path.name}. "
-                "Use --format vcf|23andme|tsv"
-            )
-        logger.warning("    → Defaulting to 23andMe (AMBIGUOUS)")
-        return "23andme"
-    except IOError as e:
-        if strict:
-            raise FileTypeDetectionError(f"Cannot read file: {e}")
-        logger.warning(f"Detection failed: {e}, defaulting to 23andMe")
-        return "23andme"
-
-
-def check_clinvar_freshness(
-    file_path: Path,
-    max_age_days: int = 45,
-    force: bool = False,
-    interactive: bool = True,
-) -> bool:
-    """Check ClinVar age."""
-    if force:
-        logger.info("  ⚡ Skipping check (--force)")
-        return True
-
-    mtime: datetime = datetime.fromtimestamp(file_path.stat().st_mtime)
-    days_old: int = (datetime.now() - mtime).days
-
-    if days_old > max_age_days:
-        msg: str = f"⚠️  ClinVar is {days_old} days old (max: {max_age_days})"
-        logger.warning(msg)
-        if not interactive:
-            raise ValueError(f"{msg}. Use --force to override")
-        response: str = input("   Continue? (yes): ")
-        if response.lower() != "yes":
-            return False
-    else:
-        logger.info(f"  ✓ ClinVar OK ({days_old} days)")
-    return True
-
-
-# ============================================================================
-# MAIN PIPELINE - SIMPLIFIED (390 lines → 120 lines)
-# ============================================================================
-
 
 def main(
     clinvar_path: str,
@@ -234,263 +110,183 @@ def main(
     interactive: bool = True,
     user_format: Optional[str] = None,
     yaml_config_path: Optional[Path] = None,
+    log_path: Path = Path("pipeline.log"),
+    output_dir: Path = Path("results"),
 ) -> bool:
-    """Execute 7-stage pipeline.
-
-    Coordination only - implementations in stages.py.
-    """
-    print("=" * 70)
-    print("CLINVAR-WGS PIPELINE v6.0.0")
-    print("=" * 70)
+    """Execute 7-stage ClinVar variant classification pipeline."""
+    print_pipeline_header()
     print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     yaml_cfg: Dict[str, Any] = load_yaml_config(
         yaml_config_path or Path(".varidex.yaml")
     )
-    SAFEGUARD_CONFIG: Dict[str, Any] = get_safeguard_config(yaml_cfg)
+    safeguard_config: Dict[str, Any] = get_safeguard_config(yaml_cfg)
+    print_mode_flags(safeguard_config, force, interactive)
 
-    if not SAFEGUARD_CONFIG["abort_on_threshold"]:
-        print("⚠️  GRACEFUL MODE")
-    if force:
-        print("⚡ FORCE MODE")
-    if not interactive:
-        print("🤖 NON-INTERACTIVE")
-    print()
-
-    clinvar_file: Path = Path(clinvar_path)
-    user_file: Path = Path(user_data_path)
-    state: Any = PipelineState()
+    state: PipelineState = PipelineState()
 
     try:
-        # STAGE 1: FILE ANALYSIS (orchestration only)
-        print("=" * 70)
-        print("[1/7] 📋 FILE ANALYSIS")
-        print("=" * 70)
+        # STAGE 1: FILE ANALYSIS
+        print_stage_header(1, 7, "📋 FILE ANALYSIS")
 
-        if not clinvar_file.exists():
-            raise FileNotFoundError(f"ClinVar not found: {clinvar_file}")
-        if not user_file.exists():
-            raise FileNotFoundError(f"User data not found: {user_file}")
+        clinvar_file: Path = validate_input_path(Path(clinvar_path), "ClinVar")
+        user_file: Path = validate_input_path(Path(user_data_path), "User data")
 
         if not check_clinvar_freshness(
             clinvar_file,
-            max_age_days=SAFEGUARD_CONFIG["clinvar_max_age_days"],
+            max_age_days=safeguard_config["clinvar_max_age_days"],
             force=force,
             interactive=interactive,
         ):
+            logger.info("User declined to continue")
             return False
 
         clinvar_type: str = loader.detect_clinvar_file_type(clinvar_file)
-        user_type: str = user_format or detect_data_file_type(
-            user_file, strict=not force
-        )
-        match_mode: Any = get_config_value("MATCH_MODE", "hybrid")
+        user_type: str = user_format or detect_data_file_type(user_file, strict=not force)
+        match_mode: str = get_config_value(config, "MATCH_MODE", "hybrid")
 
-        print(f"  ClinVar: {clinvar_type}")
-        print(f"  User: {user_type}")
-        print(f"  Mode: {match_mode}")
+        print(f"  ClinVar format: {clinvar_type}")
+        print(f"  User data format: {user_type}")
+        print(f"  Matching mode: {match_mode}")
         state.file_types = f"{clinvar_type}/{user_type}"
 
-        # STAGE 2: LOAD CLINVAR (delegated to stages.py)
-        print()
-        print("=" * 70)
-        print("[2/7] 📥 LOADING CLINVAR")
-        print("=" * 70)
+        # STAGE 2: LOAD CLINVAR
+        print_stage_header(2, 7, "📥 LOADING CLINVAR DATABASE")
 
-        checkpoint_dir: Any = get_config_value("CHECKPOINT_DIR", Path(".varidex_cache"))
-        if not isinstance(checkpoint_dir, Path):
-            checkpoint_dir = Path(checkpoint_dir)
+        checkpoint_dir: Path = Path(
+            get_config_value(config, "CHECKPOINT_DIR", Path(".varidex_cache"))
+        )
 
-        clinvar_df: Any = execute_stage2_load_clinvar(
-            clinvar_file, checkpoint_dir, loader, SAFEGUARD_CONFIG, _IMPORT_MODE
+        clinvar_df: pd.DataFrame = execute_stage2_load_clinvar(
+            clinvar_file, checkpoint_dir, loader, safeguard_config, _IMPORT_MODE
         )
 
         state.variants_loaded = len(clinvar_df)
         logger.info(f"✓ Loaded {state.variants_loaded:,} ClinVar variants")
         print(f"  ✓ Loaded: {state.variants_loaded:,} variants")
 
-        # STAGE 3: LOAD USER DATA (delegated to stages.py)
-        print()
-        print("=" * 70)
-        print("[3/7] 📥 LOADING USER DATA")
-        print("=" * 70)
+        # STAGE 3: LOAD USER DATA
+        print_stage_header(3, 7, "📥 LOADING USER GENOMIC DATA")
 
-        user_df: Any = execute_stage3_load_user_data(user_file, user_type, loader)
+        user_df: pd.DataFrame = execute_stage3_load_user_data(user_file, user_type, loader)
 
         state.user_variants = len(user_df)
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
         print(f"  ✓ Loaded: {state.user_variants:,} variants")
 
-        # STAGE 4: HYBRID MATCHING (delegated to stages.py)
-        print()
-        print("=" * 70)
-        print("[4/7] 🔗 HYBRID MATCHING")
-        print("=" * 70)
+        # STAGE 4: HYBRID MATCHING
+        print_stage_header(4, 7, "🔗 MATCHING VARIANTS")
 
-        matched_df: Any = execute_stage4_hybrid_matching(
-            clinvar_df,
-            user_df,
-            clinvar_type,
-            user_type,
-            loader,
-            SAFEGUARD_CONFIG,
-            _IMPORT_MODE,
+        matched_df: pd.DataFrame = execute_stage4_hybrid_matching(
+            clinvar_df, user_df, clinvar_type, user_type, loader, safeguard_config, _IMPORT_MODE
         )
 
         state.matches = len(matched_df)
         if state.matches == 0:
-            raise ValueError("No matches! Check formats & coordinates")
+            raise ValueError(
+                f"No matches between ClinVar ({clinvar_type}) and user data ({user_type}).\n"
+                f"Check genome builds (GRCh37/38) or try: --format vcf|23andme|tsv"
+            )
 
         match_rate: float = (
-            (state.matches / state.user_variants * 100)
-            if state.user_variants > 0
-            else 0
+            (state.matches / state.user_variants * 100) if state.user_variants > 0 else 0.0
         )
         logger.info(f"✓ Matched {state.matches:,} variants ({match_rate:.1f}%)")
         print(f"  ✓ Matched: {state.matches:,} ({match_rate:.1f}%)")
 
-        # STAGE 5: ACMG CLASSIFICATION (delegated to stages.py)
-        print()
-        print("=" * 70)
-        print("[5/7] 🧬 ACMG CLASSIFICATION")
-        print("=" * 70)
+        # STAGE 5: ACMG CLASSIFICATION
+        print_stage_header(5, 7, "🧬 ACMG CLASSIFICATION")
 
-        classified_variants: Any
-        stats: Dict[str, int]
-        classified_variants, stats = execute_stage5_acmg_classification(
-            matched_df, SAFEGUARD_CONFIG, clinvar_type, user_type, _IMPORT_MODE
+        classified_variants: List[Dict[str, Any]]
+        classification_stats: Dict[str, int]
+
+        classified_variants, classification_stats = execute_stage5_acmg_classification(
+            matched_df, safeguard_config, clinvar_type, user_type, _IMPORT_MODE
         )
 
         if not classified_variants:
-            raise ValueError("Classification failed")
+            raise ValueError("Classification failed - check logs")
 
         logger.info(f"✓ Classified {len(classified_variants):,} variants")
         print(f"  ✓ Classified: {len(classified_variants):,} variants")
-        print(f"    • Pathogenic: {stats.get('pathogenic', 0):,}")
-        print(f"    • Likely Pathogenic: {stats.get('likely_pathogenic', 0):,}")
-        print(f"    • VUS: {stats.get('vus', 0):,}")
-        print(f"    • Likely Benign: {stats.get('likely_benign', 0):,}")
-        print(f"    • Benign: {stats.get('benign', 0):,}")
+        print(f"    • Pathogenic: {classification_stats.get('pathogenic', 0):,}")
+        print(f"    • Likely Pathogenic: {classification_stats.get('likely_pathogenic', 0):,}")
+        print(f"    • VUS: {classification_stats.get('vus', 0):,}")
+        print(f"    • Likely Benign: {classification_stats.get('likely_benign', 0):,}")
+        print(f"    • Benign: {classification_stats.get('benign', 0):,}")
 
-        if stats.get("conflicts", 0) > 0:
-            print(f"    ⚠️  Conflicts: {stats['conflicts']:,}")
+        if classification_stats.get("conflicts", 0) > 0:
+            print(f"    ⚠️  Conflicts: {classification_stats['conflicts']:,}")
 
-        # STAGE 6: CREATE RESULTS (delegated to stages.py)
-        print()
-        print("=" * 70)
-        print("[6/7] 📊 CREATE RESULTS")
-        print("=" * 70)
+        # STAGE 6: CREATE RESULTS
+        print_stage_header(6, 7, "📊 CREATING RESULTS")
 
-        results_df: Any = execute_stage6_create_results(classified_variants, reports)
+        results_df: pd.DataFrame = execute_stage6_create_results(classified_variants, reports)
 
-        logger.info(f"✓ DataFrame: {len(results_df):,} rows")
+        logger.info(f"✓ Results DataFrame: {len(results_df):,} rows")
         print(f"  ✓ DataFrame: {len(results_df):,} variants")
 
-        # STAGE 7: GENERATE REPORTS (delegated to stages.py)
-        print()
-        print("=" * 70)
-        print("[7/7] 📄 GENERATE REPORTS")
-        print("=" * 70)
+        # STAGE 7: GENERATE REPORTS
+        print_stage_header(7, 7, "📄 GENERATING REPORTS")
 
-        output_dir: Path = Path("results")
         output_dir.mkdir(exist_ok=True, parents=True)
 
         report_files: Dict[str, Path] = execute_stage7_generate_reports(
-            results_df, stats, output_dir, reports
+            results_df, classification_stats, output_dir, reports
         )
 
-        print(f"\n  ✓ Reports in: {output_dir.absolute()}/")
-        for report_type, path in report_files.items():
-            print(f"    • {report_type.upper()}: {path.name}")
-
-        # COMPLETE
         print()
-        print("=" * 70)
-        print("✅ PIPELINE COMPLETE")
-        print("=" * 70)
-        print(
-            f"Coverage: {state.matches:,}/{state.user_variants:,} ({match_rate:.1f}%)"
-        )
-        print(
-            f"Pathogenic: {stats.get('pathogenic', 0):,} | "
-            f"Likely Pathogenic: {stats.get('likely_pathogenic', 0):,} | "
-            f"VUS: {stats.get('vus', 0):,}"
-        )
+        print(f"  ✓ Reports saved to: {output_dir.absolute()}/")
+        for report_type, file_path in report_files.items():
+            size_kb: float = file_path.stat().st_size / 1024
+            print(f"    • {report_type.upper()}: {file_path.name} ({size_kb:.1f} KB)")
 
-        print("\nReports:")
-        for rtype, path in report_files.items():
-            size_kb: float = path.stat().st_size / 1024
-            print(f"  • {rtype.upper()}: {path.name} ({size_kb:.1f} KB)")
-
-        print("\n⚠️  RESEARCH USE ONLY - Consult genetic counselor")
-        print("=" * 70)
-        logger.info("Pipeline completed")
+        # COMPLETION
+        print_completion_summary(state, match_rate, classification_stats, report_files)
+        logger.info("Pipeline completed successfully")
         return True
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n❌ ERROR: File not found\n   {e}")
         return False
+
     except FileTypeDetectionError as e:
         logger.error(f"Detection failed: {e}")
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n❌ ERROR: Cannot determine file format\n   {e}")
         return False
+
     except ValueError as e:
         logger.error(f"Validation error: {e}")
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n❌ ERROR: Validation failed\n   {e}")
         return False
+
     except ImportError as e:
         logger.error(f"Import error: {e}")
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n❌ ERROR: Missing dependency\n   {e}")
+        print("   Install: pip install -r requirements.txt")
         return False
+
     except Exception as e:
         logger.error(f"Pipeline failed: {e}", exc_info=True)
-        print(f"\n❌ ERROR: {e}\n   Check pipeline.log")
+        print(f"\n❌ UNEXPECTED ERROR: {e}\n   Check {log_path}")
         return False
-
-
-# ============================================================================
-# CLI - PRESERVE EXACT LINES 583-END
-# ============================================================================
-
-
-def print_usage() -> None:
-    """Print usage."""
-    print("""
-CLINVAR-WGS PIPELINE v6.0.0 (PRODUCTION)
-
-USAGE:
-    python -m varidex.pipeline <clinvar_file> <user_data> [OPTIONS]
-
-OPTIONS:
-    --force             Skip ClinVar freshness check
-    --non-interactive   Disable prompts
-    --format FORMAT     vcf|23andme|tsv
-    --config FILE       YAML config
-    --help              Show help
-
-EXAMPLES:
-    python -m varidex.pipeline clinvar.txt genome.txt
-    python -m varidex.pipeline clinvar.vcf data.vcf --force --non-interactive
-    python -m varidex.pipeline clinvar.txt data.vcf --format vcf
-
-⚠️  RESEARCH USE ONLY
-Reference: Richards et al. 2015, PMID 25741868
-""")
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="ClinVar-WGS ACMG Variant Classification v6.0.0", add_help=False
+        description="ClinVar-WGS ACMG Pipeline v7.0.0-dev", add_help=False
     )
     parser.add_argument("clinvar_file", nargs="?")
     parser.add_argument("user_data", nargs="?")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--non-interactive", action="store_true")
-    parser.add_argument("--format", choices=["vc", "23andme", "tsv"])
+    parser.add_argument("--format", choices=["vcf", "23andme", "tsv"])
     parser.add_argument("--config", type=Path)
+    parser.add_argument("--output-dir", type=Path, default=Path("results"))
+    parser.add_argument("--log-file", type=Path, default=Path("pipeline.log"))
     parser.add_argument("--help", action="store_true")
 
     args = parser.parse_args()
@@ -499,6 +295,8 @@ if __name__ == "__main__":
         print_usage()
         sys.exit(0 if args.help else 1)
 
+    logger = configure_logging(args.log_file)
+
     success: bool = main(
         args.clinvar_file,
         args.user_data,
@@ -506,32 +304,8 @@ if __name__ == "__main__":
         interactive=not args.non_interactive,
         user_format=args.format,
         yaml_config_path=args.config,
+        log_path=args.log_file,
+        output_dir=args.output_dir,
     )
 
     sys.exit(0 if success else 1)
-
-
-class PipelineOrchestrator:
-    """
-    Main pipeline orchestrator for variant analysis workflow.
-
-    This is a stub implementation for test compatibility.
-    Full implementation should be added in development branch.
-    """
-
-    def __init__(self, config: dict = None):
-        """Initialize orchestrator with configuration."""
-        self.config = config or {}
-        self.stages = []
-
-    def add_stage(self, stage):
-        """Add a pipeline stage."""
-        self.stages.append(stage)
-
-    def run(self, input_data):
-        """Execute pipeline stages."""
-        result = input_data
-        for stage in self.stages:
-            if hasattr(stage, "execute"):
-                result = stage.execute(result)
-        return result
