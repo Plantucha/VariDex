@@ -20,3 +20,21 @@ venv/
 .backup_*/
 results_*.log
 .hypothesis/
+
+# Data files
+*.fa
+*.fasta
+clinvar/
+data/
+
+# Build artifacts
+varidex.egg-info/
+*.egg-info/
+
+# Logs
+analysis_log.txt
+*.log
+
+# Temp files
+tatus
+olete*
