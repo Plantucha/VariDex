@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/engine_v7.py
-# hypothesis_version: 6.150.3
-
-['7.0.1', '=', 'BA1', 'BP1', 'BP3', 'BS1', 'PM2', 'PM4', 'PP2', 'PVS1', 'X', '__main__', 'ad', 'alt', 'alt_allele', 'ar', 'ba', 'benign', 'bp', 'bs', 'chr', 'chrom', 'chromosome', 'dominant', 'enabled', 'error', 'gene', 'gnomad', 'gnomad_af', 'gnomad_population', 'inheritance_mode', 'metadata', 'pathogenic', 'pm', 'pos', 'position', 'pp', 'ps', 'pvs', 'recessive', 'ref', 'ref_allele', 'service_initialized', 'statistics', 'version', 'x-linked', 'xl']

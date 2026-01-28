@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/pipeline/stages.py
-# hypothesis_version: 6.150.3
-
-[1000, 1024, '#', '#CHROM', '23andme', '=', 'ALT', 'Classifying batches', 'Classifying variants', 'FileNotFoundError', 'Generating reports', 'ID', 'Matching variants', 'POS', 'REF', '__main__', '_lock', 'alt', 'batch', 'chromosome', 'clinvar', 'clinvar_file', 'csv', 'failed', 'file', 'gnomad', 'hash_pandas_object', 'input_rows', 'interval=0', 'load_vcf_file', 'parallel', 'pending', 'position', 're', 'rolled_back', 'rsid', 'running', 'skipped', 'stage_id', 'stage_name', 'start_memory', 'start_time', 'success', 'tqdm', 'user_file', 'var', 'vc', 'w', 'zstd', '⚠ Basic VCF parsing', '✓ Dry-run validation', '✓ No expensive hash', '✓ Non-blocking CPU', '✓ Progress bars', '✓ zstd compression', '❌ {error}']

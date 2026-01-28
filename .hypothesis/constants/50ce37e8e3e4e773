@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/io/normalization.py
-# hypothesis_version: 6.150.3
-
-['CHR', 'CHROM', 'Chr', 'Chromosome', 'M', 'MT', 'POS', 'Pos', 'Position', 'Start', 'chr', 'chromosome', 'm', 'normalize_chromosome', 'normalize_position', 'normalize_ref_alt', 'pos', 'position', 'start']

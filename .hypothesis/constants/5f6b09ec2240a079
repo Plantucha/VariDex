@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/services/population_frequency.py
-# hypothesis_version: 6.150.3
-
-[0.0001, 0.01, 0.02, 0.05, 2000, 'AF=unknown', 'BA1', 'BS1', 'PM2', 'ba1', 'bs1_dominant', 'bs1_recessive', 'cache', 'dominant', 'enabled', 'pm2_dominant', 'pm2_recessive', 'recessive', 'thresholds', 'unknown', 'x_linked']

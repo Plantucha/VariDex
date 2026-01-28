@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/evidence_utils.py
-# hypothesis_version: 6.150.3
-
-[512, 'Gene annotation', 'Variant type', 'canonical-splice', 'clinical_sig', 'frameshift', 'gene', 'initiator-codon', 'nonsense', 'splice-acceptor', 'splice-donor', 'star_rating', 'start-lost', 'stop-gain', 'stop-gained', 'stop-lost', 'variant_type']

@@ -1,3 +1,16 @@
+import pandas as pd
+from pathlib import Path
+from typing import List, Dict, Union, Optional
+from datetime import datetime
+import logging
+import time
+from varidex.core.models import VariantData
+from varidex.exceptions import ValidationError, ReportError
+from varidex.core.config import ACMG_TIERS
+from varidex.core.models import ACMGEvidenceSet
+from varidex.reports.formatters import format_file_size, escape_html
+from tqdm import tqdm
+
 #!/usr/bin/env python3
 """
 varidex/reports/generator.py - Report Orchestrator v6.0.1
@@ -12,21 +25,15 @@ Version: 6.0.1 | Compatible: formatters.py v5.2+ | Lines: <500
 Changes: Added ReportGenerator class for test compatibility
 """
 
-import pandas as pd
-from pathlib import Path
-from typing import List, Dict, Union, Optional
-from datetime import datetime
-import logging
-import time
 
-from varidex.core.models import VariantData
 
 # Import exceptions with fallback
 try:
     from varidex.exceptions import ValidationError, ReportError
 except ImportError:
-
     class ValidationError(Exception):
+        pass
+    class ReportError(Exception):
         pass
 
     class ReportError(Exception):
@@ -37,22 +44,19 @@ except ImportError:
 try:
     from varidex.core.config import ACMG_TIERS
 except ImportError:
+    ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
+
     ACMG_TIERS = {
-        "Pathogenic": {"icon": "🔴", "priority": 1},
-        "Likely Pathogenic": {"icon": "🟠", "priority": 2},
-        "Uncertain Significance": {"icon": "⚪", "priority": 3},
-        "Likely Benign": {"icon": "🟢", "priority": 4},
-        "Benign": {"icon": "🔵", "priority": 5},
+        "P": "🔴", "LP": "🟠", "VUS": "⚪", 
+        "LB": "🟢", "B": "🟢🟢"
     }
 
-# Fallback imports for formatters
-try:
-    from varidex.reports.formatters import (
+    REPORTS = [
         generate_csv_report,
         generate_json_report,
-        generate_html_report,
-        generate_conflict_report,
-    )
+        generate_html_report
+    ]
+
 
     FORMATTERS_AVAILABLE = True
 except ImportError:
@@ -153,7 +157,6 @@ def create_results_dataframe(
     show_bar = show_progress and n_variants >= PROGRESS_THRESHOLD
     if show_bar:
         try:
-            from tqdm import tqdm
 
             iterator = tqdm(classified_variants, desc="Building DF", unit="var")
         except ImportError:
@@ -519,7 +522,6 @@ __all__ = [
 ]
 
 if __name__ == "__main__":
-    from varidex.core.models import ACMGEvidenceSet
 
     print("\n" + "=" * 60)
     print("TESTING varidex_reports_generator v6.0.1")

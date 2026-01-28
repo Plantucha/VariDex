@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/services/computational_prediction.py
-# hypothesis_version: 6.150.3
-
-[0.05, 0.3, 0.4, 0.5, 15.0, 20.0, '\nEvidence Codes:', '\nOffline Mode:', '=', 'CADD', 'D', 'MetaSVM', 'PolyPhen-2', 'REVEL', 'SIFT', 'T', '__main__', 'benign', 'bp4_min_concordant', 'client', 'damaging', 'deleterious', 'enabled', 'moderate_benign', 'moderate_deleterious', 'neutral', 'offline_mode', 'pp3_min_concordant', 'strong_benign', 'strong_deleterious', 'thresholds', 'tolerated', 'weak_benign', 'weak_deleterious']

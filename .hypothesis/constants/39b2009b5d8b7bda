@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/version.py
-# hypothesis_version: 6.150.3
-
-['2015', '2026-01-20', '6.0.0', 'ACMG ', 'VariDex v', '__main__', '__version__', 'acmg_reference', 'acmg_version', 'build_date', 'core', 'core.classifier', 'get_version', 'io', 'io.loader', 'package', 'package_version', 'pipeline', 'reports.generator', 'utils.helpers', 'version']

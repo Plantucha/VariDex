@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/exceptions.py
-# hypothesis_version: 6.150.3
-
-['6.0.0', 'ACMGValidationError', 'Base error', 'CLASSIFICATION', 'CONFIG', 'ClassificationError', 'ConfigurationError', 'DATA_INTEGRITY', 'DATA_LOAD', 'Data load failed', 'DataIntegrityError', 'DataLoadError', 'DataProcessingError', 'DownloadError', 'ErrorCode', 'FILE_PROCESSING', 'FileProcessingError', 'MATCHING', 'MatchingError', 'PIPELINE', 'PipelineError', 'REPORT', 'ReportError', 'Test integrity error', 'Test matching error', 'VALIDATION', 'Validation failed', 'ValidationError', 'VariDexError', 'VaridexError', '__main__', 'string', 'test_value', 'validate_not_empty', 'validate_not_none', 'validate_type']

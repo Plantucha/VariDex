@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/utils/helpers.py
-# hypothesis_version: 6.150.3
-
-[':', 'DataValidator', 'ERROR', 'VUS', 'alt', 'chromosome', 'classification', 'error', 'evidence', 'format_variant_key', 'parse_variant_key', 'position', 'ref', 'variant']

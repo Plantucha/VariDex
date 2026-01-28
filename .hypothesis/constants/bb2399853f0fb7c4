@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/__init__.py
-# hypothesis_version: 6.150.3
-
-['ACMGClassifier', 'ACMGClassifierV7', 'ACMGClassifierV8', 'ACMGConfig', 'ACMGMetrics', 'HAS_V7', 'HAS_V8', 'LOF_INDICATORS', 'check_lof', 'core.classifier', 'extract_genes', 'get_star_rating', 'validate_variant']

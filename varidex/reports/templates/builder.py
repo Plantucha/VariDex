@@ -1,3 +1,13 @@
+import os
+import secrets
+import logging
+import html
+from datetime import datetime
+from typing import Dict, Optional
+from varidex.version import __version__
+from varidex.reports.templates.components import (
+
+
 #!/usr/bin/env python3
 """
 varidex/reports/templates/builder.py - HTML Template Builder v6.0.0
@@ -6,22 +16,14 @@ Generates secure HTML reports with CSP Level 3 and XSS protection.
 VERSION: 6.0.0 | AUTHOR: VariDex Team
 """
 
-import os
-import secrets
-import logging
 
 logger = logging.getLogger(__name__)
 
-import html
-from datetime import datetime
-from typing import Dict, Optional
 
 try:
-    from varidex.version import __version__
 except ImportError:
     __version__ = "6.0.0"
 
-from varidex.reports.templates.components import (
     build_stats_dashboard,
     build_classification_legend,
     build_truncation_warning,

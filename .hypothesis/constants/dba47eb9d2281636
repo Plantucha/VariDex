@@ -1,4 +1,0 @@
-# file: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/classifier/config.py
-# hypothesis_version: 6.150.3
-
-[0.0, 0.4, 0.6, 512, 1000, 1024, '=', 'ACMGConfig', 'BA', 'BP', 'BS', 'CRITICAL', 'Conservative preset', 'DEBUG', 'ERROR', 'INFO', 'PM', 'PP', 'PS', 'PVS', 'Research preset', 'Usage:', 'WARNING', '__main__', 'avg_time_ms', 'ba1', 'balanced', 'bp1', 'bp3', 'bp7', 'bs1', 'default', 'enable_ba1', 'enable_bp1', 'enable_bp3', 'enable_bp7', 'enable_bs1', 'enable_pm2', 'enable_pm4', 'enable_pp2', 'enable_pvs1', 'evidence_counts', 'failed', 'feature_flags', 'lenient', 'max_time_ms', 'min_time_ms', 'pm2', 'pm4', 'pp2', 'pvs1', 'strict', 'strong_evidence', 'success_rate', 'successful', 'thresholds', 'total', 'validation_errors', 'weight_ba', 'weight_bp', 'weight_bs', 'weight_pm', 'weight_pp', 'weight_ps', 'weight_pvs', 'weights']
