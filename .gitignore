@@ -23,3 +23,16 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.broken
+.backup_*/
+
+# Local analysis files
+*.log
+analysis_log.txt
+pipeline*.log
+results_*/
+output_*/
