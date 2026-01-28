@@ -19,3 +19,4 @@ venv/
 *.broken
 .backup_*/
 results_*.log
+.hypothesis/
