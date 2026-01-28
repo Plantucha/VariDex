@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-
 """
 varidex/pipeline/stages.py v6.2.1-dev OPTIMIZED
+
 Pipeline stage execution with performance optimization.
+
 Development version - not for production use.
 """
 
@@ -79,7 +80,6 @@ def validate_stage_input(
     df: pd.DataFrame, stage_id: int, stage_name: str
 ) -> Tuple[bool, str]:
     from varidex.utils.helpers import DataValidator
-
     required_cols = STAGE_REQUIRED_COLUMNS.get(stage_id, [])
     if not required_cols:
         return True, ""
@@ -116,7 +116,6 @@ class StageProfiler:
     ):
         if not self.enabled or not context:
             return
-
         duration = time.time() - context["start_time"]
         memory = self.process.memory_info().rss / 1024 / 1024 - context["start_memory"]
         cpu = self.process.cpu_percent(interval=0)
@@ -135,6 +134,7 @@ class StageProfiler:
 
         with self._lock:
             self.metrics.append(metric)
+
         logger.info(
             f"⏱ {metric.stage_name}: {metric.duration_sec}s, {metric.memory_mb}MB, {metric.output_rows} rows"
         )
@@ -167,7 +167,9 @@ class CheckpointManager:
             return df
 
         file_path = self.checkpoint_dir / f"stage_{stage_id}_{stage_name}.parquet"
-        df.to_parquet(file_path, index=False, compression="zstd", compression_level=3)
+        df.to_parquet(
+            file_path, index=False, compression="zstd", compression_level=3
+        )
 
         checkpoint = StageCheckpoint(
             stage_id=stage_id,
@@ -175,6 +177,7 @@ class CheckpointManager:
             row_count=len(df),
             file_path=file_path,
         )
+
         self.checkpoints[stage_id] = checkpoint
         logger.debug(f"💾 Checkpoint saved: Stage {stage_id} ({len(df):,} rows)")
 
@@ -184,12 +187,12 @@ class CheckpointManager:
             gc.collect()
             logger.debug(f"♻️ Memory freed for stage {stage_id}")
             return df_copy
+
         return df
 
     def load_checkpoint(self, stage_id: int) -> Optional[pd.DataFrame]:
         if not self.enabled or stage_id not in self.checkpoints:
             return None
-
         checkpoint = self.checkpoints[stage_id]
         if checkpoint.file_path and checkpoint.file_path.exists():
             df = pd.read_parquet(checkpoint.file_path)
@@ -274,7 +277,7 @@ class StageExecutor:
 
 
 def execute_stage2_load_clinvar(
-    clinvar_file: Path, checkpoint_dir: Path, loader: Any, safeguard_config: Dict, import_mode: str = "centralized"
+    clinvar_file: Path, checkpoint_dir: Path, loader: Any, safeguard_config: Dict
 ) -> pd.DataFrame:
     """STAGE 2: Load ClinVar."""
     clinvar_df = loader.load_clinvar_file(clinvar_file, checkpoint_dir=checkpoint_dir)
@@ -338,7 +341,6 @@ def execute_stage4_hybrid_matching(
 def _classify_batch(batch_data):
     """Helper for parallel ACMG classification."""
     from varidex.utils.helpers import classify_variants_production
-
     batch_df, safeguard_config, clinvar_type, user_type = batch_data
     return classify_variants_production(
         batch_df, safeguard_config, clinvar_type, user_type
@@ -363,6 +365,7 @@ def execute_stage5_acmg_classification(
             matched_df.iloc[i : i + batch_size]
             for i in range(0, len(matched_df), batch_size)
         ]
+
         batch_data = [
             (batch, safeguard_config, clinvar_type, user_type) for batch in batches
         ]
@@ -388,6 +391,7 @@ def execute_stage5_acmg_classification(
 
         logger.info(f"✓ Classified {len(classified_variants):,} variants (parallel)")
         return classified_variants, combined_stats
+
     else:
         with tqdm(
             total=len(matched_df), desc="Classifying variants", unit="var"
