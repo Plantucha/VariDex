@@ -1,0 +1,34 @@
+name: CD  # Deploy VariDex on main
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']  # Auto-release on tags
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with: python-version: '3.12'
+    - run: pip install build twine pytest-cov
+    - run: python -m build
+    - uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_TOKEN }}  # Add in Settings > Secrets
+    # Optional Docker for genome tool
+    - uses: docker/login-action@v3
+      with:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - run: docker build -t ghcr.io/${{ github.repository }}:latest .
+      uses: docker/build-push-action@v6
+      with:
+        push: true
+        tags: ghcr.io/${{ github.repository }}:latest
+  deploy-staging:
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    environment: staging  # Settings > Environments > Add
+    # Deploy steps
