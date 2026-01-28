@@ -15,4 +15,4 @@ Components:
 from varidex.version import get_version
 
 __version__ = get_version("core")
-__all__ = []
+__all__: list[str] = []

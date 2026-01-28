@@ -15,4 +15,4 @@ Usage:
 from varidex.version import get_version
 
 __version__ = get_version("utils.helpers")
-__all__ = []
+__all__: list[str] = []

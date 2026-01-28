@@ -16,4 +16,4 @@ Usage:
 
 
 __version__ = get_version("reports.templates")
-__all__ = []
+__all__: list[str] = []

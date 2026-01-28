@@ -110,33 +110,35 @@ from varidex.pipeline.stages import (
 class PipelineOrchestrator:
     """
     Object-oriented wrapper for the 7-stage ClinVar variant classification pipeline.
-    
+
     This class provides a test-compatible interface while maintaining the existing
     functional implementation. For production use, call main() directly.
-    
+
     Development version - not production tested.
     """
 
     def __init__(self, config: Any) -> None:
         """
         Initialize pipeline orchestrator.
-        
+
         Args:
             config: PipelineConfig object with pipeline settings
         """
         from varidex.core.config import PipelineConfig
         from varidex.exceptions import ValidationError
-        
+
         if config is None:
             raise ValidationError("Configuration cannot be None")
-        
+
         if not isinstance(config, PipelineConfig):
-            raise ValidationError(f"Expected PipelineConfig, got {type(config).__name__}")
-        
+            raise ValidationError(
+                f"Expected PipelineConfig, got {type(config).__name__}"
+            )
+
         self.config = config
         self._completed_stages: set = set()
         self._progress_callback: Optional[Callable[[str, float], None]] = None
-        
+
         # Create output directory if it doesn't exist
         output_path = Path(self.config.output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -144,10 +146,10 @@ class PipelineOrchestrator:
     def run(self, stages: Optional[List[str]] = None) -> bool:
         """
         Execute the pipeline.
-        
+
         Args:
             stages: Optional list of specific stages to run
-        
+
         Returns:
             True if successful, False otherwise
         """
@@ -155,23 +157,24 @@ class PipelineOrchestrator:
             return self._execute_stages(stages)
         except Exception as e:
             from varidex.exceptions import PipelineError
+
             logger.error(f"Pipeline execution failed: {e}")
             raise PipelineError(str(e))
 
     def _execute_stages(self, stages: Optional[List[str]] = None) -> bool:
         """
         Internal method to execute pipeline stages.
-        
+
         This is a wrapper around the functional main() implementation.
         """
         # For now, delegate to the functional main() implementation
         # In a full implementation, this would execute specific stages
-        
+
         # Convert config to parameters for main()
         clinvar_path = self.config.clinvar_file or "clinvar.vcf"
         user_data_path = self.config.input_vcf or self.config.input_file or "input.vcf"
         output_dir = Path(self.config.output_dir)
-        
+
         # Call the functional implementation
         result = main(
             clinvar_path=clinvar_path,
@@ -183,13 +186,13 @@ class PipelineOrchestrator:
             log_path=Path("pipeline.log"),
             output_dir=output_dir,
         )
-        
+
         return result
 
     def set_progress_callback(self, callback: Callable[[str, float], None]) -> None:
         """
         Set a callback function for progress updates.
-        
+
         Args:
             callback: Function that takes (stage_name: str, percent: float)
         """

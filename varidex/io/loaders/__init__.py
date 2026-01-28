@@ -5,7 +5,12 @@ Data loading utilities for ClinVar and user genome files.
 """
 
 # Lazy loading to avoid circular imports
-__all__ = ["load_clinvar_file", "load_user_file", "load_vcf_file", "match_variants_hybrid"]
+__all__ = [
+    "load_clinvar_file",
+    "load_user_file",
+    "load_vcf_file",
+    "match_variants_hybrid",
+]
 
 
 def load_clinvar_file(*args, **kwargs):
