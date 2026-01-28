@@ -1,46 +1,25 @@
-# Temp/Generated
-htmlcov/
-data.tsv
-output/
-*.html
-*.tsv
-*.sh  # Keep scripts? rm fix_reporting_*.sh first
+# Data files (too large)
+gnomad/*.vcf.bgz
+gnomad/*.tbi
+clinvar/*.vcf
+data/raw.txt
+
+# Output files (patient data)
+output/*.csv
+output/*.md
 
 # Python
 __pycache__/
 *.pyc
-.venv/
+*.pyo
 venv/
-.pytest_cache/
-.coverage
-*.bak
-*.backup
-*.old
-*.broken
-.backup_*/
-results_*.log
-.hypothesis/
-
-# Data files
-*.fa
-*.fasta
-clinvar/
-data/
-
-# Build artifacts
-varidex.egg-info/
 *.egg-info/
 
-# Logs
-analysis_log.txt
-*.log
+# IDE
+.vscode/
+.idea/
+*.swp
 
-# Temp files
-tatus
-olete*
-results/
-
-# Genomic reference data (large files - download separately)
-gnomad/
-*.vcf.bgz
-*.vcf.bgz.tbi
+# OS
+.DS_Store
+Thumbs.db

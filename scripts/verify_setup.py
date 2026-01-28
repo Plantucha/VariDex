@@ -228,9 +228,7 @@ def run_tests(with_coverage: bool = False) -> bool:
     if returncode == 0:
         print_status("OK", "All tests passed")
         if with_coverage:
-            print_status(
-                "OK", "Coverage report generated in htmlcov/index.html"
-            )
+            print_status("OK", "Coverage report generated in htmlcov/index.html")
         return True
     else:
         print_status("ERROR", "Some tests failed")
@@ -302,9 +300,7 @@ def generate_recommendations() -> None:
 
 def main() -> int:
     """Main verification function."""
-    parser = argparse.ArgumentParser(
-        description="Verify VariDex CI/CD setup"
-    )
+    parser = argparse.ArgumentParser(description="Verify VariDex CI/CD setup")
     parser.add_argument(
         "--coverage",
         action="store_true",
@@ -347,17 +343,23 @@ def main() -> int:
         status = "OK" if passed else "ERROR"
         print_status(status, f"{check_name.replace('_', ' ').title()}")
 
-    print(f"\n{Colors.BOLD}Total: {passed_checks}/{total_checks} checks passed{Colors.RESET}\n")
+    print(
+        f"\n{Colors.BOLD}Total: {passed_checks}/{total_checks} checks passed{Colors.RESET}\n"
+    )
 
     # Generate recommendations
     generate_recommendations()
 
     # Return exit code
     if all(results.values()):
-        print(f"\n{Colors.GREEN}{Colors.BOLD}✅ All checks passed! Ready to proceed.{Colors.RESET}\n")
+        print(
+            f"\n{Colors.GREEN}{Colors.BOLD}✅ All checks passed! Ready to proceed.{Colors.RESET}\n"
+        )
         return 0
     else:
-        print(f"\n{Colors.YELLOW}{Colors.BOLD}⚠️ Some checks failed. Review above for details.{Colors.RESET}\n")
+        print(
+            f"\n{Colors.YELLOW}{Colors.BOLD}⚠️ Some checks failed. Review above for details.{Colors.RESET}\n"
+        )
         return 1
 
 
