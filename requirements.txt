@@ -1,4 +1,4 @@
-# VariDex v6.0.0 Requirements
+# VariDex v6.1.0 Requirements
 
 # Core dependencies
 pandas>=1.3.0
@@ -13,6 +13,9 @@ requests>=2.26.0
 
 # CLI framework for command-line interface
 click>=8.0.0
+
+# Genomic data processing (VCF/BAM files with tabix indexing)
+pysam>=0.21.0
 
 # Testing dependencies
 hypothesis>=6.0.0
