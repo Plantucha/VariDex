@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.0-dev
+varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.1-dev
 
 Main 7-stage pipeline coordinator (coordination only).
 
 Development version - not for production use.
+
+Changes v7.0.1:
+- Added PipelineOrchestrator class wrapper for test compatibility
+- Maintains functional main() implementation
 """
 
 import sys
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Callable
 
 import pandas as pd
 
@@ -101,6 +105,108 @@ from varidex.pipeline.stages import (
     execute_stage6_create_results,
     execute_stage7_generate_reports,
 )
+
+
+class PipelineOrchestrator:
+    """
+    Object-oriented wrapper for the 7-stage ClinVar variant classification pipeline.
+    
+    This class provides a test-compatible interface while maintaining the existing
+    functional implementation. For production use, call main() directly.
+    
+    Development version - not production tested.
+    """
+
+    def __init__(self, config: Any) -> None:
+        """
+        Initialize pipeline orchestrator.
+        
+        Args:
+            config: PipelineConfig object with pipeline settings
+        """
+        from varidex.core.config import PipelineConfig
+        from varidex.exceptions import ValidationError
+        
+        if config is None:
+            raise ValidationError("Configuration cannot be None")
+        
+        if not isinstance(config, PipelineConfig):
+            raise ValidationError(f"Expected PipelineConfig, got {type(config).__name__}")
+        
+        self.config = config
+        self._completed_stages: set = set()
+        self._progress_callback: Optional[Callable[[str, float], None]] = None
+        
+        # Create output directory if it doesn't exist
+        output_path = Path(self.config.output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+    def run(self, stages: Optional[List[str]] = None) -> bool:
+        """
+        Execute the pipeline.
+        
+        Args:
+            stages: Optional list of specific stages to run
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            return self._execute_stages(stages)
+        except Exception as e:
+            from varidex.exceptions import PipelineError
+            logger.error(f"Pipeline execution failed: {e}")
+            raise PipelineError(str(e))
+
+    def _execute_stages(self, stages: Optional[List[str]] = None) -> bool:
+        """
+        Internal method to execute pipeline stages.
+        
+        This is a wrapper around the functional main() implementation.
+        """
+        # For now, delegate to the functional main() implementation
+        # In a full implementation, this would execute specific stages
+        
+        # Convert config to parameters for main()
+        clinvar_path = self.config.clinvar_file or "clinvar.vcf"
+        user_data_path = self.config.input_vcf or self.config.input_file or "input.vcf"
+        output_dir = Path(self.config.output_dir)
+        
+        # Call the functional implementation
+        result = main(
+            clinvar_path=clinvar_path,
+            user_data_path=user_data_path,
+            force=False,
+            interactive=False,
+            user_format=None,
+            yaml_config_path=None,
+            log_path=Path("pipeline.log"),
+            output_dir=output_dir,
+        )
+        
+        return result
+
+    def set_progress_callback(self, callback: Callable[[str, float], None]) -> None:
+        """
+        Set a callback function for progress updates.
+        
+        Args:
+            callback: Function that takes (stage_name: str, percent: float)
+        """
+        self._progress_callback = callback
+
+    def cleanup(self) -> None:
+        """Clean up resources after pipeline execution."""
+        # Placeholder for resource cleanup
+        pass
+
+    def __enter__(self) -> "PipelineOrchestrator":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit with cleanup."""
+        self.cleanup()
 
 
 def main(
@@ -277,7 +383,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="ClinVar-WGS ACMG Pipeline v7.0.0-dev", add_help=False
+        description="ClinVar-WGS ACMG Pipeline v7.0.1-dev", add_help=False
     )
     parser.add_argument("clinvar_file", nargs="?")
     parser.add_argument("user_data", nargs="?")
