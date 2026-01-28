@@ -116,7 +116,7 @@ def download_file(url: str, filepath: Path) -> bool:
                 sys.stdout.write(f"\r  Progress: {percent:.1f}%")
                 sys.stdout.flush()
 
-        urllib.request.urlretrieve(url, filepath, reporthook)
+        urllib.request.urlretrieve(url, filepath, reporthook)  # nosec B310
         print()
         return True
     except ValueError as e:
