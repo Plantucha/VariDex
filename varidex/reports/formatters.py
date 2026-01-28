@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-
 """
 varidex/reports/formatters.py - Report Format Generators v6.0.1-dev
+
 Generate individual report formats with security and validation.
+
 Development version - not for production use.
 """
 
@@ -13,6 +14,7 @@ import re
 from pathlib import Path
 from typing import Dict, Optional
 import pandas as pd
+from varidex.version import __version__
 import logging
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,10 @@ def format_file_size(size_bytes: int) -> str:
 
 
 def generate_csv_report(
-    df: pd.DataFrame, output_dir: Path, timestamp: str, excel_compatible: bool = True
+    df: pd.DataFrame,
+    output_dir: Path,
+    timestamp: str,
+    excel_compatible: bool = True
 ) -> Path:
     """Generate CSV report with Excel compatibility."""
     output_path = output_dir / f"classified_variants_{timestamp}.csv"
@@ -89,11 +94,6 @@ def generate_json_report(
         logger.info(f"Large dataset ({len(df):,} variants), creating stratified JSONs")
         return _generate_stratified_json(df, stats, output_dir, timestamp)
 
-    try:
-        from varidex.version import __version__
-    except ImportError:
-        __version__ = "unknown"
-
     data = {
         "metadata": {
             "generated_at": timestamp,
@@ -113,14 +113,12 @@ def generate_json_report(
 
 
 def _generate_stratified_json(
-    df: pd.DataFrame, stats: Dict, output_dir: Path, timestamp: str
+    df: pd.DataFrame,
+    stats: Dict,
+    output_dir: Path,
+    timestamp: str
 ) -> Path:
     """Generate stratified JSON files for large datasets."""
-    try:
-        from varidex.version import __version__
-    except ImportError:
-        __version__ = "unknown"
-
     stratified = {
         "pathogenic": df[
             df["acmg_classification"].isin(["Pathogenic", "Likely Pathogenic"])
@@ -142,7 +140,7 @@ def _generate_stratified_json(
             }
             with open(subset_path, "w") as f:
                 json.dump(data, f, indent=2)
-            logger.info(f"  • {name}.json: {len(subset):,} variants")
+            logger.info(f" • {name}.json: {len(subset):,} variants")
 
     summary_path = output_dir / f"summary_{timestamp}.json"
     summary_data = {
@@ -197,7 +195,10 @@ def generate_html_report(
         table_rows.append(escaped_row)
 
     html_content = generate_html_template(
-        title=title, stats=stats, variants=table_rows, timestamp=timestamp
+        title=title,
+        stats=stats,
+        variants=table_rows,
+        timestamp=timestamp
     )
 
     with open(output_path, "w") as f:
@@ -209,7 +210,11 @@ def generate_html_report(
 
 
 def _generate_basic_html(
-    df: pd.DataFrame, stats: Dict, output_dir: Path, timestamp: str, title: str
+    df: pd.DataFrame,
+    stats: Dict,
+    output_dir: Path,
+    timestamp: str,
+    title: str
 ) -> Path:
     """Generate basic HTML report when template builder unavailable."""
     output_path = output_dir / f"classified_variants_{timestamp}.html"
@@ -217,55 +222,44 @@ def _generate_basic_html(
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>{html.escape(title)}</title>
-    <meta charset="utf-8">
     <style>
         body {{ font-family: Arial, sans-serif; margin: 20px; }}
         table {{ border-collapse: collapse; width: 100%; }}
         th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
         th {{ background-color: #4CAF50; color: white; }}
-        tr:nth-child(even) {{ background-color: #f2f2f2; }}
-        .stats {{ background-color: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 5px; }}
     </style>
 </head>
 <body>
     <h1>{html.escape(title)}</h1>
     <p>Generated: {html.escape(timestamp)}</p>
-    
-    <div class="stats">
-        <h2>Statistics</h2>
+    <h2>Statistics</h2>
+    <ul>
 """
 
     for key, value in stats.items():
-        html_content += (
-            f"        <p><strong>{html.escape(str(key))}:</strong> {html.escape(str(value))}</p>\n"
-        )
+        html_content += f"        <li><strong>{html.escape(str(key))}:</strong> {html.escape(str(value))}</li>\n"
 
-    html_content += """    </div>
-    
-    <h2>Variants (showing first 100)</h2>
+    html_content += """    </ul>
+    <h2>Variants (first 100)</h2>
     <table>
-        <thead>
-            <tr>
+        <tr>
 """
 
-    for col in df.columns[:10]:  # Limit columns
-        html_content += f"                <th>{html.escape(str(col))}</th>\n"
+    for col in df.columns[:10]:
+        html_content += f"            <th>{html.escape(str(col))}</th>\n"
 
-    html_content += """            </tr>
-        </thead>
-        <tbody>
-"""
+    html_content += "        </tr>\n"
 
     for idx, row in df.head(100).iterrows():
-        html_content += "            <tr>\n"
+        html_content += "        <tr>\n"
         for col in df.columns[:10]:
-            value = html.escape(str(row[col])[:50])  # Truncate long values
-            html_content += f"                <td>{value}</td>\n"
-        html_content += "            </tr>\n"
+            value = html.escape(str(row.get(col, "")))
+            html_content += f"            <td>{value}</td>\n"
+        html_content += "        </tr>\n"
 
-    html_content += """        </tbody>
-    </table>
+    html_content += """    </table>
 </body>
 </html>
 """
@@ -273,37 +267,38 @@ def _generate_basic_html(
     with open(output_path, "w") as f:
         f.write(html_content)
 
-    size = format_file_size(output_path.stat().st_size)
-    logger.info(f"Basic HTML report generated: {output_path.name} ({size})")
     return output_path
 
 
-# Test compatibility formatters
-class MarkdownFormatter:
-    """Format reports as Markdown."""
+def generate_conflicts_report(
+    df: pd.DataFrame,
+    output_dir: Path,
+    timestamp: str
+) -> Optional[Path]:
+    """Generate text report of conflicting variant interpretations."""
+    conflicts = df[df.get("has_conflict", False) == True]
 
-    def __init__(self, include_toc: bool = False):
-        """Initialize Markdown formatter."""
-        self.include_toc = include_toc
+    if len(conflicts) == 0:
+        logger.info("No conflicts detected")
+        return None
 
-    def format(self, data: dict) -> str:
-        """Format data as Markdown."""
-        md = "# Report\n\n"
-        for key, value in data.items():
-            if isinstance(value, dict):
-                md += f"## {key}\n\n"
-                for k, v in value.items():
-                    md += f"- **{k}:** {v}\n"
-                md += "\n"
-            else:
-                md += f"**{key}:** {value}\n\n"
-        return md
+    output_path = output_dir / f"conflicts_{timestamp}.txt"
 
-    def save(self, data: dict, filepath: str):
-        """Save formatted report to file."""
-        md_content = self.format(data)
-        with open(filepath, "w") as f:
-            f.write(md_content)
+    with open(output_path, "w") as f:
+        f.write(f"VARIANT INTERPRETATION CONFLICTS\n")
+        f.write(f"Generated: {timestamp}\n")
+        f.write(f"Total conflicts: {len(conflicts)}\n")
+        f.write("=" * 70 + "\n\n")
+
+        for idx, row in conflicts.iterrows():
+            f.write(f"Variant: {row.get('rsid', 'Unknown')}\n")
+            f.write(f"Gene: {row.get('gene', 'Unknown')}\n")
+            f.write(f"Classification: {row.get('acmg_classification', 'Unknown')}\n")
+            f.write(f"Conflicting interpretations: {row.get('conflict_count', 0)}\n")
+            f.write("-" * 70 + "\n\n")
+
+    logger.info(f"Conflicts report generated: {output_path.name}")
+    return output_path
 
 
 class HTMLFormatter:
@@ -315,18 +310,11 @@ class HTMLFormatter:
 
     def format(self, data: dict) -> str:
         """Format data as HTML."""
-        html_str = "<html><body><h1>Report</h1>\n"
+        html = "<html><body>\n"
         for key, value in data.items():
-            html_str += f"<h2>{html.escape(str(key))}</h2>\n"
-            if isinstance(value, dict):
-                html_str += "<table border='1'>\n"
-                for k, v in value.items():
-                    html_str += f"<tr><td>{html.escape(str(k))}</td><td>{html.escape(str(v))}</td></tr>\n"
-                html_str += "</table>\n"
-            else:
-                html_str += f"<p>{html.escape(str(value))}</p>\n"
-        html_str += "</body></html>\n"
-        return html_str
+            html += f"<p><strong>{html.escape(str(key))}:</strong> {html.escape(str(value))}</p>\n"
+        html += "</body></html>\n"
+        return html
 
     def save(self, data: dict, filepath: str):
         """Save formatted report to file."""
@@ -362,7 +350,6 @@ class CSVFormatter:
     def format(self, data: dict) -> str:
         """Format data as CSV."""
         import io
-
         output = io.StringIO()
         if isinstance(data, dict):
             writer = csv.DictWriter(
