@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Module 1: Configuration Constants v6.6.1
+Module 1: Configuration Constants v6.6.2
 =========================================
 File: varidex/core/config.py
 Purpose: Central configuration for ClinVar pipeline with enhanced VariDexConfig class
+
+Changes v6.6.2 (2026-01-28) - TEST COMPATIBILITY:
+- Added continue_on_error field to PipelineConfig
+- Allows tests to control error handling behavior
 
 Changes v6.6.1 (2026-01-26) - SECURITY FIX:
 - Fixed B108: Replaced hardcoded /tmp with tempfile.mkdtemp() in test code
@@ -573,7 +577,7 @@ Config = VariDexConfig
 
 
 # ===================================================================
-# SECTION 12: PIPELINECONFIG CLASS (ENHANCED v6.6.0)
+# SECTION 12: PIPELINECONFIG CLASS (ENHANCED v6.6.2)
 # ===================================================================
 @dataclass
 class PipelineConfig:
@@ -581,6 +585,7 @@ class PipelineConfig:
     Configuration for variant analysis pipeline.
 
     FIX 4C: Enhanced with reference_genome parameter alias.
+    v6.6.2: Added continue_on_error for test compatibility.
     """
 
     input_file: str = ""
@@ -600,6 +605,7 @@ class PipelineConfig:
     generate_html: bool = True
     generate_json: bool = True
     generate_csv: bool = True
+    continue_on_error: bool = False  # v6.6.2: Added for test compatibility
 
     def __init__(
         self,
@@ -620,6 +626,7 @@ class PipelineConfig:
         generate_html: bool = True,
         generate_json: bool = True,
         generate_csv: bool = True,
+        continue_on_error: bool = False,
         # FIX 4C: Accept reference_genome as alias
         reference_genome: Optional[str] = None,
         **kwargs: Any,
@@ -646,6 +653,7 @@ class PipelineConfig:
         self.generate_html = generate_html
         self.generate_json = generate_json
         self.generate_csv = generate_csv
+        self.continue_on_error = continue_on_error
 
     # FIX 4C: Property alias for backward compatibility
     @property
@@ -699,7 +707,7 @@ def __getattr__(name):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print(f"CONFIG MODULE v{__version__} - ENHANCED v6.6.1")
+    print(f"CONFIG MODULE v{__version__} - ENHANCED v6.6.2")
     print("=" * 80)
 
     # Test FIX 4B: VariDexConfig aliases (with secure temp directory)
@@ -725,6 +733,14 @@ if __name__ == "__main__":
     print(f"  - reference_genome → genome_assembly: {pipeline_config.genome_assembly}")
     print(f"  - Reading reference_genome property: {pipeline_config.reference_genome}")
 
+    # Test v6.6.2: continue_on_error
+    print("\n✓ Test v6.6.2: PipelineConfig continue_on_error")
+    print(f"  - Default continue_on_error: {pipeline_config.continue_on_error}")
+    pipeline_config2 = PipelineConfig(
+        reference_genome="GRCh38", input_vcf="test.vcf", continue_on_error=True
+    )
+    print(f"  - With continue_on_error=True: {pipeline_config2.continue_on_error}")
+
     # Test update() with aliases
     print("\n✓ Test: update() with aliases")
     config.update(num_threads=16, max_population_af=0.02)
@@ -732,8 +748,9 @@ if __name__ == "__main__":
         f"  - After update: thread_count={config.thread_count}, af={config.population_af_threshold}"
     )
 
-    print("\n✅ All v6.6.1 enhancements verified!")
+    print("\n✅ All v6.6.2 enhancements verified!")
     print("   - FIX 4B: Parameter aliases working ✓")
     print("   - FIX 4C: PipelineConfig.reference_genome ✓")
+    print("   - v6.6.2: PipelineConfig.continue_on_error ✓")
     print("   - Security: B108 fixed (secure temp directory) ✓")
     print("=" * 80)
