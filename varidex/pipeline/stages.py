@@ -423,7 +423,7 @@ def execute_stage7_generate_reports(
 
     with tqdm(total=3, desc="Generating reports", unit="file") as pbar:
         report_files = reports.generate_all_reports(
-            results_df, stats, output_dir=output_dir
+            results_df, output_dir=output_dir
         )
         pbar.update(3)
 

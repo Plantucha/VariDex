@@ -69,25 +69,51 @@ def main() -> None:
         "allow_parallel": True
     }
     
-    results: List[Any] = execute_stage5_acmg_classification(
+    # Stage 5 returns (classified_variants, stats)
+    stage5_result = execute_stage5_acmg_classification(
         matched_df, 
         safeguard_config=safeguard_config,
         clinvar_type="vcf",
         user_type="23andme"
     )
+    
+    # Unpack the tuple
+    if isinstance(stage5_result, tuple):
+        results, classification_stats = stage5_result
+    else:
+        results = stage5_result
+        classification_stats = {}
 
 
-    # Save results
-    Path(args.output).mkdir(exist_ok=True)
-
-    pathogenic: List[Any] = [
-        r for r in results if getattr(r, "acmg_final", "") in ("P", "LP")
-    ]
-    print(f"🔴 PATHOGENIC: {len(pathogenic)}")
-    print(f"📁 Report: {args.output}/michal_acmg.html")
-
-    print("✅ COMPLETE")
+    # Stage 6: Convert to DataFrame (results are already dicts)
+    import pandas as pd
+    results_df = pd.DataFrame(results) if results else pd.DataFrame()
+    
+    # Stage 7: Generate all reports (CSV, JSON, HTML)
+    from varidex.pipeline.stages import execute_stage7_generate_reports
+    import varidex.reports as reports
+    
+    output_path = Path(args.output)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    stats = {
+        "total": len(results_df),
+        "pathogenic": len(results_df[results_df.get("acmg_final", results_df.get("classification", "")) == "P"]) if len(results_df) > 0 else 0,
+        "likely_pathogenic": len(results_df[results_df.get("acmg_final", results_df.get("classification", "")) == "LP"]) if len(results_df) > 0 else 0
+    }
+    
+    report_files = execute_stage7_generate_reports(
+        results_df, stats, output_path, reports
+    )
+    
+    print(f"\n🔴 PATHOGENIC: {stats.get('pathogenic', 0)}")
+    print(f"🟠 LIKELY PATHOGENIC: {stats.get('likely_pathogenic', 0)}")
+    print(f"📁 Reports: {output_path}/")
+    for report_file in report_files:
+        print(f"   ✓ {report_file.name if hasattr(report_file, 'name') else Path(report_file).name}")
+    print("\n✅ COMPLETE")
 
 
 if __name__ == "__main__":
     main()
+
