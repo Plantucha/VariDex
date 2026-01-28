@@ -1,18 +1,3 @@
-import pandas as pd
-from pathlib import Path
-from typing import Dict, List, Tuple, Any, Optional, Set
-import logging
-import time
-import psutil
-import json
-import gc
-from dataclasses import dataclass, asdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import Lock
-from enum import Enum
-from tqdm import tqdm
-from varidex.utils.helpers import DataValidator
-
 #!/usr/bin/env python3
 """
 varidex/pipeline/stages_core.py v6.3.1 DEVELOPMENT - Core Components
@@ -27,6 +12,21 @@ CRITICAL FIXES APPLIED:
 ✓ Documentation corrected
 ✓ Black-formatted, mypy-ready
 """
+
+import pandas as pd
+from pathlib import Path
+from typing import Dict, List, Tuple, Any, Optional, Set
+import logging
+import time
+import psutil
+import json
+import gc
+from dataclasses import dataclass, asdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
+from enum import Enum
+from tqdm import tqdm
+from varidex.utils.helpers import DataValidator
 
 
 logger = logging.getLogger(__name__)
@@ -209,7 +209,7 @@ class CheckpointManager:
         if checkpoint.file_path and checkpoint.file_path.exists():
             df = pd.read_parquet(checkpoint.file_path)
             logger.info(
-                f"♻ Resumed from Stage {stage_id} checkpoint ({len(df):,} row\s)"
+                f"♻ Resumed from Stage {stage_id} checkpoint ({len(df):,} rows)"
             )
             return df
         return None
