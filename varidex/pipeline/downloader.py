@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 ClinVar File Downloader with Space Management
 Updates: First Thursday of each month
@@ -120,7 +119,6 @@ def download_file(url: str, filepath: Path) -> bool:
         urllib.request.urlretrieve(url, filepath, reporthook)
         print()
         return True
-
     except ValueError as e:
         print(f"\n  Security Error: {e}")
         return False
@@ -286,9 +284,11 @@ def calculate_checksum(filepath: str, algorithm: str = "sha256") -> str:
         raise ValueError(f"Unsupported algorithm: {algorithm}")
 
     hasher = getattr(hashlib, algorithm)()
+
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             hasher.update(chunk)
+
     return hasher.hexdigest()
 
 
