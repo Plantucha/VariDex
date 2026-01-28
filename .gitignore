@@ -13,3 +13,9 @@ __pycache__/
 venv/
 .pytest_cache/
 .coverage
+*.bak
+*.backup
+*.old
+*.broken
+.backup_*/
+results_*.log
