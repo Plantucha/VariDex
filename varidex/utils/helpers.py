@@ -38,6 +38,9 @@ class DataValidator:
         Returns:
             True if valid, False otherwise
         """
+        import pandas as pd
+        if not isinstance(df, pd.DataFrame):
+            return False
         try:
             return df is not None and len(df) > 0
         except Exception:
