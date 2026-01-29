@@ -1,7 +1,7 @@
 ========================================
 VariDex Pipeline Execution Summary
 ========================================
-Date: Wed Jan 28 19:14:53 EST 2026
+Date: Wed Jan 28 19:17:57 EST 2026
 Runtime: 2m 23s (142.7s)
 
 INPUT DATA:
@@ -23,11 +23,12 @@ CONSEQUENCE ANALYSIS:
 • PVS1 (loss-of-function): 9,034
 • BP7 (synonymous): 3,805
 
-FINAL CLASSIFICATIONS:
-----------------------
-• Total classified: 1,598 variants
-• Auto-classified P/LP: 8,913
-• Auto-classified B/LB: 8,917
+FINAL ACMG CLASSIFICATIONS:
+---------------------------
+• Pathogenic/Likely Pathogenic: 1,229
+• Benign/Likely Benign: 1,293
+• VUS (Uncertain): 1,950
+• Total classified: 4,472 variants
 
 OUTPUT FILES:
 -------------
