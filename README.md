@@ -1,5 +1,8 @@
 <div align="center">
 
+[![CI](https://github.com/Plantucha/VariDex/workflows/VariDex%20CI/badge.svg)](https://github.com/Plantucha/VariDex/actions) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+
+
 # VariDex
 
 ### ACMG 2015-Compliant Genomic Variant Classification
