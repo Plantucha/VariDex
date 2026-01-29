@@ -1,58 +1,68 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# VariDex Analysis Pipeline v7.0 - With Parallel Processing
 
-python3 -c "
+set -e
+
+echo "======================================================================"
+echo "VariDex v7.0 - Genome Analysis Pipeline (PARALLEL)"
+echo "======================================================================"
+
+# Activate virtual environment
+if [ -d "venv" ]; then
+    source venv/bin/activate
+fi
+
+# Run analysis with improved matching
+python3 << 'PYTHON_EOF'
 from pathlib import Path
-from collections import Counter
-from varidex.io.loaders.clinvar import load_clinvar_file
 from varidex.io.loaders.user import load_user_file
-from varidex.io import matching
-import pandas as pd
+from varidex.io.loaders.clinvar import load_clinvar_file
+from varidex.io.matching_improved import match_variants_hybrid
+import time
 
-print('📥 MICHAL PIPELINE v6.3.0 - CLINVAR DIRECT 🔥')
-print('=' * 70)
+print("\n⏱️  Starting analysis...")
+t0 = time.time()
 
-print('LOADING VCF: clinvar_GRCh37.vcf')
-c = load_clinvar_file('clinvar/clinvar_GRCh37.vcf')
+# Load data
+user_df = load_user_file(Path('data/raw.txt'), file_format='23andme')
+clinvar_df = load_clinvar_file(Path('clinvar/clinvar_GRCh37.vcf'))
 
-print('LOADING USER: data/raw.txt')
-u = load_user_file('data/raw.txt')
+# Match variants (improved algorithm)
+matched, rsid_count, coord_count = match_variants_hybrid(
+    clinvar_df, user_df, 'vcf', '23andme'
+)
 
-print(f'🔬 ClinVar: {len(c):,} | 🧬 23andMe: {len(u):,}')
+elapsed = time.time() - t0
 
-print('🔗 Hybrid matching...')
-m = matching.match_variants_hybrid(c, u, 'vcf', '23andme')[0]
-print(f'✅ Matched: {len(m):,} variants')
+# Save results
+matched.to_csv('output/results.csv', index=False)
 
-m['acmg_classification'] = m['clinical_sig'].str.replace('_', ' ', regex=False)
+# Report
+print("\n" + "=" * 70)
+print("RESULTS SUMMARY")
+print("=" * 70)
+print(f"\n⏱️  Total time: {elapsed:.1f}s")
+print(f"\n✅ ClinVar variants: {len(clinvar_df):,}")
+print(f"✅ User variants: {len(user_df):,}")
+print(f"✅ Matches: {len(matched):,}")
+print(f"   - rsID matches: {rsid_count:,}")
+print(f"   - Coordinate matches: {coord_count:,}")
 
-classification_map = {
-    'Pathogenic': 'P',
-    'Pathogenic/Likely pathogenic': 'P',
-    'Likely pathogenic': 'LP',
-    'Benign': 'B',
-    'Benign/Likely benign': 'B',
-    'Likely benign': 'LB', 
-    'Uncertain significance': 'VUS',
-    'not provided': 'VUS'
-}
+if 'clinical_sig' in matched.columns:
+    pathogenic = matched[matched['clinical_sig'].str.contains('Pathogenic', case=False, na=False)]
+    benign = matched[matched['clinical_sig'].str.contains('Benign', case=False, na=False)]
+    uncertain = matched[matched['clinical_sig'].str.contains('Uncertain', case=False, na=False)]
+    
+    print(f"\n🏥 Clinical Significance:")
+    print(f"   🔴 Pathogenic/Likely: {len(pathogenic):,}")
+    print(f"   🟢 Benign/Likely: {len(benign):,}")
+    print(f"   🟡 Uncertain (VUS): {len(uncertain):,}")
 
-m['acmg_final'] = m['acmg_classification'].map(classification_map).fillna('VUS')
+print(f"\n📄 Output: output/results.csv")
+print("\n" + "=" * 70)
+print("✅ ANALYSIS COMPLETE")
+print("=" * 70)
+PYTHON_EOF
 
-print('\n🏥 MICHAL CLINICAL REPORT (ClinVar Direct)')
-print('=' * 60)
-counter = Counter(m['acmg_final'])
-emoji_map = {'P': '🔴', 'LP': '🟠', 'VUS': '🟡', 'LB': '🟢', 'B': '🟢'}
-for cat in ['P', 'LP', 'VUS', 'LB', 'B']:
-    print(f'{emoji_map[cat]} {cat:<12}: {counter.get(cat, 0):>5,}')
-print(f'📊 TOTAL: {len(m):>5,}')
-print('=' * 60)
-
-output_dir = Path('output')
-output_dir.mkdir(parents=True, exist_ok=True)
-
-csv_path = output_dir / 'michal_clinvar_direct.csv'
-m.to_csv(csv_path, index=False)
-print(f'✅ {csv_path} SAVED!')
-print('🏥 P/LP = clinical priority')
-"
+echo ""
+echo "Done! Results saved to output/results.csv"
