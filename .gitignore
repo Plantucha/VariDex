@@ -1,38 +1,106 @@
-# Data files (too large)
-gnomad/*.vcf.bgz
-gnomad/*.tbi
-clinvar/*.vcf
-data/raw.txt
-
-# Output files (patient data)
-output/*.csv
-output/*.md
+# VariDex .gitignore
 
 # Python
 __pycache__/
-*.pyc
-*.pyo
-venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# IDE
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
 .vscode/
 .idea/
 *.swp
-
-# OS
+*.swo
+*~
 .DS_Store
-Thumbs.db
 
-# Backup files
-*.bak
-*.backup
-*.broken
-.backup_*/
-
-# Local analysis files
+# Testing
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-analysis_log.txt
-pipeline*.log
-results_*/
-output_*/
+.pytest_cache/
+htmlcov/
+.hypothesis/
+test_results*.txt
+mypy_report.txt
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# VariDex specific - Output and Cache
+output/
+results/
+.varidex_cache/
+*.parquet
+*.parquet.tmp
+
+# Data files (don't commit large genomic files)
+data/
+data.tsv
+clinvar/
+*.vcf
+*.vcf.gz
+*.vcf.idx
+*.23andme.txt
+*.fa
+*.fasta
+GRCh37.fa
+GRCh38.fa
+
+# Reports (generated, don't commit)
+reports/
+report.html
+classified_variants_*.csv
+classified_variants_*.html
+classified_variants_*.json
+!docs/**/*.html
+!docs/**/*.csv
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.orig
+*.rej
+*.patch
+enable_parallel.patch
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
