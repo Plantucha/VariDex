@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/stages.py v6.2.1-dev OPTIMIZED
+varidex/pipeline/stages.py v7.0.0 DEVELOPMENT
 
-Pipeline stage execution with performance optimization.
+Pipeline stage execution with IMPROVED MATCHING ALGORITHM.
+
+Changes in v7.0:
+- Uses matching_improved.py with genotype verification
+- Removes false positives from coordinate-only matching
+- Adds confidence scoring to matches
+- Parallel processing throughout
 
 Development version - not for production use.
 """
@@ -297,7 +303,7 @@ def execute_stage3_load_user_data(
             user_df = loader.load_vcf_file(user_file)
         else:
             logger.warning("⚠ Basic VCF parsing")
-            user_df = pd.read_csv(user_file, sep="\t", comment="#", low_memory=False)
+            user_df = pd.read_csv(user_file, sep="\\t", comment="#", low_memory=False)
             if "#CHROM" in user_df.columns:
                 user_df.rename(
                     columns={
@@ -310,7 +316,7 @@ def execute_stage3_load_user_data(
                     inplace=True,
                 )
     else:
-        user_df = pd.read_csv(user_file, sep="\t", low_memory=False)
+        user_df = pd.read_csv(user_file, sep="\\t", low_memory=False)
 
     logger.info(f"✓ Loaded {len(user_df):,} user variants")
     return user_df
@@ -325,9 +331,11 @@ def execute_stage4_hybrid_matching(
     safeguard_config: Dict,
     import_mode: str = "centralized",
 ) -> pd.DataFrame:
-    """STAGE 4: Match variants."""
+    """STAGE 4: Match variants (IMPROVED ALGORITHM v7.0)."""
+    from varidex.io.matching_improved import match_variants_hybrid
+
     with tqdm(total=len(user_df), desc="Matching variants", unit="var") as pbar:
-        matched_df = loader.match_variants_hybrid(
+        matched_df, rsid_count, coord_count = match_variants_hybrid(
             clinvar_df, user_df, clinvar_type, user_type
         )
         pbar.update(len(matched_df))
@@ -336,6 +344,13 @@ def execute_stage4_hybrid_matching(
         raise ValueError("No matches found! Check file formats and genomic coordinates")
 
     logger.info(f"✓ Matched {len(matched_df):,} variants")
+    logger.info(f"  - rsID matches: {rsid_count:,}")
+    logger.info(f"  - Coordinate matches: {coord_count:,}")
+
+    if "match_confidence" in matched_df.columns:
+        avg_conf = matched_df["match_confidence"].mean()
+        logger.info(f"  - Average confidence: {avg_conf:.2f}")
+
     return matched_df
 
 
@@ -528,96 +543,6 @@ class OutputStage:
     def execute(self, data):
         """Execute output generation."""
         return data
-
-
-def execute_stage4b_gnomad_annotation(
-    matched_df: pd.DataFrame,
-    gnomad_dir: Path,
-    logger: Optional[logging.Logger] = None,
-) -> pd.DataFrame:
-    """
-    Stage 4b: Annotate variants with gnomAD population frequencies.
-
-    Applies BA1, BS1, PM2 ACMG criteria based on allele frequencies.
-
-    Args:
-        matched_df: DataFrame with matched variants
-        gnomad_dir: Path to gnomAD VCF files
-        logger: Optional logger instance
-
-    Returns:
-        DataFrame with gnomad_af, BA1, BS1, PM2 columns added
-    """
-    if logger:
-        logger.info("Stage 4b: gnomAD annotation...")
-
-    from varidex.pipeline.gnomad_annotator_parallel import (
-        annotate_with_gnomad_parallel,
-        apply_frequency_acmg_criteria,
-    )
-
-    # Ensure ref/alt columns exist
-    if "ref" not in matched_df.columns and "ref_allele" in matched_df.columns:
-        matched_df["ref"] = matched_df["ref_allele"]
-    if "alt" not in matched_df.columns and "alt_allele" in matched_df.columns:
-        matched_df["alt"] = matched_df["alt_allele"]
-
-    # Annotate with gnomAD
-    result = annotate_with_gnomad_parallel(matched_df, gnomad_dir, n_workers=6)
-
-    # Apply frequency criteria
-    result = apply_frequency_acmg_criteria(result)
-
-    if logger:
-        with_af = result["gnomad_af"].notna().sum()
-        logger.info(f"  ✓ {with_af:,} variants with gnomAD frequency")
-        logger.info(
-            f"  ✓ BA1: {result['BA1'].sum():,}, BS1: {result['BS1'].sum():,}, PM2: {result['PM2'].sum():,}"
-        )
-
-    return result
-
-
-def execute_stage4c_consequence_criteria(
-    annotated_df: pd.DataFrame,
-    logger: Optional[logging.Logger] = None,
-) -> pd.DataFrame:
-    """
-    Stage 4c: Apply consequence-based ACMG criteria (PVS1, BP7).
-
-    Args:
-        annotated_df: DataFrame with variants and gnomAD annotations
-        logger: Optional logger instance
-
-    Returns:
-        DataFrame with PVS1, BP7, acmg_final_auto columns added
-    """
-    if logger:
-        logger.info("Stage 4c: Consequence-based ACMG criteria...")
-
-    from scripts.add_consequence_criteria import (
-        apply_consequence_criteria,
-        update_acmg_classification,
-    )
-
-    # Apply PVS1 and BP7
-    result = apply_consequence_criteria(annotated_df)
-
-    # Generate automated classification
-    result["acmg_final_auto"] = result.apply(update_acmg_classification, axis=1)
-
-    if logger:
-        pvs1 = result["PVS1"].sum()
-        bp7 = result["BP7"].sum()
-        logger.info(f"  ✓ PVS1: {pvs1:,}, BP7: {bp7:,}")
-
-        pathogenic = (
-            result["acmg_final_auto"].str.contains("Pathogenic", na=False).sum()
-        )
-        benign = result["acmg_final_auto"].str.contains("Benign", na=False).sum()
-        logger.info(f"  ✓ Auto-classified: {pathogenic:,} P/LP, {benign:,} B/LB")
-
-    return result
 
 
 def execute_stage4b_gnomad_annotation(
