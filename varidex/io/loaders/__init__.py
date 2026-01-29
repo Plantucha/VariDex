@@ -2,6 +2,8 @@
 VariDex IO Loaders Module
 ==========================
 Data loading utilities for ClinVar and user genome files.
+
+v7.0.2: Uses matching_improved.py with genotype verification
 """
 
 # Lazy loading to avoid circular imports
@@ -52,7 +54,7 @@ def load_vcf_file(*args, **kwargs):
 
 
 def match_variants_hybrid(*args, **kwargs):
-    """Match variants using hybrid strategy. Lazy import wrapper."""
-    from varidex.io.matching import match_variants_hybrid as _match
+    """Match variants using IMPROVED hybrid strategy with genotype verification."""
+    from varidex.io.matching_improved import match_variants_hybrid as _match  # ✅ NEW
 
     return _match(*args, **kwargs)

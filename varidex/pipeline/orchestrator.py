@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.1-dev
+varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.2 DEVELOPMENT
 
-Main 7-stage pipeline coordinator (coordination only).
+Main 7-stage pipeline coordinator with IMPROVED MATCHING.
+
+Changes v7.0.2:
+- Uses matching_improved.py with genotype verification
+- Removes false positives from coordinate-only matching
+- Accurate matching for production use
 
 Development version - not for production use.
-
-Changes v7.0.1:
-- Added PipelineOrchestrator class wrapper for test compatibility
-- Maintains functional main() implementation
 """
 
 import sys
@@ -76,8 +77,8 @@ except ImportError as e:
         load_23andme_file,
         load_vcf_file,
         detect_clinvar_file_type,
-        match_variants_hybrid,
     )
+    from varidex.io.matching_improved import match_variants_hybrid  # ✅ IMPROVED
     from varidex.reports.generator import create_results_dataframe, generate_all_reports
 
     config = FallbackConfig()
@@ -87,7 +88,7 @@ except ImportError as e:
         load_23andme_file = staticmethod(load_23andme_file)
         load_vcf_file = staticmethod(load_vcf_file)
         detect_clinvar_file_type = staticmethod(detect_clinvar_file_type)
-        match_variants_hybrid = staticmethod(match_variants_hybrid)
+        match_variants_hybrid = staticmethod(match_variants_hybrid)  # ✅ IMPROVED
 
     class _ReportsWrapper:
         create_results_dataframe = staticmethod(create_results_dataframe)
@@ -287,8 +288,8 @@ def main(
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
         print(f"  ✓ Loaded: {state.user_variants:,} variants")
 
-        # STAGE 4: HYBRID MATCHING
-        print_stage_header(4, 7, "🔗 MATCHING VARIANTS")
+        # STAGE 4: HYBRID MATCHING (IMPROVED v7.0)
+        print_stage_header(4, 7, "🔗 MATCHING VARIANTS (IMPROVED)")
 
         matched_df: pd.DataFrame = execute_stage4_hybrid_matching(
             clinvar_df,
@@ -402,7 +403,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="ClinVar-WGS ACMG Pipeline v7.0.1-dev", add_help=False
+        description="ClinVar-WGS ACMG Pipeline v7.0.2-dev", add_help=False
     )
     parser.add_argument("clinvar_file", nargs="?")
     parser.add_argument("user_data", nargs="?")

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "varidex"
-version = "6.4.0"
+version = "7.0.3"
 description = "Variant Data Extraction and Classification System for ACMG 2015-compliant variant classification"
 authors = [
     {name = "VariDex Development Team", email = "plantucha@gmail.com"},
@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "AGPL-3.0-or-later"}
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
@@ -34,6 +34,23 @@ dependencies = [
     "requests>=2.26.0",
     "click>=8.0.0",
     "hypothesis>=6.0.0",
+    "pyarrow>=23.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0.0",
+    "mypy>=1.0.0",
+    "isort>=5.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "hypothesis>=6.0.0",
+]
+docs = [
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
 ]
 
 [project.urls]

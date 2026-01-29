@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/stages.py v7.0.0 DEVELOPMENT
+varidex/pipeline/stages.py v7.0.2 DEVELOPMENT
 
-Pipeline stage execution with IMPROVED MATCHING ALGORITHM.
+Pipeline stage execution with IMPROVED MATCHING and FIXED CLASSIFICATION.
 
-Changes in v7.0:
+Changes in v7.0.2:
+- BUGFIX: DataFrame now converted to list of dicts before classification
 - Uses matching_improved.py with genotype verification
 - Removes false positives from coordinate-only matching
 - Adds confidence scoring to matches
@@ -303,7 +304,7 @@ def execute_stage3_load_user_data(
             user_df = loader.load_vcf_file(user_file)
         else:
             logger.warning("⚠ Basic VCF parsing")
-            user_df = pd.read_csv(user_file, sep="\\t", comment="#", low_memory=False)
+            user_df = pd.read_csv(user_file, sep="\t", comment="#", low_memory=False)
             if "#CHROM" in user_df.columns:
                 user_df.rename(
                     columns={
@@ -316,7 +317,7 @@ def execute_stage3_load_user_data(
                     inplace=True,
                 )
     else:
-        user_df = pd.read_csv(user_file, sep="\\t", low_memory=False)
+        user_df = pd.read_csv(user_file, sep="\t", low_memory=False)
 
     logger.info(f"✓ Loaded {len(user_df):,} user variants")
     return user_df
@@ -355,11 +356,15 @@ def execute_stage4_hybrid_matching(
 
 
 def _classify_batch(batch_data):
-    """Helper for parallel ACMG classification."""
+    """Helper for parallel ACMG classification - FIXED v7.0.2."""
     from varidex.utils.helpers import classify_variants_production
 
     batch_df, safeguard_config, clinvar_type, user_type = batch_data
-    return classify_variants_production(batch_df, safeguard_config)
+
+    # ✅ CRITICAL FIX: Convert DataFrame to list of dicts
+    batch_variants = batch_df.to_dict("records")
+
+    return classify_variants_production(batch_variants, safeguard_config)
 
 
 def execute_stage5_acmg_classification(
@@ -371,7 +376,7 @@ def execute_stage5_acmg_classification(
     parallel: bool = True,
     batch_size: int = 1000,
 ) -> Tuple[List, Dict]:
-    """STAGE 5: ACMG classification."""
+    """STAGE 5: ACMG classification - FIXED v7.0.2."""
     from varidex.utils.helpers import classify_variants_production
 
     if parallel and len(matched_df) > batch_size:
@@ -411,11 +416,14 @@ def execute_stage5_acmg_classification(
         return classified_variants, combined_stats
 
     else:
+        # ✅ CRITICAL FIX: Convert DataFrame to list of dicts for non-parallel path
+        variant_list = matched_df.to_dict("records")
+
         with tqdm(
-            total=len(matched_df), desc="Classifying variants", unit="var"
+            total=len(variant_list), desc="Classifying variants", unit="var"
         ) as pbar:
             classified_variants, stats = classify_variants_production(
-                matched_df, safeguard_config, clinvar_type, user_type
+                variant_list, safeguard_config, clinvar_type, user_type
             )
             pbar.update(len(classified_variants))
 

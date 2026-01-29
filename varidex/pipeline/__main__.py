@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-VariDex v6.0.0 COMPLETE Pipeline CLI + Auto-Downloader
+VariDex v7.0.2 COMPLETE Pipeline CLI + Auto-Downloader
+
+Development version with IMPROVED MATCHING ALGORITHM
 """
 
 import sys
@@ -44,8 +46,8 @@ def main() -> None:
     clinvar_data = load_clinvar_file(args.clinvar)
     user_data = load_user_file(args.user_genome)
 
-    # Match variants first
-    from varidex.io.matching import match_variants_hybrid
+    # Match variants first - IMPROVED ALGORITHM
+    from varidex.io.matching_improved import match_variants_hybrid  # ✅ FIXED
 
     result = match_variants_hybrid(
         clinvar_data, user_data, clinvar_type="vcf", user_type="23andme"

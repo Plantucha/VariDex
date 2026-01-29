@@ -1,0 +1,18 @@
+--- varidex/io/loaders/clinvar.py
++++ varidex/io/loaders/clinvar.py
+@@ -291,13 +295,13 @@ def load_clinvar_vcf(
+ 
+         # Validate and normalize
+         print("✅ Validating chromosomes and positions...")
+         df = validate_chromosome_consistency(df)
+-        df = validate_position_ranges(df)
++        df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
+         df = normalize_dataframe_coordinates(df)
+         print("  ✓ Validated\\n")
+ 
+         # Filter valid chromosomes
+         orig_len: int = len(df)
+-        df = df[df["chromosome"].isin(VALID_CHROMOSOMES)]
++        df = filter_valid_chromosomes_parallel(df)  # ⚡ PARALLEL
+         print(f"🔬 Filtered to valid chromosomes: {orig_len:,} → {len(df):,}\\n")
+ 

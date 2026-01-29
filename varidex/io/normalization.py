@@ -149,9 +149,7 @@ def _left_align_variants_sequential(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _left_align_chunk(
-    args: Tuple[pd.DataFrame, int]
-) -> Tuple[pd.DataFrame, int]:
+def _left_align_chunk(args: Tuple[pd.DataFrame, int]) -> Tuple[pd.DataFrame, int]:
     """
     Worker wrapper: run sequential left-alignment on a single chunk.
 

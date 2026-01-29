@@ -192,7 +192,9 @@ def _validate_sequential(df: pd.DataFrame) -> pd.DataFrame:
     ):
         chrom_mask = (df["chromosome"] == chrom) & (df["position"] > max_pos)
         if chrom_mask.any():
-            logger.warning(f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos:,}")
+            logger.warning(
+                f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos:,}"
+            )
         invalid_mask |= chrom_mask
 
     result = df[~invalid_mask].reset_index(drop=True)

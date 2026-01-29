@@ -213,17 +213,17 @@ def match_by_position_23andme_improved(
         try:
             # CRITICAL FIX: Handle column suffixes after merge
             genotype = str(row.get("genotype", "")).upper()
-            
+
             # Try different possible column names after merge
             ref = None
             alt = None
-            
+
             # Check for clinvar columns (preferred)
             if "ref_allele_clinvar" in row.index:
                 ref = str(row.get("ref_allele_clinvar", "")).upper()
             elif "ref_allele" in row.index:
                 ref = str(row.get("ref_allele", "")).upper()
-            
+
             if "alt_allele_clinvar" in row.index:
                 alt = str(row.get("alt_allele_clinvar", "")).upper()
             elif "alt_allele" in row.index:
@@ -241,11 +241,13 @@ def match_by_position_23andme_improved(
                 return False
 
             alleles_in_genotype = set(genotype)
-            
+
             # CRITICAL FIX: Simplified logic (removed redundant union)
             # Must contain alt allele AND only use ref or alt
             expected_alleles = {ref, alt}
-            return alt in alleles_in_genotype and alleles_in_genotype.issubset(expected_alleles)
+            return alt in alleles_in_genotype and alleles_in_genotype.issubset(
+                expected_alleles
+            )
 
         except Exception as e:
             logger.debug(f"Genotype check failed: {e}")
@@ -263,9 +265,7 @@ def match_by_position_23andme_improved(
         axis=1,
     )
 
-    logger.info(
-        f"Position matching: {len(merged):,} total, {len(verified):,} verified"
-    )
+    logger.info(f"Position matching: {len(merged):,} total, {len(verified):,} verified")
     return verified
 
 
@@ -286,9 +286,7 @@ def deduplicate_matches(df: pd.DataFrame, strategy: str = "best") -> pd.DataFram
     # Create user variant key for deduplication
     if "chromosome_user" in df.columns and "position_user" in df.columns:
         df["_dedup_key"] = (
-            df["chromosome_user"].astype(str)
-            + ":"
-            + df["position_user"].astype(str)
+            df["chromosome_user"].astype(str) + ":" + df["position_user"].astype(str)
         )
     elif "coord_key" in df.columns:
         df["_dedup_key"] = df["coord_key"]

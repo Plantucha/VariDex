@@ -1,37 +1,26 @@
 #!/usr/bin/env python3
 """
-varidex/io/loaders/clinvar.py - ClinVar Data Loader v6.3.0 DEVELOPMENT
-Load ClinVar VCF, TSV, variant_summary with auto-detection and intelligent caching.
+varidex/io/loaders/clinvar.py - ClinVar Data Loader v6.1.0 DEVELOPMENT
+Load ClinVar VCF, TSV, variant_summary with auto-detection.
 Returns DataFrame: rsid, chromosome, position, ref/alt_allele, gene, clinical_sig, coord_key
 
-v6.3.0 Changes:
-- Added intelligent caching (57s → 3-5s on subsequent runs)
-- Auto-detects source file changes and invalidates cache
-- Saves processed data as compressed parquet
-
-v6.2.0 Changes:
-- Added parallel validation (4-8x faster)
-- Progress bars for all long operations
-- Better user feedback during processing
+v6.1.0 Changes:
+- Added tqdm progress bars for visual feedback
+- Chunked reading for better memory efficiency
+- Stage-by-stage progress indicators
+- Optimized multiallelic splitting
 """
 
 import pandas as pd
 import gzip
 import re
 import logging
-import json
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Callable
 from tqdm import tqdm
 from varidex.version import __version__
 from varidex.exceptions import DataLoadError, ValidationError, FileProcessingError
 from varidex.io.normalization import normalize_dataframe_coordinates
-
-# Import parallel validators
-from varidex.io.validators_parallel import (
-    validate_position_ranges_parallel,
-    filter_valid_chromosomes_parallel,
-)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -153,11 +142,22 @@ def validate_chromosome_consistency(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_position_ranges(df: pd.DataFrame) -> pd.DataFrame:
-    """DEPRECATED: Use validate_position_ranges_parallel instead.
-
-    Kept for backwards compatibility.
-    """
-    return validate_position_ranges_parallel(df)
+    """VECTORIZED: Validate positions within chr bounds."""
+    if "chromosome" not in df.columns or "position" not in df.columns:
+        return df
+    orig_len: int = len(df)
+    invalid_mask: pd.Series = (df["position"] < 1) | df["position"].isna()
+    for chrom, max_pos in CHROMOSOME_MAX_POSITIONS.items():
+        chrom_mask: pd.Series = (df["chromosome"] == chrom) & (df["position"] > max_pos)
+        if chrom_mask.any():
+            logger.warning(
+                f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos}"
+            )
+        invalid_mask |= chrom_mask
+    df = df[~invalid_mask].reset_index(drop=True)
+    if orig_len > len(df):
+        logger.info(f"Filtered {orig_len - len(df)} invalid positions")
+    return df
 
 
 def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
@@ -226,7 +226,7 @@ def extract_rsid_from_info(info_str: Any) -> Optional[str]:
 def load_clinvar_vcf(
     filepath: Path, checkpoint_dir: Optional[Path] = None
 ) -> pd.DataFrame:
-    """Load full ClinVar VCF with parallel validation and progress bars."""
+    """Load full ClinVar VCF with progress visualization."""
     print(f"\n{'='*70}")
     print(f"📁 LOADING VCF: {filepath.name}")
     print(f"{'='*70}")
@@ -302,16 +302,16 @@ def load_clinvar_vcf(
         df = split_multiallelic_vcf(df)
         print()
 
-        # Validate and normalize with PARALLEL processing
+        # Validate and normalize
         print("✅ Validating chromosomes and positions...")
         df = validate_chromosome_consistency(df)
-        df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
+        df = validate_position_ranges(df)
         df = normalize_dataframe_coordinates(df)
         print("  ✓ Validated\n")
 
-        # Filter valid chromosomes with PARALLEL processing
+        # Filter valid chromosomes
         orig_len: int = len(df)
-        df = filter_valid_chromosomes_parallel(df)  # ⚡ PARALLEL
+        df = df[df["chromosome"].isin(VALID_CHROMOSOMES)]
         print(f"🔬 Filtered to valid chromosomes: {orig_len:,} → {len(df):,}\n")
 
         # Extract rsIDs from INFO field
@@ -379,7 +379,7 @@ def load_clinvar_vcf_tsv(
 
         print("✅ Validating and normalizing...")
         df = validate_chromosome_consistency(df)
-        df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
+        df = validate_position_ranges(df)
         df = normalize_dataframe_coordinates(df)
 
         orig_len: int = len(df)
@@ -482,7 +482,7 @@ def load_variant_summary(
         if all(col in df.columns for col in REQUIRED_COORD_COLUMNS):
             print("✅ Validating coordinates...")
             df = validate_chromosome_consistency(df)
-            df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
+            df = validate_position_ranges(df)
             df = normalize_dataframe_coordinates(df)
             print("  ✓ Validated\n")
 
@@ -500,71 +500,11 @@ def load_variant_summary(
 
 def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
     """
-    Auto-detect and load ClinVar file with intelligent caching v6.3.0.
-
-    Caching behavior:
-    - First run: Process VCF (~57s), save compressed cache
-    - Subsequent runs: Load from cache (3-5s)
-    - Auto-invalidates if source file changes (size/timestamp)
-
+    Auto-detect and load ClinVar file (main entry).
     Supports: VCF, VCF-TSV, variant_summary.txt
     Returns DataFrame with coord_key and rsid.
-
-    Args:
-        filepath: Path to ClinVar file
-        **kwargs: Additional arguments (checkpoint_dir for cache location)
-
-    Returns:
-        DataFrame with processed ClinVar data
     """
     filepath = Path(filepath)
-
-    # Setup cache directory
-    cache_dir = Path(kwargs.get("checkpoint_dir", ".varidex_cache"))
-    cache_dir.mkdir(exist_ok=True, parents=True)
-
-    # Create cache filenames based on source file
-    cache_name = f"{filepath.stem}_processed.parquet"
-    cache_file = cache_dir / cache_name
-    cache_meta_file = cache_dir / f"{filepath.stem}_meta.json"
-
-    # Check if cache is valid
-    use_cache = False
-    if cache_file.exists() and cache_meta_file.exists():
-        try:
-            with open(cache_meta_file, "r") as f:
-                meta = json.load(f)
-
-            # Validate cache: check file size and modification time
-            current_size = filepath.stat().st_size
-            current_mtime = filepath.stat().st_mtime
-
-            if (
-                meta.get("source_size") == current_size
-                and abs(meta.get("source_mtime", 0) - current_mtime) < 1.0
-            ):
-                use_cache = True
-                logger.info(f"💾 Using cached ClinVar data from {cache_file.name}")
-                print(f"\n💾 Loading from cache: {cache_file.name}")
-        except Exception as e:
-            logger.warning(f"Cache validation failed: {e}, will reload from source")
-            use_cache = False
-
-    # Load from cache if valid
-    if use_cache:
-        try:
-            import time
-
-            start_time = time.time()
-            df = pd.read_parquet(cache_file)
-            load_time = time.time() - start_time
-            logger.info(f"✓ Loaded {len(df):,} variants from cache in {load_time:.1f}s")
-            print(f"✓ Loaded {len(df):,} variants in {load_time:.1f}s (from cache)\n")
-            return df
-        except Exception as e:
-            logger.warning(f"Cache load failed: {e}, will reload from source")
-
-    # Load from source file
     try:
         file_type: str = detect_clinvar_file_type(filepath)
 
@@ -578,35 +518,7 @@ def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
         if loader is None:
             raise ValueError(f"Unknown file type: {file_type}")
 
-        df = loader(filepath, **kwargs)
-
-        # Save to cache
-        try:
-            logger.info(f"💾 Saving processed ClinVar to cache...")
-            print(f"💾 Saving to cache: {cache_file.name}...")
-
-            df.to_parquet(cache_file, index=False, compression="zstd")
-
-            # Save metadata for validation
-            meta = {
-                "source_file": str(filepath),
-                "source_size": filepath.stat().st_size,
-                "source_mtime": filepath.stat().st_mtime,
-                "processed_rows": len(df),
-                "cache_version": __version__,
-                "file_type": file_type,
-            }
-            with open(cache_meta_file, "w") as f:
-                json.dump(meta, f, indent=2)
-
-            cache_size_mb = cache_file.stat().st_size / 1024 / 1024
-            logger.info(f"✓ Cache saved: {cache_file.name} ({cache_size_mb:.1f} MB)")
-            print(f"✓ Cache saved: {cache_size_mb:.1f} MB\n")
-        except Exception as e:
-            logger.warning(f"Failed to save cache: {e}")
-
-        return df
-
+        return loader(filepath, **kwargs)
     except Exception as e:
         raise DataLoadError(
             "ClinVar load failed",
