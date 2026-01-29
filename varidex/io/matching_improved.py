@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/io/matching_improved.py - Improved Variant Matching v6.5.1
+varidex/io/matching_improved.py - Improved Variant Matching v6.5.5
 
 Enhancements over matching.py:
 1. 23andMe genotype verification (prevents false positives)
@@ -8,7 +8,7 @@ Enhancements over matching.py:
 3. Better deduplication (keeps highest quality matches)
 4. More robust error handling
 
-BUGFIX v6.5.1: Fixed column suffix handling and genotype logic
+BUGFIX v6.5.5: Fixed review_status type mismatch (string vs int)
 """
 
 import pandas as pd
@@ -31,14 +31,14 @@ REQUIRED_COORD_COLUMNS: List[str] = [
 
 
 def calculate_match_confidence(
-    match_type: str, review_status: Optional[int] = None, **kwargs
+    match_type: str, review_status: Optional[Any] = None, **kwargs
 ) -> float:
     """
     Calculate confidence score for variant match.
 
     Args:
         match_type: Type of match performed
-        review_status: ClinVar review stars (0-4)
+        review_status: ClinVar review stars (0-4) - can be int, str, or None
         **kwargs: Additional factors (reserved for future)
 
     Returns:
@@ -55,13 +55,28 @@ def calculate_match_confidence(
 
     confidence = base_scores.get(match_type, 0.5)
 
-    # Adjust for ClinVar review status
+    # CRITICAL FIX: Convert review_status to int safely
+    review_int = None
     if review_status is not None:
-        if review_status >= 3:
+        try:
+            # Handle both int and string inputs
+            if isinstance(review_status, (int, float)):
+                review_int = int(review_status)
+            elif isinstance(review_status, str):
+                # Try to parse string to int
+                review_int = int(float(review_status))
+        except (ValueError, TypeError):
+            # If conversion fails, treat as None (no adjustment)
+            logger.debug(f"Could not parse review_status: {review_status}")
+            review_int = None
+
+    # Adjust for ClinVar review status
+    if review_int is not None:
+        if review_int >= 3:
             confidence *= 1.0  # Trusted, no penalty
-        elif review_status == 2:
+        elif review_int == 2:
             confidence *= 0.9
-        elif review_status == 1:
+        elif review_int == 1:
             confidence *= 0.8
         else:
             confidence *= 0.6  # Low confidence data
