@@ -551,8 +551,8 @@ def execute_stage4b_gnomad_annotation(
     if logger:
         logger.info("Stage 4b: gnomAD annotation...")
 
-    from varidex.pipeline.gnomad_annotator import (
-        annotate_with_gnomad,
+    from varidex.pipeline.gnomad_annotator_parallel import (
+        annotate_with_gnomad_parallel,
         apply_frequency_acmg_criteria,
     )
 
@@ -563,7 +563,7 @@ def execute_stage4b_gnomad_annotation(
         matched_df["alt"] = matched_df["alt_allele"]
 
     # Annotate with gnomAD
-    result = annotate_with_gnomad(matched_df, gnomad_dir)
+    result = annotate_with_gnomad_parallel(matched_df, gnomad_dir, n_workers=6)
 
     # Apply frequency criteria
     result = apply_frequency_acmg_criteria(result)
@@ -641,8 +641,8 @@ def execute_stage4b_gnomad_annotation(
     if logger:
         logger.info("Stage 4b: gnomAD annotation...")
 
-    from varidex.pipeline.gnomad_annotator import (
-        annotate_with_gnomad,
+    from varidex.pipeline.gnomad_annotator_parallel import (
+        annotate_with_gnomad_parallel,
         apply_frequency_acmg_criteria,
     )
 
@@ -653,7 +653,7 @@ def execute_stage4b_gnomad_annotation(
         matched_df["alt"] = matched_df["alt_allele"]
 
     # Annotate with gnomAD
-    result = annotate_with_gnomad(matched_df, gnomad_dir)
+    result = annotate_with_gnomad_parallel(matched_df, gnomad_dir, n_workers=6)
 
     # Apply frequency criteria
     result = apply_frequency_acmg_criteria(result)
