@@ -153,7 +153,8 @@ pipeline.generate_report(results, output="classification_report.csv")
 
 ## 📊 Project Status
 
-### Current Version: **6.4.0** (Alpha)
+### Current Version: **6.4.0** (Alpha Development)
+**Last Updated:** January 28, 2026
 
 | Component | Implementation | Test Coverage | Status |
 |-----------|---------------|---------------|--------|
@@ -171,6 +172,8 @@ pipeline.generate_report(results, output="classification_report.csv")
 ✅ **Documentation initiative** launched with comprehensive tooling  
 ✅ **745+ automated tests** ensuring code quality  
 ✅ **Zero broken tests** - full test suite passing  
+✅ **Black code formatting** - All code auto-formatted to PEP 8 standards  
+✅ **GitHub migration complete** - Repository successfully moved to GitHub
 
 ### What's Working
 
@@ -424,7 +427,7 @@ A: Open an [issue](https://github.com/Plantucha/VariDex/issues) or start a [disc
 
 ### Built with ❤️ for the Genomics Research Community
 
-**Version 6.4.0** • **January 2026** • **Alpha Release**
+**Version 6.4.0** • **January 2026** • **Alpha Development**
 
 [⭐ Star on GitHub](https://github.com/Plantucha/VariDex) • [📖 Read the Docs](https://github.com/Plantucha/VariDex/tree/main/docs) • [🤝 Contribute](CONTRIBUTING.md)
 
