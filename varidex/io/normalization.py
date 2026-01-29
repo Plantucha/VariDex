@@ -1,13 +1,14 @@
 """
-VariDex IO Normalization Module v6.5
-====================================
+VariDex IO Normalization Module v6.5.1
+=======================================
 Data normalization utilities for variant data.
 
-BUGFIX v6.5: Added coord_key creation and left-alignment
+BUGFIX v6.5.1: Fixed NaN handling and coord_key creation
 """
 
 from typing import Any, Tuple
 import pandas as pd
+import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
@@ -89,12 +90,16 @@ def left_align_variants(df: pd.DataFrame) -> pd.DataFrame:
 
     for idx in df.index:
         try:
+            # CRITICAL FIX: Check for NaN BEFORE converting to string
+            if pd.isna(df.at[idx, "ref_allele"]) or pd.isna(df.at[idx, "alt_allele"]):
+                continue
+
             ref = str(df.at[idx, "ref_allele"]).upper()
             alt = str(df.at[idx, "alt_allele"]).upper()
             pos = int(df.at[idx, "position"])
 
-            # Skip if missing data
-            if pd.isna(ref) or pd.isna(alt) or ref == "" or alt == "":
+            # Skip empty strings
+            if ref == "" or alt == "" or ref == "NAN" or alt == "NAN":
                 continue
 
             # Trim common suffixes (right side)
@@ -113,7 +118,7 @@ def left_align_variants(df: pd.DataFrame) -> pd.DataFrame:
             df.at[idx, "position"] = pos
 
         except Exception as e:
-            logger.warning(f"Left-alignment failed for row {idx}: {e}")
+            logger.debug(f"Left-alignment failed for row {idx}: {e}")
             continue
 
     return df
@@ -147,18 +152,33 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
     # Left-align indels (CRITICAL for matching!)
     df = left_align_variants(df)
 
-    # Create key: chr:pos:ref:alt
-    df["coord_key"] = (
-        df["chromosome"].astype(str)
-        + ":"
-        + df["position"].astype(str)
-        + ":"
-        + df["ref_allele"].astype(str).str.upper()
-        + ":"
-        + df["alt_allele"].astype(str).str.upper()
+    # CRITICAL FIX: Filter out rows with NaN values before creating keys
+    valid_mask = (
+        df["chromosome"].notna()
+        & df["position"].notna()
+        & df["ref_allele"].notna()
+        & df["alt_allele"].notna()
     )
 
-    logger.info(f"Created {len(df)} coord_keys")
+    # Create key only for valid rows
+    df.loc[valid_mask, "coord_key"] = (
+        df.loc[valid_mask, "chromosome"].astype(str)
+        + ":"
+        + df.loc[valid_mask, "position"].astype(str)
+        + ":"
+        + df.loc[valid_mask, "ref_allele"].astype(str).str.upper()
+        + ":"
+        + df.loc[valid_mask, "alt_allele"].astype(str).str.upper()
+    )
+
+    # Set invalid rows to None/NaN
+    df.loc[~valid_mask, "coord_key"] = np.nan
+
+    valid_keys = df["coord_key"].notna().sum()
+    invalid_keys = (~valid_mask).sum()
+
+    logger.info(f"Created {valid_keys:,} coord_keys ({invalid_keys:,} skipped)")
+
     return df
 
 
@@ -210,7 +230,8 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     required = ["chromosome", "position", "ref_allele", "alt_allele"]
     if all(col in df.columns for col in required):
         df = create_coord_key(df)
-        logger.info(f"Normalized {len(df)} variants with coord_key")
+        valid_count = df["coord_key"].notna().sum()
+        logger.info(f"Normalized {len(df):,} variants, {valid_count:,} with coord_key")
     else:
         missing = [col for col in required if col not in df.columns]
         logger.warning(f"Cannot create coord_key, missing: {missing}")
