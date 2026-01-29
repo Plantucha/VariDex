@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-varidex/io/validators_parallel.py - Parallel Validation v1.0.0
+varidex/io/validators_parallel.py - Parallel Validation v1.1.0
 
 Parallel processing for chromosome and position validation.
 Used for large datasets (1M+ variants) to speed up validation.
+
+v1.1.0: Added progress bars for user feedback
 
 Performance:
 - Sequential: ~10-15 seconds for 4M variants
@@ -16,6 +18,7 @@ import logging
 from typing import Dict, List, Tuple
 from multiprocessing import Pool, cpu_count
 from functools import partial
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +94,7 @@ def validate_position_ranges_parallel(
     df: pd.DataFrame, n_workers: int = None
 ) -> pd.DataFrame:
     """
-    Parallel validation of chromosome positions.
+    Parallel validation of chromosome positions with progress bar.
 
     Args:
         df: DataFrame with chromosome and position columns
@@ -120,17 +123,23 @@ def validate_position_ranges_parallel(
         for idx, i in enumerate(range(0, len(df), chunk_size))
     ]
 
-    logger.info(
-        f"Validating {len(df):,} variants in {len(chunks)} chunks "
-        f"({n_workers} workers)"
-    )
+    print(f"  ⚡ Parallel validation: {len(chunks)} chunks, {n_workers} workers")
 
-    # Process chunks in parallel
+    # Process chunks in parallel with progress bar
     validate_func = partial(_validate_chunk, max_positions=CHROMOSOME_MAX_POSITIONS)
 
     try:
         with Pool(processes=n_workers) as pool:
-            results = pool.map(validate_func, chunks)
+            # Use tqdm to show progress
+            results = list(
+                tqdm(
+                    pool.imap(validate_func, chunks),
+                    total=len(chunks),
+                    desc="  Validating",
+                    unit="chunk",
+                    leave=False,
+                )
+            )
     except Exception as e:
         logger.warning(f"Parallel validation failed, falling back to sequential: {e}")
         return _validate_sequential(df)
@@ -148,7 +157,7 @@ def validate_position_ranges_parallel(
     # Log warnings
     for chrom, count in sorted(all_warnings.items()):
         max_pos = CHROMOSOME_MAX_POSITIONS.get(chrom, 0)
-        logger.warning(f"{count} variants on {chrom} exceed max {max_pos}")
+        logger.warning(f"{count} variants on {chrom} exceed max {max_pos:,}")
 
     # Concatenate valid chunks
     if not valid_chunks:
@@ -165,7 +174,7 @@ def validate_position_ranges_parallel(
 
 def _validate_sequential(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Sequential validation (fallback for small datasets or errors).
+    Sequential validation with progress indication.
 
     Args:
         df: DataFrame to validate
@@ -176,10 +185,14 @@ def _validate_sequential(df: pd.DataFrame) -> pd.DataFrame:
     orig_len = len(df)
     invalid_mask = (df["position"] < 1) | df["position"].isna()
 
-    for chrom, max_pos in CHROMOSOME_MAX_POSITIONS.items():
+    # Show progress for chromosome checking
+    chrom_items = list(CHROMOSOME_MAX_POSITIONS.items())
+    for chrom, max_pos in tqdm(
+        chrom_items, desc="  Checking chromosomes", unit="chr", leave=False
+    ):
         chrom_mask = (df["chromosome"] == chrom) & (df["position"] > max_pos)
         if chrom_mask.any():
-            logger.warning(f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos}")
+            logger.warning(f"{chrom_mask.sum()} variants on {chrom} exceed max {max_pos:,}")
         invalid_mask |= chrom_mask
 
     result = df[~invalid_mask].reset_index(drop=True)
