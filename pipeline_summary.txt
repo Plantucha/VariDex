@@ -1,0 +1,40 @@
+========================================
+VariDex Pipeline Execution Summary
+========================================
+Date: Wed Jan 28 19:14:53 EST 2026
+Runtime: 2m 23s (142.7s)
+
+INPUT DATA:
+-----------
+• ClinVar: 4,274,869 variants
+• User genome: 601,845 variants
+• Match rate: 7.7% (46,076 matches)
+
+gnomAD ANNOTATION:
+------------------
+• Variants annotated: 46,076
+• Found in gnomAD: 24,565 (53.3%)
+• BA1 (>5% freq): 5,910 variants
+• BS1 (>1% freq): 1,006 variants  
+• PM2 (<0.01% rare): 13,645 variants
+
+CONSEQUENCE ANALYSIS:
+---------------------
+• PVS1 (loss-of-function): 9,034
+• BP7 (synonymous): 3,805
+
+FINAL CLASSIFICATIONS:
+----------------------
+• Total classified: 1,598 variants
+• Auto-classified P/LP: 8,913
+• Auto-classified B/LB: 8,917
+
+OUTPUT FILES:
+-------------
+• matched_variants.csv (32 MB)
+• acmg_classified.csv (34 MB)
+• classified_variants_*.csv (35 KB)
+• classified_variants_*.json (148 KB)
+• classified_variants_*.html (12 KB)
+
+========================================
