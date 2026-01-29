@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/io/matching_improved.py - Improved Variant Matching v6.5-dev
+varidex/io/matching_improved.py - Improved Variant Matching v6.5.1
 
 Enhancements over matching.py:
 1. 23andMe genotype verification (prevents false positives)
@@ -8,7 +8,7 @@ Enhancements over matching.py:
 3. Better deduplication (keeps highest quality matches)
 4. More robust error handling
 
-Development version - will replace matching.py after testing.
+BUGFIX v6.5.1: Fixed column suffix handling and genotype logic
 """
 
 import pandas as pd
@@ -196,22 +196,41 @@ def match_by_position_23andme_improved(
     def genotype_matches(row: pd.Series) -> bool:
         """Check if genotype is consistent with ref/alt."""
         try:
+            # CRITICAL FIX: Handle column suffixes after merge
             genotype = str(row.get("genotype", "")).upper()
-            ref = str(row.get("ref_allele", "")).upper()
-            alt = str(row.get("alt_allele", "")).upper()
+            
+            # Try different possible column names after merge
+            ref = None
+            alt = None
+            
+            # Check for clinvar columns (preferred)
+            if "ref_allele_clinvar" in row.index:
+                ref = str(row.get("ref_allele_clinvar", "")).upper()
+            elif "ref_allele" in row.index:
+                ref = str(row.get("ref_allele", "")).upper()
+            
+            if "alt_allele_clinvar" in row.index:
+                alt = str(row.get("alt_allele_clinvar", "")).upper()
+            elif "alt_allele" in row.index:
+                alt = str(row.get("alt_allele", "")).upper()
 
             if not genotype or not ref or not alt:
+                return False
+
+            # Filter out NaN strings
+            if ref in ["NAN", "NONE", ""] or alt in ["NAN", "NONE", ""]:
                 return False
 
             # 23andMe genotype is 2 characters (e.g., "AG", "AA", "GG")
             if len(genotype) != 2:
                 return False
 
-            alleles = set(genotype)
-            expected = {ref, alt}
-
-            # Must contain alt allele AND be subset of {ref, alt}
-            return alt in alleles and alleles.issubset(expected.union({ref}))
+            alleles_in_genotype = set(genotype)
+            
+            # CRITICAL FIX: Simplified logic (removed redundant union)
+            # Must contain alt allele AND only use ref or alt
+            expected_alleles = {ref, alt}
+            return alt in alleles_in_genotype and alleles_in_genotype.issubset(expected_alleles)
 
         except Exception as e:
             logger.debug(f"Genotype check failed: {e}")
