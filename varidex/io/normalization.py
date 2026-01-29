@@ -1,12 +1,12 @@
 """
-VariDex IO Normalization Module v6.5.1
+VariDex IO Normalization Module v6.5.2
 =======================================
 Data normalization utilities for variant data.
 
-BUGFIX v6.5.1: Fixed NaN handling and coord_key creation
+BUGFIX v6.5.2: NaN-safe normalize functions
 """
 
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 import pandas as pd
 import numpy as np
 import logging
@@ -14,38 +14,58 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def normalize_chromosome(chrom: str) -> str:
+def normalize_chromosome(chrom: Any) -> Optional[str]:
     """
-    Normalize chromosome name.
+    Normalize chromosome name (NaN-safe).
 
     Args:
-        chrom: Chromosome name (e.g., "chr1", "1", "chrX")
+        chrom: Chromosome name (e.g., "chr1", "1", "chrX") or NaN
 
     Returns:
-        Normalized chromosome name
+        Normalized chromosome name or None if invalid
     """
-    chrom = str(chrom).replace("chr", "").replace("Chr", "").replace("CHR", "")
+    # CRITICAL FIX: Handle NaN/None before string conversion
+    if pd.isna(chrom) or chrom is None:
+        return None
+    
+    try:
+        chrom = str(chrom).replace("chr", "").replace("Chr", "").replace("CHR", "")
+        
+        # Handle empty strings
+        if chrom.strip() == "" or chrom.upper() in ["NAN", "NONE"]:
+            return None
 
-    if chrom in ["M", "m"]:
-        return "MT"
+        if chrom in ["M", "m"]:
+            return "MT"
 
-    return chrom.upper()
+        return chrom.upper()
+    except Exception as e:
+        logger.debug(f"normalize_chromosome failed for {chrom}: {e}")
+        return None
 
 
-def normalize_position(pos: Any) -> int:
+def normalize_position(pos: Any) -> Optional[int]:
     """
-    Normalize genomic position.
+    Normalize genomic position (NaN-safe).
 
     Args:
-        pos: Genomic position
+        pos: Genomic position or NaN
 
     Returns:
-        Normalized position (ensuring positive integer)
+        Normalized position (positive integer) or None if invalid
     """
-    return abs(int(pos))
+    # CRITICAL FIX: Handle NaN/None before int conversion
+    if pd.isna(pos) or pos is None:
+        return None
+    
+    try:
+        return abs(int(float(pos)))  # float() handles string numbers
+    except (ValueError, TypeError) as e:
+        logger.debug(f"normalize_position failed for {pos}: {e}")
+        return None
 
 
-def normalize_ref_alt(ref: str, alt: str) -> Tuple[str, str]:
+def normalize_ref_alt(ref: str, alt: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Normalize reference and alternate alleles (basic trimming).
 
@@ -54,17 +74,29 @@ def normalize_ref_alt(ref: str, alt: str) -> Tuple[str, str]:
         alt: Alternate allele
 
     Returns:
-        Tuple of (normalized_ref, normalized_alt)
+        Tuple of (normalized_ref, normalized_alt) or (None, None) if invalid
     """
-    ref = str(ref).upper().strip()
-    alt = str(alt).upper().strip()
+    # Handle NaN inputs
+    if pd.isna(ref) or pd.isna(alt):
+        return (None, None)
+    
+    try:
+        ref = str(ref).upper().strip()
+        alt = str(alt).upper().strip()
+        
+        # Filter invalid strings
+        if ref in ["", "NAN", "NONE"] or alt in ["", "NAN", "NONE"]:
+            return (None, None)
 
-    # Trim common prefixes (simple version)
-    while len(ref) > 1 and len(alt) > 1 and ref[0] == alt[0]:
-        ref = ref[1:]
-        alt = alt[1:]
+        # Trim common prefixes (simple version)
+        while len(ref) > 1 and len(alt) > 1 and ref[0] == alt[0]:
+            ref = ref[1:]
+            alt = alt[1:]
 
-    return (ref, alt)
+        return (ref, alt)
+    except Exception as e:
+        logger.debug(f"normalize_ref_alt failed: {e}")
+        return (None, None)
 
 
 def left_align_variants(df: pd.DataFrame) -> pd.DataFrame:
@@ -90,7 +122,7 @@ def left_align_variants(df: pd.DataFrame) -> pd.DataFrame:
 
     for idx in df.index:
         try:
-            # CRITICAL FIX: Check for NaN BEFORE converting to string
+            # Check for NaN BEFORE converting to string
             if pd.isna(df.at[idx, "ref_allele"]) or pd.isna(df.at[idx, "alt_allele"]):
                 continue
 
@@ -98,8 +130,8 @@ def left_align_variants(df: pd.DataFrame) -> pd.DataFrame:
             alt = str(df.at[idx, "alt_allele"]).upper()
             pos = int(df.at[idx, "position"])
 
-            # Skip empty strings
-            if ref == "" or alt == "" or ref == "NAN" or alt == "NAN":
+            # Skip empty/invalid strings
+            if ref in ["", "NAN", "NONE"] or alt in ["", "NAN", "NONE"]:
                 continue
 
             # Trim common suffixes (right side)
@@ -146,13 +178,7 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Cannot create coord_key, missing columns: {missing}")
         return df
 
-    # Normalize chromosomes
-    df["chromosome"] = df["chromosome"].apply(normalize_chromosome)
-
-    # Left-align indels (CRITICAL for matching!)
-    df = left_align_variants(df)
-
-    # CRITICAL FIX: Filter out rows with NaN values before creating keys
+    # CRITICAL FIX: Filter out NaN rows BEFORE normalizing
     valid_mask = (
         df["chromosome"].notna()
         & df["position"].notna()
@@ -160,18 +186,33 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
         & df["alt_allele"].notna()
     )
 
-    # Create key only for valid rows
-    df.loc[valid_mask, "coord_key"] = (
-        df.loc[valid_mask, "chromosome"].astype(str)
+    # Work only on valid rows
+    valid_df = df[valid_mask].copy()
+
+    if len(valid_df) == 0:
+        logger.warning("No valid rows to create coord_keys")
+        df["coord_key"] = np.nan
+        return df
+
+    # Normalize chromosomes (now NaN-safe)
+    valid_df["chromosome"] = valid_df["chromosome"].apply(normalize_chromosome)
+
+    # Left-align indels
+    valid_df = left_align_variants(valid_df)
+
+    # Create key: chr:pos:ref:alt
+    valid_df["coord_key"] = (
+        valid_df["chromosome"].astype(str)
         + ":"
-        + df.loc[valid_mask, "position"].astype(str)
+        + valid_df["position"].astype(str)
         + ":"
-        + df.loc[valid_mask, "ref_allele"].astype(str).str.upper()
+        + valid_df["ref_allele"].astype(str).str.upper()
         + ":"
-        + df.loc[valid_mask, "alt_allele"].astype(str).str.upper()
+        + valid_df["alt_allele"].astype(str).str.upper()
     )
 
-    # Set invalid rows to None/NaN
+    # Merge back into original dataframe
+    df.loc[valid_mask, "coord_key"] = valid_df["coord_key"].values
     df.loc[~valid_mask, "coord_key"] = np.nan
 
     valid_keys = df["coord_key"].notna().sum()
@@ -186,7 +227,7 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normalize chromosome coordinates in a dataframe and create coord_key.
 
-    BUGFIX v6.5: Now actually creates coord_key (was missing before!)
+    BUGFIX v6.5.2: NaN-safe normalization
 
     Args:
         df: DataFrame with columns like 'Chromosome', 'Position', etc.
@@ -196,21 +237,23 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
-    # Normalize chromosome column if it exists
+    # Normalize chromosome column if it exists (NaN-safe)
     chrom_cols = ["Chromosome", "chromosome", "Chr", "chr", "CHROM"]
     for col in chrom_cols:
         if col in df.columns:
-            df[col] = df[col].apply(normalize_chromosome)
+            # CRITICAL FIX: Use map with na_action to skip NaN
+            df[col] = df[col].map(normalize_chromosome, na_action="ignore")
             # Standardize to 'chromosome'
             if col != "chromosome":
                 df["chromosome"] = df[col]
             break
 
-    # Normalize position columns if they exist
+    # Normalize position columns if they exist (NaN-safe)
     pos_cols = ["Position", "position", "Pos", "pos", "POS", "Start", "start"]
     for col in pos_cols:
         if col in df.columns:
-            df[col] = df[col].apply(normalize_position)
+            # CRITICAL FIX: Use map with na_action to skip NaN
+            df[col] = df[col].map(normalize_position, na_action="ignore")
             # Standardize to 'position'
             if col != "position":
                 df["position"] = df[col]
