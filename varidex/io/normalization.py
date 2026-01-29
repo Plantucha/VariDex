@@ -1,9 +1,9 @@
 """
-VariDex IO Normalization Module v6.5.2
+VariDex IO Normalization Module v6.5.3
 =======================================
 Data normalization utilities for variant data.
 
-BUGFIX v6.5.2: NaN-safe normalize functions
+BUGFIX v6.5.3: Filter None values after normalization
 """
 
 from typing import Any, Tuple, Optional
@@ -178,7 +178,7 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Cannot create coord_key, missing columns: {missing}")
         return df
 
-    # CRITICAL FIX: Filter out NaN rows BEFORE normalizing
+    # Filter out NaN rows BEFORE normalizing
     valid_mask = (
         df["chromosome"].notna()
         & df["position"].notna()
@@ -197,6 +197,22 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
     # Normalize chromosomes (now NaN-safe)
     valid_df["chromosome"] = valid_df["chromosome"].apply(normalize_chromosome)
 
+    # CRITICAL FIX: Filter out None values AFTER normalization
+    # normalize_chromosome can return None for invalid inputs
+    post_norm_valid = (
+        valid_df["chromosome"].notna()
+        & valid_df["chromosome"].notnull()
+        & (valid_df["chromosome"] != "None")
+        & (valid_df["chromosome"] != "")
+    )
+    
+    valid_df = valid_df[post_norm_valid].copy()
+    
+    if len(valid_df) == 0:
+        logger.warning("No valid rows after normalization")
+        df["coord_key"] = np.nan
+        return df
+
     # Left-align indels
     valid_df = left_align_variants(valid_df)
 
@@ -211,12 +227,12 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
         + valid_df["alt_allele"].astype(str).str.upper()
     )
 
-    # Merge back into original dataframe
-    df.loc[valid_mask, "coord_key"] = valid_df["coord_key"].values
-    df.loc[~valid_mask, "coord_key"] = np.nan
+    # Merge back into original dataframe using index
+    df["coord_key"] = np.nan  # Initialize all as NaN
+    df.loc[valid_df.index, "coord_key"] = valid_df["coord_key"].values
 
     valid_keys = df["coord_key"].notna().sum()
-    invalid_keys = (~valid_mask).sum()
+    invalid_keys = len(df) - valid_keys
 
     logger.info(f"Created {valid_keys:,} coord_keys ({invalid_keys:,} skipped)")
 
@@ -227,7 +243,7 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normalize chromosome coordinates in a dataframe and create coord_key.
 
-    BUGFIX v6.5.2: NaN-safe normalization
+    BUGFIX v6.5.3: NaN-safe normalization with post-normalization filtering
 
     Args:
         df: DataFrame with columns like 'Chromosome', 'Position', etc.
@@ -241,7 +257,7 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     chrom_cols = ["Chromosome", "chromosome", "Chr", "chr", "CHROM"]
     for col in chrom_cols:
         if col in df.columns:
-            # CRITICAL FIX: Use map with na_action to skip NaN
+            # Use map with na_action to skip NaN
             df[col] = df[col].map(normalize_chromosome, na_action="ignore")
             # Standardize to 'chromosome'
             if col != "chromosome":
@@ -252,7 +268,7 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     pos_cols = ["Position", "position", "Pos", "pos", "POS", "Start", "start"]
     for col in pos_cols:
         if col in df.columns:
-            # CRITICAL FIX: Use map with na_action to skip NaN
+            # Use map with na_action to skip NaN
             df[col] = df[col].map(normalize_position, na_action="ignore")
             # Standardize to 'position'
             if col != "position":
