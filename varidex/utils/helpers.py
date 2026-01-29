@@ -39,6 +39,7 @@ class DataValidator:
             True if valid, False otherwise
         """
         import pandas as pd
+
         if not isinstance(df, pd.DataFrame):
             return False
         try:
@@ -103,7 +104,13 @@ def parse_variant_key(key: str) -> Dict[str, Any]:
 
     Returns:
         Dictionary with variant components
+
+    Raises:
+        TypeError: If key is None
     """
+    if key is None:
+        raise TypeError("Variant key cannot be None")
+
     try:
         parts = key.split(":")
         if len(parts) >= 4:
