@@ -1,309 +1,319 @@
+#!/usr/bin/env python3
 """
-VariDex IO Normalization Module v6.5.4
-=======================================
-Data normalization utilities for variant data.
+varidex/io/normalization.py - Coordinate normalization utilities (DEVELOPMENT)
 
-BUGFIX v6.5.4: Fixed dtype mismatch in coord_key assignment
+Responsibilities:
+- Normalize chromosome and position columns.
+- Left-align and normalize indel representations.
+- Generate a stable coord_key for joining between datasets.
+
+This module is used by ClinVar loaders and matching code to ensure that
+coordinates are comparable across different sources.
 """
 
-from typing import Any, Tuple, Optional
-import pandas as pd
-import numpy as np
+from __future__ import annotations
+
 import logging
+from multiprocessing import Pool, cpu_count
+from typing import Tuple, List, Optional
+
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
+COORD_COLUMNS: List[str] = ["chromosome", "position", "ref_allele", "alt_allele"]
 
-def normalize_chromosome(chrom: Any) -> Optional[str]:
+
+def _ensure_coord_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalize chromosome name (NaN-safe).
+    Ensure required coordinate columns exist.
 
-    Args:
-        chrom: Chromosome name (e.g., "chr1", "1", "chrX") or NaN
-
-    Returns:
-        Normalized chromosome name or None if invalid
+    Missing columns are created with NA values so downstream code
+    can rely on their presence.
     """
-    # CRITICAL FIX: Handle NaN/None before string conversion
-    if pd.isna(chrom) or chrom is None:
-        return None
-    
-    try:
-        chrom = str(chrom).replace("chr", "").replace("Chr", "").replace("CHR", "")
-        
-        # Handle empty strings
-        if chrom.strip() == "" or chrom.upper() in ["NAN", "NONE"]:
-            return None
-
-        if chrom in ["M", "m"]:
-            return "MT"
-
-        return chrom.upper()
-    except Exception as e:
-        logger.debug(f"normalize_chromosome failed for {chrom}: {e}")
-        return None
+    df = df.copy()
+    for col in COORD_COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    return df
 
 
-def normalize_position(pos: Any) -> Optional[int]:
+def _normalize_position_dtype(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalize genomic position (NaN-safe).
-
-    Args:
-        pos: Genomic position or NaN
-
-    Returns:
-        Normalized position (positive integer) or None if invalid
+    Cast position to integer-like dtype where possible.
     """
-    # CRITICAL FIX: Handle NaN/None before int conversion
-    if pd.isna(pos) or pos is None:
-        return None
-    
-    try:
-        return abs(int(float(pos)))  # float() handles string numbers
-    except (ValueError, TypeError) as e:
-        logger.debug(f"normalize_position failed for {pos}: {e}")
-        return None
+    if "position" not in df.columns:
+        return df
+
+    df = df.copy()
+    # Safely coerce to numeric; invalid values become NaN
+    df["position"] = pd.to_numeric(df["position"], errors="coerce")
+    # Drop rows with invalid / missing positions
+    before = len(df)
+    df = df[df["position"].notna()].copy()
+    after = len(df)
+    if after < before:
+        logger.info("Dropped %d rows with invalid positions", before - after)
+
+    # Use Int64 (nullable) to preserve NA semantics if needed
+    df["position"] = df["position"].astype("Int64")
+    return df
 
 
-def normalize_ref_alt(ref: str, alt: str) -> Tuple[Optional[str], Optional[str]]:
+def _standardize_chromosome(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalize reference and alternate alleles (basic trimming).
-
-    Args:
-        ref: Reference allele
-        alt: Alternate allele
-
-    Returns:
-        Tuple of (normalized_ref, normalized_alt) or (None, None) if invalid
+    Standardize chromosome names to simple forms like 1..22, X, Y, MT.
     """
-    # Handle NaN inputs
-    if pd.isna(ref) or pd.isna(alt):
-        return (None, None)
-    
-    try:
-        ref = str(ref).upper().strip()
-        alt = str(alt).upper().strip()
-        
-        # Filter invalid strings
-        if ref in ["", "NAN", "NONE"] or alt in ["", "NAN", "NONE"]:
-            return (None, None)
+    if "chromosome" not in df.columns:
+        return df
 
-        # Trim common prefixes (simple version)
+    df = df.copy()
+    chrom = df["chromosome"].astype(str).str.upper()
+
+    # Strip common prefixes like "CHR"
+    chrom = chrom.str.replace(r"^CHR", "", regex=True)
+
+    # Normalize mitochondrial notation
+    chrom = chrom.replace({"M": "MT", "MTDNA": "MT"})
+
+    df["chromosome"] = chrom
+    return df
+
+
+def _build_coord_key(
+    chrom: pd.Series,
+    pos: pd.Series,
+    ref: pd.Series,
+    alt: pd.Series,
+) -> pd.Series:
+    """
+    Build coord_key of the form 'CHR:POS:REF:ALT'.
+
+    All components are converted to uppercase string.
+    """
+    chrom_str = chrom.astype(str).str.upper()
+    ref_str = ref.astype(str).str.upper()
+    alt_str = alt.astype(str).str.upper()
+    pos_str = pos.astype(str)
+
+    return chrom_str + ":" + pos_str + ":" + ref_str + ":" + alt_str
+
+
+def _left_align_variants_sequential(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Original (sequential) left-alignment implementation.
+
+    NOTE:
+    - This function intentionally uses row-wise access (df.at[idx, ...]),
+      which is slow for millions of rows but preserves existing semantics.
+    - It is wrapped by left_align_variants() which can parallelize it
+      over chunks for large datasets.
+    """
+    if df is None or len(df) == 0:
+        return df
+
+    df = df.copy()
+
+    # Ensure required columns exist
+    df = _ensure_coord_columns(df)
+
+    for idx in df.index:
+        # Skip rows with missing alleles
+        if pd.isna(df.at[idx, "ref_allele"]) or pd.isna(df.at[idx, "alt_allele"]):
+            continue
+
+        ref = str(df.at[idx, "ref_allele"])
+        alt = str(df.at[idx, "alt_allele"])
+
+        # Uppercase for consistency
+        ref = ref.upper()
+        alt = alt.upper()
+
+        # Trim identical prefix bases
+        # Example: ref = ACGT, alt = ACT -> trim common "A" prefix
         while len(ref) > 1 and len(alt) > 1 and ref[0] == alt[0]:
             ref = ref[1:]
             alt = alt[1:]
 
-        return (ref, alt)
-    except Exception as e:
-        logger.debug(f"normalize_ref_alt failed: {e}")
-        return (None, None)
+        # Trim identical suffix bases
+        # Example: ref = TCG, alt = TAG -> trim common "G" suffix
+        while len(ref) > 1 and len(alt) > 1 and ref[-1] == alt[-1]:
+            ref = ref[:-1]
+            alt = alt[:-1]
 
-
-def left_align_variants(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Left-align indels per VCF standard.
-
-    This ensures variants are represented consistently:
-    - Removes common suffixes from right side
-    - Removes common prefixes from left side (adjusts position)
-
-    Args:
-        df: DataFrame with ref_allele, alt_allele, position columns
-
-    Returns:
-        DataFrame with left-aligned variants
-    """
-    df = df.copy()
-
-    required_cols = ["ref_allele", "alt_allele", "position"]
-    if not all(col in df.columns for col in required_cols):
-        logger.warning(f"Missing columns for left-alignment: {required_cols}")
-        return df
-
-    for idx in df.index:
-        try:
-            # Check for NaN BEFORE converting to string
-            if pd.isna(df.at[idx, "ref_allele"]) or pd.isna(df.at[idx, "alt_allele"]):
-                continue
-
-            ref = str(df.at[idx, "ref_allele"]).upper()
-            alt = str(df.at[idx, "alt_allele"]).upper()
-            pos = int(df.at[idx, "position"])
-
-            # Skip empty/invalid strings
-            if ref in ["", "NAN", "NONE"] or alt in ["", "NAN", "NONE"]:
-                continue
-
-            # Trim common suffixes (right side)
-            while len(ref) > 1 and len(alt) > 1 and ref[-1] == alt[-1]:
-                ref = ref[:-1]
-                alt = alt[:-1]
-
-            # Trim common prefixes (left side) and adjust position
-            while len(ref) > 1 and len(alt) > 1 and ref[0] == alt[0]:
-                ref = ref[1:]
-                alt = alt[1:]
-                pos += 1
-
-            df.at[idx, "ref_allele"] = ref
-            df.at[idx, "alt_allele"] = alt
-            df.at[idx, "position"] = pos
-
-        except Exception as e:
-            logger.debug(f"Left-alignment failed for row {idx}: {e}")
-            continue
+        df.at[idx, "ref_allele"] = ref
+        df.at[idx, "alt_allele"] = alt
 
     return df
 
 
-def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
+def _left_align_chunk(
+    args: Tuple[pd.DataFrame, int]
+) -> Tuple[pd.DataFrame, int]:
     """
-    Create coordinate matching key (chr:pos:ref:alt).
-
-    CRITICAL: This function was missing in v6.0-6.4, causing all
-    coordinate matching to fail!
+    Worker wrapper: run sequential left-alignment on a single chunk.
 
     Args:
-        df: DataFrame with chromosome, position, ref_allele, alt_allele
+        args: (DataFrame chunk, chunk_index)
 
     Returns:
-        DataFrame with added 'coord_key' column
+        (processed_chunk, chunk_index)
     """
-    df = df.copy()
+    chunk, chunk_idx = args
+    result = _left_align_variants_sequential(chunk)
+    return result, chunk_idx
 
-    required_cols = ["chromosome", "position", "ref_allele", "alt_allele"]
-    missing = [col for col in required_cols if col not in df.columns]
 
-    if missing:
-        logger.error(f"Cannot create coord_key, missing columns: {missing}")
+def left_align_variants(
+    df: pd.DataFrame,
+    n_workers: Optional[int] = None,
+) -> pd.DataFrame:
+    """
+    Parallel left-alignment wrapper.
+
+    For large datasets, splits the input into chunks and runs the original
+    sequential logic in parallel worker processes. For small datasets,
+    falls back to the sequential implementation to avoid overhead.
+
+    Args:
+        df: Variants DataFrame.
+        n_workers: Optional worker count; defaults to (CPU count - 1).
+
+    Returns:
+        DataFrame with left-aligned variant alleles.
+    """
+    n_rows = len(df)
+    if n_rows == 0:
         return df
 
-    # CRITICAL FIX: Initialize coord_key as object dtype (not float64)
-    # This prevents TypeError when assigning strings to float column
-    df["coord_key"] = pd.Series([None] * len(df), dtype=object, index=df.index)
+    # For small inputs, avoid multiprocessing overhead
+    if n_rows < 100_000:
+        return _left_align_variants_sequential(df)
 
-    # Filter out NaN rows BEFORE normalizing
-    valid_mask = (
+    if n_workers is None:
+        n_workers = max(1, cpu_count() - 1)
+
+    orig_len = n_rows
+
+    # Aim for about 4 chunks per worker, but not smaller than 50k
+    chunk_size = max(50_000, n_rows // (n_workers * 4))
+    chunks: List[Tuple[pd.DataFrame, int]] = []
+    chunk_idx = 0
+
+    for start in range(0, n_rows, chunk_size):
+        stop = start + chunk_size
+        # Copy slice so worker can safely mutate it
+        chunk = df.iloc[start:stop].copy()
+        chunks.append((chunk, chunk_idx))
+        chunk_idx += 1
+
+    print(
+        f"  ⚡ Left-aligning {orig_len:,} variants in "
+        f"{len(chunks)} chunks, {n_workers} workers"
+    )
+
+    try:
+        with Pool(processes=n_workers) as pool:
+            results = list(
+                tqdm(
+                    pool.imap(_left_align_chunk, chunks),
+                    total=len(chunks),
+                    desc="  Left-aligning",
+                    unit="chunk",
+                    leave=False,
+                )
+            )
+    except Exception as exc:
+        logger.warning(
+            "Parallel left-alignment failed (%s), falling back to sequential",
+            exc,
+        )
+        return _left_align_variants_sequential(df)
+
+    # Reassemble chunks in the original order by chunk index
+    results_sorted = sorted(results, key=lambda x: x[1])
+    aligned_chunks = [chunk for chunk, _idx in results_sorted]
+    result = pd.concat(aligned_chunks, ignore_index=True)
+
+    if len(result) != orig_len:
+        logger.warning(
+            "Left-alignment changed row count: %d → %d", orig_len, len(result)
+        )
+
+    return result
+
+
+def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalize alleles and create a coord_key column.
+
+    Steps:
+    - Ensure coordinate columns exist.
+    - Drop rows with missing coordinates.
+    - Left-align alleles (parallel for large inputs).
+    - Build coord_key: CHR:POS:REF:ALT.
+    """
+    if df is None or len(df) == 0:
+        return df
+
+    df = df.copy()
+    df = _ensure_coord_columns(df)
+
+    # Drop rows with missing core coordinates
+    mask_valid = (
         df["chromosome"].notna()
         & df["position"].notna()
         & df["ref_allele"].notna()
         & df["alt_allele"].notna()
     )
+    before = len(df)
+    df = df[mask_valid].copy()
+    after = len(df)
+    if after < before:
+        logger.info("Dropped %d rows without complete coordinates", before - after)
 
-    # Work only on valid rows
-    valid_df = df[valid_mask].copy()
+    # Left-align alleles (may run in parallel)
+    df = left_align_variants(df)
 
-    if len(valid_df) == 0:
-        logger.warning("No valid rows to create coord_keys")
-        return df
-
-    # Normalize chromosomes (now NaN-safe)
-    valid_df["chromosome"] = valid_df["chromosome"].apply(normalize_chromosome)
-
-    # CRITICAL FIX: Filter out None values AFTER normalization
-    # normalize_chromosome can return None for invalid inputs
-    post_norm_valid = (
-        valid_df["chromosome"].notna()
-        & valid_df["chromosome"].notnull()
-        & (valid_df["chromosome"] != "None")
-        & (valid_df["chromosome"] != "")
+    # Build coord_key
+    df["coord_key"] = _build_coord_key(
+        df["chromosome"],
+        df["position"],
+        df["ref_allele"],
+        df["alt_allele"],
     )
-    
-    valid_df = valid_df[post_norm_valid].copy()
-    
-    if len(valid_df) == 0:
-        logger.warning("No valid rows after normalization")
-        return df
-
-    # Left-align indels
-    valid_df = left_align_variants(valid_df)
-
-    # Create key: chr:pos:ref:alt
-    valid_df["coord_key"] = (
-        valid_df["chromosome"].astype(str)
-        + ":"
-        + valid_df["position"].astype(str)
-        + ":"
-        + valid_df["ref_allele"].astype(str).str.upper()
-        + ":"
-        + valid_df["alt_allele"].astype(str).str.upper()
-    )
-
-    # Merge back into original dataframe using index
-    # Now safe because coord_key is object dtype
-    df.loc[valid_df.index, "coord_key"] = valid_df["coord_key"].values
-
-    valid_keys = df["coord_key"].notna().sum()
-    invalid_keys = len(df) - valid_keys
-
-    logger.info(f"Created {valid_keys:,} coord_keys ({invalid_keys:,} skipped)")
 
     return df
 
 
 def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalize chromosome coordinates in a dataframe and create coord_key.
+    High-level normalization entry point.
 
-    BUGFIX v6.5.4: Fixed dtype handling for coord_key column
+    This is what ClinVar loaders call after basic chromosome/position
+    validation to get a fully normalized DataFrame with coord_key.
 
-    Args:
-        df: DataFrame with columns like 'Chromosome', 'Position', etc.
-
-    Returns:
-        DataFrame with normalized coordinates and coord_key
+    Steps:
+    - Ensure coordinate columns exist.
+    - Standardize chromosome values.
+    - Normalize position dtype.
+    - Create coord_key via left_align_variants().
     """
+    if df is None or len(df) == 0:
+        return df
+
     df = df.copy()
-
-    # Normalize chromosome column if it exists (NaN-safe)
-    chrom_cols = ["Chromosome", "chromosome", "Chr", "chr", "CHROM"]
-    for col in chrom_cols:
-        if col in df.columns:
-            # Use map with na_action to skip NaN
-            df[col] = df[col].map(normalize_chromosome, na_action="ignore")
-            # Standardize to 'chromosome'
-            if col != "chromosome":
-                df["chromosome"] = df[col]
-            break
-
-    # Normalize position columns if they exist (NaN-safe)
-    pos_cols = ["Position", "position", "Pos", "pos", "POS", "Start", "start"]
-    for col in pos_cols:
-        if col in df.columns:
-            # Use map with na_action to skip NaN
-            df[col] = df[col].map(normalize_position, na_action="ignore")
-            # Standardize to 'position'
-            if col != "position":
-                df["position"] = df[col]
-            break
-
-    # Standardize ref/alt column names
-    if "REF" in df.columns and "ref_allele" not in df.columns:
-        df["ref_allele"] = df["REF"]
-    if "ALT" in df.columns and "alt_allele" not in df.columns:
-        df["alt_allele"] = df["ALT"]
-    if "ref" in df.columns and "ref_allele" not in df.columns:
-        df["ref_allele"] = df["ref"]
-    if "alt" in df.columns and "alt_allele" not in df.columns:
-        df["alt_allele"] = df["alt"]
-
-    # Create coord_key if possible
-    required = ["chromosome", "position", "ref_allele", "alt_allele"]
-    if all(col in df.columns for col in required):
-        df = create_coord_key(df)
-        valid_count = df["coord_key"].notna().sum()
-        logger.info(f"Normalized {len(df):,} variants, {valid_count:,} with coord_key")
-    else:
-        missing = [col for col in required if col not in df.columns]
-        logger.warning(f"Cannot create coord_key, missing: {missing}")
+    df = _ensure_coord_columns(df)
+    df = _standardize_chromosome(df)
+    df = _normalize_position_dtype(df)
+    df = create_coord_key(df)
 
     return df
 
 
 __all__ = [
-    "normalize_chromosome",
-    "normalize_position",
-    "normalize_ref_alt",
     "normalize_dataframe_coordinates",
     "create_coord_key",
     "left_align_variants",
