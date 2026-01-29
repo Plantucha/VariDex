@@ -1,9 +1,9 @@
 """
-VariDex IO Normalization Module v6.5.3
+VariDex IO Normalization Module v6.5.4
 =======================================
 Data normalization utilities for variant data.
 
-BUGFIX v6.5.3: Filter None values after normalization
+BUGFIX v6.5.4: Fixed dtype mismatch in coord_key assignment
 """
 
 from typing import Any, Tuple, Optional
@@ -178,6 +178,10 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Cannot create coord_key, missing columns: {missing}")
         return df
 
+    # CRITICAL FIX: Initialize coord_key as object dtype (not float64)
+    # This prevents TypeError when assigning strings to float column
+    df["coord_key"] = pd.Series([None] * len(df), dtype=object, index=df.index)
+
     # Filter out NaN rows BEFORE normalizing
     valid_mask = (
         df["chromosome"].notna()
@@ -191,7 +195,6 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
 
     if len(valid_df) == 0:
         logger.warning("No valid rows to create coord_keys")
-        df["coord_key"] = np.nan
         return df
 
     # Normalize chromosomes (now NaN-safe)
@@ -210,7 +213,6 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
     
     if len(valid_df) == 0:
         logger.warning("No valid rows after normalization")
-        df["coord_key"] = np.nan
         return df
 
     # Left-align indels
@@ -228,7 +230,7 @@ def create_coord_key(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Merge back into original dataframe using index
-    df["coord_key"] = np.nan  # Initialize all as NaN
+    # Now safe because coord_key is object dtype
     df.loc[valid_df.index, "coord_key"] = valid_df["coord_key"].values
 
     valid_keys = df["coord_key"].notna().sum()
@@ -243,7 +245,7 @@ def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normalize chromosome coordinates in a dataframe and create coord_key.
 
-    BUGFIX v6.5.3: NaN-safe normalization with post-normalization filtering
+    BUGFIX v6.5.4: Fixed dtype handling for coord_key column
 
     Args:
         df: DataFrame with columns like 'Chromosome', 'Position', etc.
