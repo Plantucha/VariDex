@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-varidex/io/matching_improved.py - Improved Variant Matching v6.5.5
+varidex/io/matching_improved.py - Improved Variant Matching v6.6.0
 
 Enhancements over matching.py:
 1. 23andMe genotype verification (prevents false positives)
 2. Match confidence scoring (0.0-1.0 quality metric)
 3. Better deduplication (keeps highest quality matches)
 4. More robust error handling
+5. Chromosome extraction for lazy loading (Phase 2)
 
 BUGFIX v6.5.5: Fixed review_status type mismatch (string vs int)
 """
@@ -28,6 +29,59 @@ REQUIRED_COORD_COLUMNS: List[str] = [
     "ref_allele",
     "alt_allele",
 ]
+
+
+def get_user_chromosomes(user_df: pd.DataFrame) -> Set[str]:
+    """
+    Extract unique chromosomes from user genome data.
+
+    Used for lazy loading: only load ClinVar data for chromosomes
+    present in the user's genome.
+
+    Args:
+        user_df: User genome DataFrame with 'chromosome' column
+
+    Returns:
+        Set of chromosome names (e.g., {'1', '7', '19', 'X'})
+
+    Example:
+        >>> user_df = load_user_genome('23andme.txt')
+        >>> chromosomes = get_user_chromosomes(user_df)
+        >>> print(chromosomes)  # {'1', '7', '19'}
+        >>> # Now load only these chromosomes from ClinVar
+        >>> clinvar_df = load_clinvar_file(path, user_chromosomes=chromosomes)
+    """
+    if user_df is None or len(user_df) == 0:
+        logger.warning("User DataFrame is empty, returning all chromosomes")
+        # Return all standard chromosomes as fallback
+        return set([str(i) for i in range(1, 23)] + ["X", "Y", "MT"])
+
+    if "chromosome" not in user_df.columns:
+        logger.warning("No 'chromosome' column in user data")
+        return set([str(i) for i in range(1, 23)] + ["X", "Y", "MT"])
+
+    # Extract unique chromosomes
+    chromosomes = set(user_df["chromosome"].dropna().astype(str).unique())
+
+    # Standardize chromosome names (remove 'chr' prefix if present)
+    standardized = set()
+    for chrom in chromosomes:
+        chrom_clean = str(chrom).replace("chr", "").replace("Chr", "").upper()
+        # Handle MT vs M
+        if chrom_clean in ["M", "MT"]:
+            chrom_clean = "MT"
+        standardized.add(chrom_clean)
+
+    if len(standardized) == 0:
+        logger.warning("No valid chromosomes found in user data")
+        return set([str(i) for i in range(1, 23)] + ["X", "Y", "MT"])
+
+    logger.info(
+        f"User genome contains {len(standardized)} chromosomes: "
+        f"{sorted(standardized)}"
+    )
+
+    return standardized
 
 
 def calculate_match_confidence(
@@ -413,6 +467,7 @@ def match_variants_hybrid(
 
 
 __all__ = [
+    "get_user_chromosomes",
     "match_by_rsid",
     "match_by_coordinates",
     "match_by_position_23andme_improved",
