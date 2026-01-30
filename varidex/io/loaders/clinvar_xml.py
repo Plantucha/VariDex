@@ -39,8 +39,8 @@ def load_clinvar_xml(
         checkpoint_dir: Optional directory for caching (handled by parent loader)
 
     Returns:
-        DataFrame with columns: chromosome, position, ref, alt, rsid, gene,
-                                clinical_sig, review_status, variant_id
+        DataFrame with columns: chromosome, position, ref_allele, alt_allele, rsid,
+                                gene, clinical_sig, review_status, variant_id
 
     Performance:
         - Memory: 2-4GB peak (streaming, not loading full file)
@@ -147,13 +147,13 @@ def _parse_variation_archive(elem: etree.Element) -> Optional[Dict]:
         # Extract gene symbol
         gene = _extract_gene(elem)
 
-        # Build variant dict
+        # Build variant dict with standard column names
         variant = {
             "variant_id": variant_id,
             "chromosome": spdi_data["chromosome"],
             "position": spdi_data["position"],
-            "ref": spdi_data["ref"],
-            "alt": spdi_data["alt"],
+            "ref_allele": spdi_data["ref"],  # Match normalization schema
+            "alt_allele": spdi_data["alt"],  # Match normalization schema
             "rsid": rsid,
             "gene": gene,
             "clinical_sig": clinical_sig,
