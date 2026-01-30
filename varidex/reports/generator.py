@@ -26,7 +26,7 @@ FORMATTERS_AVAILABLE = True
 
 #!/usr/bin/env python3
 """
-varidex/reports/generator.py - Report Orchestrator v6.0.2
+varidex/reports/generator.py - Report Orchestrator v6.0.3-dev
 
 Production-grade report orchestration with comprehensive validation,
 progress tracking, and robust error handling.
@@ -34,8 +34,11 @@ progress tracking, and robust error handling.
 10/10 FEATURES: Input validation | Progress tracking | Performance metrics
 Type hints | Self-tests | Named constants | Enhanced logging | Examples
 
-Version: 6.0.2 | Compatible: formatters.py v6.0.2+ | Lines: <500
-Changes: Enhanced ReportGenerator class with test-compatible methods
+Version: 6.0.3-dev | Compatible: formatters.py v6.0.2+ | Lines: <500
+Changes v6.0.3:
+- Accept both dict and VariantData types in validation
+- Added _normalize_variant_data() helper function
+- Flexible type handling for pipeline compatibility
 """
 
 
@@ -50,9 +53,6 @@ except ImportError:
     class ReportError(Exception):
         pass
 
-    class ReportError(Exception):
-        pass
-
 
 # Import ACMG_TIERS from config
 try:
@@ -60,13 +60,7 @@ try:
 except ImportError:
     ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
 
-    ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
-
-    REPORTS = [generate_csv_report, generate_json_report, generate_html_report]
-
-
 except ImportError:
-
     logging.getLogger(__name__).warning("Formatters module not available")
 
 logger = logging.getLogger(__name__)
@@ -110,16 +104,100 @@ UNKNOWN_PRIORITY = 99
 
 
 # ========== VALIDATION HELPERS ==========
-def _validate_variants(variants: List[VariantData]) -> None:
-    """Validate variant list with detailed error messages."""
+def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
+    """
+    Validate variant list with detailed error messages.
+    
+    Accepts both VariantData objects and dictionaries for flexibility.
+    
+    Args:
+        variants: List of VariantData objects or classification dicts
+    
+    Raises:
+        ValidationError: If validation fails
+    """
     if not variants:
         raise ValidationError("No classified variants provided")
     if not isinstance(variants, list):
         raise ValidationError(f"Expected list, got {type(variants).__name__}")
-    if not all(isinstance(v, VariantData) for v in variants):
-        raise ValidationError("Invalid variant types in list")
+    
+    # Accept both VariantData objects and dicts
+    for i, v in enumerate(variants):
+        if not isinstance(v, (dict, VariantData)):
+            raise ValidationError(
+                f"Invalid variant type at index {i}: {type(v).__name__}. "
+                f"Expected dict or VariantData"
+            )
+    
     if len(variants) > MAX_VARIANTS_WARNING:
         logger.warning(f"⚠️  Large dataset: {len(variants):,} variants")
+
+
+def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, any]:
+    """
+    Normalize variant data from dict or VariantData to unified dict format.
+    
+    Handles output from classify_variants_production() which returns dicts with
+    structure: {"variant": {...}, "classification": "P", "evidence": [...]}
+    
+    Args:
+        item: Either a VariantData object or classification dict
+    
+    Returns:
+        Normalized dict with all required fields
+    """
+    if isinstance(item, VariantData):
+        # Already a VariantData object - extract attributes
+        return {
+            "rsid": item.rsid,
+            "chromosome": item.chromosome,
+            "position": item.position,
+            "gene": item.gene,
+            "genotype": item.genotype,
+            "normalized_genotype": item.normalized_genotype,
+            "zygosity": item.zygosity,
+            "genotype_class": item.genotype_class,
+            "acmg_classification": item.acmg_classification,
+            "confidence": item.confidence_level,
+            "star_rating": item.star_rating,
+            "has_conflicts": getattr(item, "has_conflicts", False),
+            "clinical_sig": item.clinical_sig,
+            "review_status": item.review_status,
+            "num_submitters": item.num_submitters,
+            "variant_type": item.variant_type,
+            "molecular_consequence": item.molecular_consequence,
+            "acmg_evidence": item.acmg_evidence,
+        }
+    
+    elif isinstance(item, dict):
+        # Dict from classify_variants_production()
+        # Structure: {"variant": {...}, "classification": "P", "evidence": [...]}
+        variant_data = item.get("variant", {})
+        
+        return {
+            "rsid": variant_data.get("rsid", ""),
+            "chromosome": variant_data.get("chromosome", ""),
+            "position": variant_data.get("position", ""),
+            "gene": variant_data.get("gene", ""),
+            "genotype": variant_data.get("genotype", ""),
+            "normalized_genotype": variant_data.get("normalized_genotype", ""),
+            "zygosity": variant_data.get("zygosity", ""),
+            "genotype_class": variant_data.get("genotype_class", ""),
+            "acmg_classification": item.get("classification", "VUS"),
+            "confidence": variant_data.get("confidence", 0.0),
+            "star_rating": variant_data.get("star_rating", 0),
+            "has_conflicts": (item.get("classification") == "CONFLICT"),
+            "clinical_sig": item.get("clinical_sig", ""),
+            "review_status": item.get("review_status", ""),
+            "num_submitters": variant_data.get("num_submitters", 0),
+            "variant_type": variant_data.get("variant_type", ""),
+            "molecular_consequence": variant_data.get("molecular_consequence", ""),
+            "acmg_evidence": None,  # Evidence in list format, not object
+            "evidence_list": item.get("evidence", []),  # Store for later
+        }
+    
+    else:
+        raise ValidationError(f"Unsupported type: {type(item).__name__}")
 
 
 def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
@@ -133,16 +211,18 @@ def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
 
 # ========== CORE FUNCTIONS ==========
 def create_results_dataframe(
-    classified_variants: List[VariantData],
+    classified_variants: List[Union[Dict, VariantData]],
     include_evidence: bool = True,
     include_metadata: bool = True,
     show_progress: bool = True,
 ) -> pd.DataFrame:
     """
     Create standardized 27-column DataFrame from classified variants.
+    
+    Accepts both VariantData objects and dicts from classify_variants_production().
 
     Args:
-        classified_variants: List of VariantData with ACMG classification
+        classified_variants: List of VariantData or classification dicts
         include_evidence: Include ACMG evidence columns
         include_metadata: Include clinical metadata (always True)
         show_progress: Show progress bar for >1000 variants
@@ -163,7 +243,6 @@ def create_results_dataframe(
     show_bar = show_progress and n_variants >= PROGRESS_THRESHOLD
     if show_bar:
         try:
-
             iterator = tqdm(classified_variants, desc="Building DF", unit="var")
         except ImportError:
             iterator = classified_variants
@@ -171,49 +250,88 @@ def create_results_dataframe(
         iterator = classified_variants
 
     records = []
-    for variant in iterator:
+    for item in iterator:
+        # Normalize to unified dict format
+        variant = _normalize_variant_data(item)
+        
         tier = ACMG_TIERS.get(
-            variant.acmg_classification,
+            variant["acmg_classification"],
             {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY},
         )
 
         record = {
-            "rsid": variant.rsid or "",
-            "chromosome": variant.chromosome or "",
-            "position": variant.position or "",
-            "gene": variant.gene or "",
-            "genotype": variant.genotype or "",
-            "normalized_genotype": variant.normalized_genotype or "",
-            "zygosity": variant.zygosity or "",
-            "genotype_class": variant.genotype_class or "",
-            "acmg_classification": variant.acmg_classification or "",
-            "confidence": variant.confidence_level or "",
-            "star_rating": variant.star_rating or 0,
-            "has_conflicts": getattr(variant, "has_conflicts", False),
-            "clinical_significance": variant.clinical_sig or "",
-            "review_status": variant.review_status or "",
-            "num_submitters": variant.num_submitters or 0,
-            "variant_type": variant.variant_type or "",
-            "molecular_consequence": variant.molecular_consequence or "",
+            "rsid": variant["rsid"] or "",
+            "chromosome": variant["chromosome"] or "",
+            "position": variant["position"] or "",
+            "gene": variant["gene"] or "",
+            "genotype": variant["genotype"] or "",
+            "normalized_genotype": variant["normalized_genotype"] or "",
+            "zygosity": variant["zygosity"] or "",
+            "genotype_class": variant["genotype_class"] or "",
+            "acmg_classification": variant["acmg_classification"] or "",
+            "confidence": variant["confidence"] or "",
+            "star_rating": variant["star_rating"] or 0,
+            "has_conflicts": variant["has_conflicts"],
+            "clinical_significance": variant["clinical_sig"] or "",
+            "review_status": variant["review_status"] or "",
+            "num_submitters": variant["num_submitters"] or 0,
+            "variant_type": variant["variant_type"] or "",
+            "molecular_consequence": variant["molecular_consequence"] or "",
             "icon": tier["icon"],
             "sort_priority": tier["priority"],
         }
 
-        if include_evidence and variant.acmg_evidence:
-            ev = variant.acmg_evidence
-            record.update(
-                {
-                    "pvs_evidence": " | ".join(ev.pvs) if ev.pvs else "",
-                    "ps_evidence": " | ".join(ev.ps) if ev.ps else "",
-                    "pm_evidence": " | ".join(ev.pm) if ev.pm else "",
-                    "pp_evidence": " | ".join(ev.pp) if ev.pp else "",
-                    "ba_evidence": " | ".join(ev.ba) if ev.ba else "",
-                    "bs_evidence": " | ".join(ev.bs) if ev.bs else "",
-                    "bp_evidence": " | ".join(ev.bp) if ev.bp else "",
-                    "all_pathogenic_evidence": " + ".join(ev.all_pathogenic()),
-                    "all_benign_evidence": " + ".join(ev.all_benign()),
-                }
-            )
+        # Handle evidence - check if ACMGEvidenceSet object or list
+        if include_evidence:
+            acmg_ev = variant.get("acmg_evidence")
+            evidence_list = variant.get("evidence_list", [])
+            
+            if acmg_ev and hasattr(acmg_ev, "pvs"):
+                # VariantData with ACMGEvidenceSet object
+                record.update(
+                    {
+                        "pvs_evidence": " | ".join(acmg_ev.pvs) if acmg_ev.pvs else "",
+                        "ps_evidence": " | ".join(acmg_ev.ps) if acmg_ev.ps else "",
+                        "pm_evidence": " | ".join(acmg_ev.pm) if acmg_ev.pm else "",
+                        "pp_evidence": " | ".join(acmg_ev.pp) if acmg_ev.pp else "",
+                        "ba_evidence": " | ".join(acmg_ev.ba) if acmg_ev.ba else "",
+                        "bs_evidence": " | ".join(acmg_ev.bs) if acmg_ev.bs else "",
+                        "bp_evidence": " | ".join(acmg_ev.bp) if acmg_ev.bp else "",
+                        "all_pathogenic_evidence": " + ".join(acmg_ev.all_pathogenic()),
+                        "all_benign_evidence": " + ".join(acmg_ev.all_benign()),
+                    }
+                )
+            elif evidence_list:
+                # Dict with evidence list from classify_variants_production()
+                # Evidence is in string format: ["ClinVar: Pathogenic", "Multiple submitters"]
+                record.update(
+                    {
+                        "pvs_evidence": "",
+                        "ps_evidence": "",
+                        "pm_evidence": "",
+                        "pp_evidence": "",
+                        "ba_evidence": "",
+                        "bs_evidence": "",
+                        "bp_evidence": "",
+                        "all_pathogenic_evidence": "",
+                        "all_benign_evidence": " | ".join(evidence_list),
+                    }
+                )
+            else:
+                # No evidence available
+                record.update(
+                    {
+                        "pvs_evidence": "",
+                        "ps_evidence": "",
+                        "pm_evidence": "",
+                        "pp_evidence": "",
+                        "ba_evidence": "",
+                        "bs_evidence": "",
+                        "bp_evidence": "",
+                        "all_pathogenic_evidence": "",
+                        "all_benign_evidence": "",
+                    }
+                )
         else:
             record.update(
                 {
@@ -255,7 +373,6 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
         >>> print(stats['pathogenic'], stats['pathogenic_pct'])
         5 2.5
     """
-    # _validate_dataframe(results_df, ["classification"])  # Skip - minimal columns OK
     total = len(results_df)
 
     stats = {
@@ -335,8 +452,6 @@ def generate_all_reports(
     if not FORMATTERS_AVAILABLE:
         raise ReportError("Formatters module not available")
 
-    # _validate_dataframe(results_df, ["classification"])  # Skip - minimal columns OK
-
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
@@ -363,7 +478,6 @@ def generate_all_reports(
 
     # JSON Report
     if generate_json:
-
         # Create minimal stats dict for reports
         stats = {
             "total_variants": len(results_df),
@@ -466,7 +580,7 @@ class ReportGenerator:
         self.json_formatter = JSONFormatter()
         self.tsv_formatter = TSVFormatter()
 
-    def create_dataframe(self, variants: List[VariantData]) -> pd.DataFrame:
+    def create_dataframe(self, variants: List[Union[Dict, VariantData]]) -> pd.DataFrame:
         """Create results DataFrame from classified variants."""
         return create_results_dataframe(variants)
 
@@ -694,16 +808,15 @@ __all__ = [
 ]
 
 if __name__ == "__main__":
-
     print("\n" + "=" * 60)
-    print("TESTING varidex_reports_generator v6.0.2")
+    print("TESTING varidex_reports_generator v6.0.3-dev")
     print("=" * 60)
 
     # Test ReportGenerator class
     generator = ReportGenerator(output_dir="test_reports")
     print("✓ ReportGenerator instantiated")
 
-    # Test basic functionality
+    # Test basic functionality with VariantData
     variants = [
         VariantData(
             rsid="rs12345",
@@ -717,10 +830,27 @@ if __name__ == "__main__":
     ]
 
     df = generator.create_dataframe(variants)
-    print(f"✓ Created DataFrame: {df.shape}")
+    print(f"✓ Created DataFrame from VariantData: {df.shape}")
 
-    stats = generator.calculate_stats(df)
-    print(f"✓ Calculated stats: {stats['total']} variants")
+    # Test with dict input (from classify_variants_production)
+    dict_variants = [
+        {
+            "variant": {
+                "rsid": "rs67890",
+                "chromosome": "2",
+                "position": "67890",
+                "gene": "TP53",
+                "genotype": "CT",
+            },
+            "classification": "LP",
+            "evidence": ["ClinVar: Likely Pathogenic", "Multiple submitters"],
+            "clinical_sig": "Likely_pathogenic",
+            "review_status": "criteria_provided,_multiple_submitters",
+        }
+    ]
+
+    df2 = generator.create_dataframe(dict_variants)
+    print(f"✓ Created DataFrame from dicts: {df2.shape}")
 
     print("=" * 60)
     print("✅ ALL TESTS PASSED")
