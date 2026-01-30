@@ -214,8 +214,38 @@ def generate_html_report(
 def _generate_basic_html(
     df: pd.DataFrame, stats: Dict, output_dir: Path, timestamp: str, title: str
 ) -> Path:
-    """Generate basic HTML report when template builder unavailable."""
+    """Generate enhanced basic HTML report with meaningful data display."""
     output_path = output_dir / f"classified_variants_{timestamp}.html"
+    
+    # Define classification colors
+    classification_colors = {
+        "P": "#dc3545",  # Red
+        "Pathogenic": "#dc3545",
+        "LP": "#fd7e14",  # Orange
+        "Likely Pathogenic": "#fd7e14",
+        "VUS": "#ffc107",  # Yellow
+        "Uncertain Significance": "#ffc107",
+        "LB": "#28a745",  # Green
+        "Likely Benign": "#28a745",
+        "B": "#20c997",  # Teal
+        "Benign": "#20c997",
+        "CONFLICT": "#6c757d",  # Gray
+    }
+    
+    # Select meaningful columns for display
+    display_columns = ["icon", "rsid", "chromosome", "position", "gene", 
+                      "genotype", "acmg_classification", "star_rating",
+                      "clinical_significance"]
+    
+    # Filter to existing columns
+    available_cols = [col for col in display_columns if col in df.columns]
+    
+    # Prepare display data - filter out rows with missing rsid
+    display_df = df[available_cols].copy()
+    display_df = display_df[display_df["rsid"].notna() & (display_df["rsid"] != "")]
+    
+    # Replace NaN with empty strings
+    display_df = display_df.fillna("")
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -223,41 +253,166 @@ def _generate_basic_html(
     <meta charset="UTF-8">
     <title>{html.escape(title)}</title>
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        table {{ border-collapse: collapse; width: 100%; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-        th {{ background-color: #4CAF50; color: white; }}
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }}
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        h1 {{ 
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }}
+        .stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }}
+        .stat-box {{
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }}
+        .stat-label {{ 
+            font-size: 0.9em;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .stat-value {{ 
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 5px;
+        }}
+        table {{ 
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }}
+        th, td {{ 
+            border: 1px solid #dee2e6;
+            padding: 12px 8px;
+            text-align: left;
+        }}
+        th {{ 
+            background-color: #3498db;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }}
+        tr:nth-child(even) {{ background-color: #f8f9fa; }}
+        tr:hover {{ background-color: #e9ecef; }}
+        .classification {{
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+            font-size: 0.85em;
+        }}
+        .stars {{ color: #ffc107; }}
+        .footer {{
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 0.85em;
+        }}
     </style>
 </head>
 <body>
-    <h1>{html.escape(title)}</h1>
-    <p>Generated: {html.escape(timestamp)}</p>
-    <h2>Statistics</h2>
-    <ul>
+    <div class="container">
+        <h1>{html.escape(title)}</h1>
+        <p style="color: #6c757d;">Generated: {html.escape(timestamp)}</p>
+        
+        <div class="stats">
 """
 
-    for key, value in stats.items():
-        html_content += f"        <li><strong>{html.escape(str(key))}:</strong> {html.escape(str(value))}</li>\n"
+    # Add statistics
+    stat_items = [
+        ("Total Variants", stats.get("total_variants", len(df))),
+        ("Pathogenic", stats.get("pathogenic", 0)),
+        ("Likely Pathogenic", stats.get("likely_pathogenic", 0)),
+        ("VUS", stats.get("vus", 0)),
+        ("Benign/Likely Benign", stats.get("benign", 0) + stats.get("likely_benign", 0)),
+    ]
+    
+    for label, value in stat_items:
+        html_content += f"""            <div class="stat-box">
+                <div class="stat-label">{html.escape(label)}</div>
+                <div class="stat-value">{html.escape(str(value))}</div>
+            </div>\n"""
 
-    html_content += """    </ul>
-    <h2>Variants (first 100)</h2>
-    <table>
-        <tr>
+    html_content += """        </div>
+        
+        <h2>Variant Details (Top 200)</h2>
+        <table>
+            <tr>
 """
 
-    for col in df.columns[:10]:
-        html_content += f"            <th>{html.escape(str(col))}</th>\n"
+    # Table headers - use friendly names
+    column_names = {
+        "icon": "",
+        "rsid": "rsID",
+        "chromosome": "Chr",
+        "position": "Position",
+        "gene": "Gene",
+        "genotype": "Genotype",
+        "acmg_classification": "Classification",
+        "star_rating": "⭐",
+        "clinical_significance": "Clinical Significance",
+    }
+    
+    for col in available_cols:
+        friendly_name = column_names.get(col, col)
+        html_content += f"                <th>{html.escape(str(friendly_name))}</th>\n"
 
-    html_content += "        </tr>\n"
+    html_content += "            </tr>\n"
 
-    for idx, row in df.head(100).iterrows():
-        html_content += "        <tr>\n"
-        for col in df.columns[:10]:
-            value = html.escape(str(row.get(col, "")))
-            html_content += f"            <td>{value}</td>\n"
-        html_content += "        </tr>\n"
+    # Table rows - limit to 200 variants
+    for idx, row in display_df.head(200).iterrows():
+        html_content += "            <tr>\n"
+        for col in available_cols:
+            value = str(row.get(col, ""))
+            
+            # Special formatting for classification
+            if col == "acmg_classification" and value:
+                color = classification_colors.get(value, "#6c757d")
+                cell_content = f'<span class="classification" style="background-color: {color}20; color: {color}; border: 1px solid {color};">{html.escape(value)}</span>'
+            # Special formatting for stars
+            elif col == "star_rating":
+                stars = int(value) if value and value.isdigit() else 0
+                cell_content = f'<span class="stars">{"★" * stars}</span>'
+            # Regular cells
+            else:
+                cell_content = html.escape(value) if value else "<span style='color: #adb5bd;'>-</span>"
+            
+            html_content += f"                <td>{cell_content}</td>\n"
+        html_content += "            </tr>\n"
 
-    html_content += """    </table>
+    # Footer
+    total_shown = min(200, len(display_df))
+    html_content += f"""        </table>
+        
+        <div class="footer">
+            <p><strong>Showing {total_shown:,} of {len(df):,} total variants</strong></p>
+            <p>⚠️ <strong>RESEARCH USE ONLY</strong> - Not for clinical diagnosis. Consult a genetic counselor.</p>
+            <p>Reference: Richards et al. 2015 (PMID: 25741868)</p>
+            <p>Generated by VariDex {html.escape(__version__)}</p>
+        </div>
+    </div>
 </body>
 </html>
 """
