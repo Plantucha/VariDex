@@ -659,9 +659,8 @@ def load_clinvar_file(
     file_type: str = detect_clinvar_file_type(filepath)
     logger.info(f"Detected file type: {file_type}")
 
-    # Lazy import XML loader (only when needed)
-    if file_type == 'xml':
-        from varidex.io.loaders.clinvar_xml import load_clinvar_xml
+    # Import XML loader (UNCONDITIONAL - always available for loaders dict)
+    from varidex.io.loaders.clinvar_xml import load_clinvar_xml
 
     # Generate cache filename
     if file_type == 'xml' and user_chromosomes:
@@ -716,7 +715,7 @@ def load_clinvar_file(
             "vcf": load_clinvar_vcf,
             "vcf_tsv": load_clinvar_vcf_tsv,
             "variant_summary": load_variant_summary,
-            "xml": load_clinvar_xml,  # NEW: XML loader
+            "xml": load_clinvar_xml,
         }
 
         loader: Optional[Callable[..., pd.DataFrame]] = loaders.get(file_type)
