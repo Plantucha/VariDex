@@ -3,7 +3,7 @@ VariDex IO Loaders Module
 ==========================
 Data loading utilities for ClinVar and user genome files.
 
-v7.0.2: Uses matching_improved.py with genotype verification
+v8.0.0: Added XML support and missing function exports
 """
 
 # Lazy loading to avoid circular imports
@@ -11,6 +11,8 @@ __all__ = [
     "load_clinvar_file",
     "load_user_file",
     "load_vcf_file",
+    "load_23andme_file",
+    "detect_clinvar_file_type",
     "match_variants_hybrid",
 ]
 
@@ -53,8 +55,24 @@ def load_vcf_file(*args, **kwargs):
         return load_user_file(*args, **kwargs)
 
 
+def load_23andme_file(*args, **kwargs):
+    """Load 23andMe raw data file. Lazy import wrapper."""
+    from varidex.io.loaders.user import load_user_file
+
+    # Force format to 23andme
+    kwargs["file_format"] = "23andme"
+    return load_user_file(*args, **kwargs)
+
+
+def detect_clinvar_file_type(*args, **kwargs):
+    """Detect ClinVar file type (vcf, xml, variant_summary). Lazy import wrapper."""
+    from varidex.io.loaders.clinvar import detect_clinvar_file_type as _detect
+
+    return _detect(*args, **kwargs)
+
+
 def match_variants_hybrid(*args, **kwargs):
     """Match variants using IMPROVED hybrid strategy with genotype verification."""
-    from varidex.io.matching_improved import match_variants_hybrid as _match  # ✅ NEW
+    from varidex.io.matching_improved import match_variants_hybrid as _match
 
     return _match(*args, **kwargs)
