@@ -73,6 +73,21 @@ def load_clinvar_xml(
             tag=f"{{{NS['cv']}}}VariationArchive",
         )
 
+        # Get root element for periodic cleanup
+        # This is CRITICAL for memory management
+        context = iter(context)
+        try:
+            event, root = next(context)
+            # Put it back
+            context = etree.iterparse(
+                f,
+                events=("end",),
+                tag=f"{{{NS['cv']}}}VariationArchive",
+            )
+            root = None
+        except StopIteration:
+            pass
+
         # Progress bar (estimated 4.3M variants)
         with tqdm(
             total=4_300_000,
@@ -92,12 +107,36 @@ def load_clinvar_xml(
                         variants.append(variant)
                         total_filtered += 1
 
-                # CRITICAL: Free memory to prevent OOM
+                # CRITICAL: Aggressive memory cleanup
+                # Clear the element itself
                 elem.clear()
-                while elem.getprevious() is not None:
-                    del elem.getparent()[0]
+                
+                # Remove from parent to free memory
+                parent = elem.getparent()
+                if parent is not None:
+                    parent.remove(elem)
+                
+                # Clear root periodically to prevent memory buildup
+                if total_processed % 10000 == 0:
+                    # Try to get root if we haven't already
+                    if root is None:
+                        try:
+                            # Walk up to find root
+                            current = elem
+                            while current.getparent() is not None:
+                                current = current.getparent()
+                            root = current
+                        except:
+                            pass
+                    
+                    # Clear root's children that we've already processed
+                    if root is not None:
+                        root.clear()
 
                 pbar.update(1)
+
+        # Clean up context
+        del context
 
     logger.info(f"Processed {total_processed:,} variants")
     logger.info(f"Retained {total_filtered:,} variants after filtering")
@@ -108,6 +147,9 @@ def load_clinvar_xml(
         return pd.DataFrame()
 
     df = pd.DataFrame(variants)
+    
+    # Free the variants list
+    del variants
 
     # Normalize coordinates (convert to 1-based, standardize chromosome names)
     df = normalize_dataframe_coordinates(df)
