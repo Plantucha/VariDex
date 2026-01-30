@@ -2,283 +2,83 @@
 """
 ClinVar XML Byte-Offset Indexer - Phase 3 (v8.2.0)
 
-Builds and caches byte-offset indexes for instant chromosome seeking.
-Enables 30-60 second loads with <500MB RAM.
-
-Index Format:
-{
-    'chromosomes': {
-        '1': [(byte_offset, variant_id), ...],
-        '2': [(byte_offset, variant_id), ...],
-        ...
-    },
-    'metadata': {
-        'total_variants': 4300000,
-        'xml_size': 70000000000,
-        'index_version': '1.0',
-        'created': '2026-01-29T19:00:00',
-    }
-}
+Builds and uses byte-offset index for instant chromosome-specific XML loading.
+First run: 20-30 min to build index (one-time)
+Subsequent runs: 30-60s, <500MB RAM
 """
 
-import gzip
-import json
 import logging
-from datetime import datetime
+import pickle
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from lxml import etree
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-# ClinVar XML namespace
-NS = {"cv": "http://www.ncbi.nlm.nih.gov/clinvar/release"}
 
-INDEX_VERSION = "1.0"
-
-
-def build_xml_index(
-    xml_path: Path,
-    force_rebuild: bool = False,
-) -> Dict:
+def get_index_path(xml_path: Path) -> Path:
     """
-    Build byte-offset index for ClinVar XML file.
+    Get path to index file for given XML file.
 
     Args:
-        xml_path: Path to UNCOMPRESSED XML file (not .gz)
-        force_rebuild: Rebuild even if cached index exists
+        xml_path: Path to ClinVar XML file
 
     Returns:
-        Index dict with chromosome -> [(offset, variant_id), ...]
-
-    Performance:
-        - First run: 20-30 minutes (one-time cost)
-        - Subsequent runs: <1 second (loads from cache)
-        - Memory: <1GB during indexing
-
-    Note:
-        Requires uncompressed XML. If you have .xml.gz, decompress first:
-        gunzip -k ClinVarVCVRelease.xml.gz
+        Path to corresponding .index.pkl file
     """
-    logger.info(f"Building XML index for: {xml_path.name}")
+    # Remove .gz if present, add .index.pkl
+    if xml_path.name.endswith(".xml.gz"):
+        base = xml_path.name[:-7]  # Remove .xml.gz
+    elif xml_path.name.endswith(".xml"):
+        base = xml_path.name[:-4]  # Remove .xml
+    else:
+        base = xml_path.name
 
-    # Check if compressed
-    if str(xml_path).endswith(".gz"):
-        raise ValueError(
-            "Indexed mode requires UNCOMPRESSED XML. "
-            "Decompress first: gunzip -k yourfile.xml.gz"
-        )
-
-    # Check for cached index
-    index_path = _get_index_path(xml_path)
-    if index_path.exists() and not force_rebuild:
-        logger.info(f"Loading cached index from: {index_path.name}")
-        return load_xml_index(xml_path)
-
-    # Build new index
-    logger.info("Building new index (this will take 20-30 minutes)...")
-
-    index = {
-        "chromosomes": {},
-        "metadata": {
-            "xml_file": xml_path.name,
-            "xml_size": xml_path.stat().st_size,
-            "index_version": INDEX_VERSION,
-            "created": datetime.now().isoformat(),
-        },
-    }
-
-    total_variants = 0
-    chromosome_counts = {}
-
-    with open(xml_path, "rb") as f:
-        # Estimate total variants for progress bar
-        file_size = xml_path.stat().st_size
-        estimated_variants = 4_300_000  # Typical ClinVar size
-
-        with tqdm(
-            total=estimated_variants,
-            desc="Indexing XML",
-            unit="var",
-            unit_scale=True,
-        ) as pbar:
-            # Use iterparse to get byte offsets
-            for event, elem in etree.iterparse(
-                f,
-                events=("end",),
-                tag=f"{{{NS['cv']}}}VariationArchive",
-            ):
-                # Get byte offset BEFORE processing
-                # Note: f.tell() gives position after element
-                byte_offset = f.tell()
-
-                # Extract variant ID and chromosome
-                variant_id = elem.get("VariationID")
-                chromosome = _extract_chromosome_for_index(elem)
-
-                if variant_id and chromosome:
-                    # Add to index
-                    if chromosome not in index["chromosomes"]:
-                        index["chromosomes"][chromosome] = []
-                        chromosome_counts[chromosome] = 0
-
-                    index["chromosomes"][chromosome].append(
-                        (byte_offset, variant_id)
-                    )
-                    chromosome_counts[chromosome] += 1
-                    total_variants += 1
-
-                # Clean up memory
-                elem.clear()
-                while elem.getprevious() is not None:
-                    del elem.getparent()[0]
-
-                pbar.update(1)
-
-    # Update metadata
-    index["metadata"]["total_variants"] = total_variants
-    index["metadata"]["chromosome_counts"] = chromosome_counts
-
-    logger.info(f"Index built: {total_variants:,} variants across {len(index['chromosomes'])} chromosomes")
-    for chrom in sorted(index["chromosomes"].keys()):
-        count = len(index["chromosomes"][chrom])
-        logger.info(f"  Chr {chrom}: {count:,} variants")
-
-    # Save index to cache
-    save_xml_index(xml_path, index)
-
-    return index
+    index_name = f"{base}.index.pkl"
+    return xml_path.parent / index_name
 
 
-def load_xml_index(xml_path: Path) -> Dict:
+def _extract_chromosome_from_line(line: str) -> Optional[str]:
     """
-    Load cached XML index.
+    Extract chromosome from SPDI in XML line.
 
     Args:
-        xml_path: Path to XML file (index is stored alongside)
+        line: XML line containing CanonicalSPDI
 
     Returns:
-        Index dict
+        Chromosome (1-22, X, Y, MT) or None
 
-    Raises:
-        FileNotFoundError: If index doesn't exist
+    Example:
+        <CanonicalSPDI>NC_000001.11:12345:A:G</CanonicalSPDI> → '1'
     """
-    index_path = _get_index_path(xml_path)
-
-    if not index_path.exists():
-        raise FileNotFoundError(
-            f"Index not found: {index_path}. "
-            "Run build_xml_index() first."
-        )
-
-    logger.info(f"Loading index from: {index_path.name}")
-
-    with gzip.open(index_path, "rt") as f:
-        index = json.load(f)
-
-    # Convert string keys back to chromosome names
-    # and tuple strings back to tuples
-    if "chromosomes" in index:
-        for chrom in index["chromosomes"]:
-            # Convert list of lists to list of tuples
-            index["chromosomes"][chrom] = [
-                tuple(item) for item in index["chromosomes"][chrom]
-            ]
-
-    logger.info(
-        f"Index loaded: {index['metadata']['total_variants']:,} variants, "
-        f"{len(index['chromosomes'])} chromosomes"
-    )
-
-    return index
-
-
-def save_xml_index(xml_path: Path, index: Dict) -> None:
-    """
-    Save XML index to cache.
-
-    Args:
-        xml_path: Path to XML file
-        index: Index dict to save
-    """
-    index_path = _get_index_path(xml_path)
-    index_path.parent.mkdir(parents=True, exist_ok=True)
-
-    logger.info(f"Saving index to: {index_path}")
-
-    # Convert tuples to lists for JSON serialization
-    index_copy = index.copy()
-    if "chromosomes" in index_copy:
-        index_copy["chromosomes"] = {
-            chrom: [list(item) for item in offsets]
-            for chrom, offsets in index_copy["chromosomes"].items()
-        }
-
-    with gzip.open(index_path, "wt") as f:
-        json.dump(index_copy, f, indent=2)
-
-    size_mb = index_path.stat().st_size / 1024 / 1024
-    logger.info(f"Index saved: {size_mb:.1f} MB")
-
-
-def _get_index_path(xml_path: Path) -> Path:
-    """
-    Get path for cached index file.
-
-    Args:
-        xml_path: Path to XML file
-
-    Returns:
-        Path to index file (.xml.index.json.gz)
-    """
-    # Store in same directory as XML
-    return xml_path.parent / f"{xml_path.name}.index.json.gz"
-
-
-def _extract_chromosome_for_index(elem: etree.Element) -> Optional[str]:
-    """
-    Extract chromosome from VariationArchive element (fast version for indexing).
-
-    Args:
-        elem: VariationArchive element
-
-    Returns:
-        Chromosome name (1-22, X, Y, MT) or None
-    """
-    # Find CanonicalSPDI
-    spdi_elem = elem.find(".//cv:CanonicalSPDI", NS)
-    if spdi_elem is None or not spdi_elem.text:
+    # Look for CanonicalSPDI tag
+    match = re.search(r"<CanonicalSPDI>([^<]+)</CanonicalSPDI>", line)
+    if not match:
         return None
 
-    spdi = spdi_elem.text.strip()
+    spdi = match.group(1)
 
-    # Parse SPDI: NC_000001.11:12345:A:G
-    try:
-        parts = spdi.split(":")
-        if len(parts) < 4:
-            return None
-
-        refseq = parts[0]  # NC_000001.11
-
-        # Quick chromosome extraction
-        chromosome = _refseq_to_chromosome(refseq)
-        return chromosome
-
-    except (ValueError, IndexError):
+    # Parse RefSeq accession
+    if ":" not in spdi:
         return None
+
+    refseq = spdi.split(":")[0]
+
+    # Map RefSeq to chromosome
+    return _refseq_to_chromosome(refseq)
 
 
 def _refseq_to_chromosome(refseq: str) -> Optional[str]:
     """
-    Convert RefSeq to chromosome (fast version for indexing).
+    Convert RefSeq accession to chromosome name.
 
     Args:
         refseq: RefSeq accession (e.g., NC_000001.11)
 
     Returns:
-        Chromosome name or None
+        Chromosome name (1-22, X, Y, MT) or None
     """
     if not refseq.startswith("NC_"):
         return None
@@ -319,86 +119,267 @@ def _refseq_to_chromosome(refseq: str) -> Optional[str]:
     return chr_map.get(chr_code)
 
 
-def get_chromosome_offsets(
-    index: Dict,
-    chromosomes: Set[str],
-) -> List[Tuple[int, str]]:
+def build_xml_index(
+    xml_path: Path,
+    force_rebuild: bool = False,
+) -> Dict[str, List[int]]:
     """
-    Get byte offsets for specific chromosomes.
+    Build byte-offset index for ClinVar XML file.
+
+    Scans XML file and records byte offset of each VariationArchive element,
+    grouped by chromosome. Index is cached for instant reuse.
 
     Args:
-        index: Index dict from build_xml_index()
-        chromosomes: Set of chromosome names to extract
+        xml_path: Path to UNCOMPRESSED ClinVar XML file
+        force_rebuild: Force rebuild even if cached index exists
 
     Returns:
-        List of (byte_offset, variant_id) tuples
+        Dict mapping chromosome → list of byte offsets
+
+    Performance:
+        - First run: 20-30 minutes (one-time cost)
+        - Creates ~50-100MB index file
+        - Subsequent loads: <1 second from cache
+
+    Note:
+        Requires UNCOMPRESSED XML. If you have .xml.gz, decompress first:
+        gunzip -k ClinVarVCVRelease.xml.gz
+    """
+    if xml_path.name.endswith(".gz"):
+        raise ValueError(
+            "Indexed mode requires UNCOMPRESSED XML. "
+            f"Decompress first: gunzip -k {xml_path.name}"
+        )
+
+    # Check for cached index
+    index_path = get_index_path(xml_path)
+
+    if not force_rebuild and index_path.exists():
+        logger.info(f"Loading cached index: {index_path.name}")
+        return load_xml_index(index_path)
+
+    logger.info(f"Building XML index for: {xml_path.name}")
+    logger.info("This is a one-time operation (20-30 minutes)")
+
+    # Index structure: chromosome → list of byte offsets
+    index: Dict[str, List[int]] = {}
+
+    # Track statistics
+    total_variants = 0
+    unknown_chr = 0
+
+    # Get file size for progress bar
+    file_size = xml_path.stat().st_size
+
+    with open(xml_path, "rb") as f:
+        # Progress bar based on file position
+        with tqdm(
+            total=file_size,
+            desc="Building index",
+            unit="B",
+            unit_scale=True,
+        ) as pbar:
+            current_offset = 0
+            in_variation_archive = False
+            variant_start_offset = 0
+            variant_chromosome = None
+
+            for line in f:
+                line_text = line.decode("utf-8", errors="ignore")
+
+                # Start of VariationArchive
+                if "<VariationArchive" in line_text:
+                    in_variation_archive = True
+                    variant_start_offset = current_offset
+                    variant_chromosome = None
+
+                # Extract chromosome from SPDI
+                if in_variation_archive and "<CanonicalSPDI>" in line_text:
+                    variant_chromosome = _extract_chromosome_from_line(line_text)
+
+                # End of VariationArchive
+                if "</VariationArchive>" in line_text and in_variation_archive:
+                    total_variants += 1
+
+                    # Add to index if we found a chromosome
+                    if variant_chromosome:
+                        if variant_chromosome not in index:
+                            index[variant_chromosome] = []
+                        index[variant_chromosome].append(variant_start_offset)
+                    else:
+                        unknown_chr += 1
+
+                    in_variation_archive = False
+
+                # Update progress
+                line_len = len(line)
+                current_offset += line_len
+                pbar.update(line_len)
+
+    logger.info(f"Index built: {total_variants:,} variants")
+    logger.info(f"  - Indexed: {total_variants - unknown_chr:,}")
+    logger.info(f"  - Unknown chr: {unknown_chr:,}")
+    logger.info(f"  - Chromosomes: {sorted(index.keys())}")
+
+    # Save index
+    logger.info(f"Saving index to: {index_path.name}")
+    with open(index_path, "wb") as f:
+        pickle.dump(index, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    logger.info(f"Index saved: {index_path.stat().st_size / 1024**2:.1f} MB")
+
+    return index
+
+
+def load_xml_index(index_path: Path) -> Dict[str, List[int]]:
+    """
+    Load cached XML index.
+
+    Args:
+        index_path: Path to .index.pkl file
+
+    Returns:
+        Dict mapping chromosome → list of byte offsets
+    """
+    with open(index_path, "rb") as f:
+        index = pickle.load(f)
+
+    logger.info(
+        f"Loaded index: {sum(len(v) for v in index.values()):,} variants, "
+        f"{len(index)} chromosomes"
+    )
+
+    return index
+
+
+def extract_variants_at_offsets(
+    xml_path: Path,
+    offsets: List[int],
+    max_variants: Optional[int] = None,
+) -> List[str]:
+    """
+    Extract VariationArchive XML chunks at specified byte offsets.
+
+    Args:
+        xml_path: Path to XML file
+        offsets: List of byte offsets to read from
+        max_variants: Optional limit on number of variants to extract
+
+    Returns:
+        List of XML strings (one per VariationArchive)
+
+    Performance:
+        - Memory efficient: Reads only requested variants
+        - Fast: Direct file seeking
+        - Typical: 30-60s for 100K-500K variants
+    """
+    if max_variants:
+        offsets = offsets[:max_variants]
+
+    logger.info(f"Extracting {len(offsets):,} variants from XML")
+
+    variants = []
+
+    with open(xml_path, "rb") as f:
+        with tqdm(
+            total=len(offsets),
+            desc="Reading variants",
+            unit="var",
+            unit_scale=True,
+        ) as pbar:
+            for offset in offsets:
+                # Seek to variant position
+                f.seek(offset)
+
+                # Read until end of VariationArchive
+                variant_xml = []
+                for line in f:
+                    line_text = line.decode("utf-8", errors="ignore")
+                    variant_xml.append(line_text)
+
+                    # Stop at closing tag
+                    if "</VariationArchive>" in line_text:
+                        break
+
+                variants.append("".join(variant_xml))
+                pbar.update(1)
+
+    return variants
+
+
+def get_offsets_for_chromosomes(
+    index: Dict[str, List[int]],
+    chromosomes: Set[str],
+) -> List[int]:
+    """
+    Get all byte offsets for specified chromosomes.
+
+    Args:
+        index: Chromosome → offsets mapping
+        chromosomes: Set of chromosomes to extract
+
+    Returns:
+        Combined list of all offsets for requested chromosomes
     """
     offsets = []
 
     for chrom in chromosomes:
-        if chrom in index.get("chromosomes", {}):
-            offsets.extend(index["chromosomes"][chrom])
+        if chrom in index:
+            offsets.extend(index[chrom])
+        else:
+            logger.warning(f"Chromosome '{chrom}' not found in index")
 
-    # Sort by byte offset for sequential reading
-    offsets.sort(key=lambda x: x[0])
+    logger.info(
+        f"Found {len(offsets):,} variants for chromosomes: {sorted(chromosomes)}"
+    )
 
     return offsets
 
 
-def decompress_xml_if_needed(xml_gz_path: Path) -> Path:
+def decompress_xml_for_indexing(xml_gz_path: Path) -> Path:
     """
-    Decompress .xml.gz to .xml if needed for indexed mode.
+    Decompress .xml.gz file for indexed loading.
 
     Args:
-        xml_gz_path: Path to .xml.gz file
+        xml_gz_path: Path to compressed XML file
 
     Returns:
-        Path to decompressed .xml file
+        Path to decompressed XML file
 
     Note:
-        This is a helper for users who only have .xml.gz files.
-        Indexed mode requires uncompressed XML for seeking.
+        This creates a large file (~70GB for full ClinVar).
+        Ensure you have sufficient disk space.
     """
-    if not str(xml_gz_path).endswith(".gz"):
-        # Already uncompressed
-        return xml_gz_path
+    if not xml_gz_path.name.endswith(".xml.gz"):
+        raise ValueError(f"Expected .xml.gz file, got: {xml_gz_path.name}")
 
-    xml_path = Path(str(xml_gz_path).replace(".gz", ""))
+    # Output path (same location, remove .gz)
+    xml_path = xml_gz_path.parent / xml_gz_path.name[:-3]
 
     if xml_path.exists():
-        logger.info(f"Using existing decompressed file: {xml_path.name}")
+        logger.info(f"Decompressed XML already exists: {xml_path.name}")
         return xml_path
 
-    logger.info(
-        f"Decompressing {xml_gz_path.name} to {xml_path.name} "
-        "(this will take 10-15 minutes, one-time operation)..."
-    )
+    logger.info(f"Decompressing {xml_gz_path.name}...")
+    logger.info("This will take 5-10 minutes and use ~70GB disk space")
 
-    file_size = xml_gz_path.stat().st_size
+    import gzip
+    import shutil
 
     with gzip.open(xml_gz_path, "rb") as f_in:
         with open(xml_path, "wb") as f_out:
-            with tqdm(
-                total=file_size,
-                desc="Decompressing",
-                unit="B",
-                unit_scale=True,
-            ) as pbar:
-                while True:
-                    chunk = f_in.read(1024 * 1024)  # 1MB chunks
-                    if not chunk:
-                        break
-                    f_out.write(chunk)
-                    pbar.update(len(chunk))
+            shutil.copyfileobj(f_in, f_out, length=1024 * 1024 * 16)  # 16MB buffer
 
-    logger.info(f"Decompression complete: {xml_path}")
+    logger.info(f"Decompressed: {xml_path.stat().st_size / 1024**3:.1f} GB")
+
     return xml_path
 
 
 __all__ = [
     "build_xml_index",
     "load_xml_index",
-    "save_xml_index",
-    "get_chromosome_offsets",
-    "decompress_xml_if_needed",
+    "get_index_path",
+    "extract_variants_at_offsets",
+    "get_offsets_for_chromosomes",
+    "decompress_xml_for_indexing",
 ]
