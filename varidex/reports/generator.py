@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Any
 from datetime import datetime
 import logging
 import time
@@ -39,6 +39,8 @@ Changes v6.0.3:
 - Accept both dict and VariantData types in validation
 - Added _normalize_variant_data() helper function
 - Flexible type handling for pipeline compatibility
+- Fixed ACMG_TIERS key mapping from codes to full names
+- Fixed type hints and column name references
 """
 
 
@@ -58,7 +60,14 @@ except ImportError:
 try:
     from varidex.core.config import ACMG_TIERS
 except ImportError:
-    ACMG_TIERS = {"P": "🔴", "LP": "🟠", "VUS": "⚪", "LB": "🟢", "B": "🟢🟢"}
+    # Fallback with correct structure
+    ACMG_TIERS = {
+        "Pathogenic": {"icon": "🔴", "priority": 1},
+        "Likely Pathogenic": {"icon": "🟠", "priority": 2},
+        "Uncertain Significance": {"icon": "⚪", "priority": 3},
+        "Likely Benign": {"icon": "🟢", "priority": 4},
+        "Benign": {"icon": "🟢", "priority": 5},
+    }
 
 except ImportError:
     logging.getLogger(__name__).warning("Formatters module not available")
@@ -102,6 +111,16 @@ TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 UNKNOWN_ICON = "❓"
 UNKNOWN_PRIORITY = 99
 
+# Map ACMG codes to full classification names
+ACMG_CODE_TO_NAME = {
+    "P": "Pathogenic",
+    "LP": "Likely Pathogenic",
+    "VUS": "Uncertain Significance",
+    "LB": "Likely Benign",
+    "B": "Benign",
+    "CONFLICT": "Conflicting",
+}
+
 
 # ========== VALIDATION HELPERS ==========
 def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
@@ -133,7 +152,7 @@ def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
         logger.warning(f"⚠️  Large dataset: {len(variants):,} variants")
 
 
-def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, any]:
+def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, Any]:
     """
     Normalize variant data from dict or VariantData to unified dict format.
     
@@ -200,6 +219,25 @@ def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, any]:
         raise ValidationError(f"Unsupported type: {type(item).__name__}")
 
 
+def _get_acmg_tier(classification: str) -> Dict[str, Any]:
+    """
+    Get ACMG tier info, handling both codes (P, LP) and full names.
+    
+    Args:
+        classification: ACMG code (P, LP, VUS, LB, B) or full name
+    
+    Returns:
+        Dict with icon and priority
+    """
+    # Convert code to full name if needed
+    full_name = ACMG_CODE_TO_NAME.get(classification, classification)
+    
+    # Look up in ACMG_TIERS
+    return ACMG_TIERS.get(
+        full_name, {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY}
+    )
+
+
 def _validate_dataframe(df: pd.DataFrame, required_cols: List[str]) -> None:
     """Validate DataFrame has required columns."""
     if df.empty:
@@ -254,10 +292,8 @@ def create_results_dataframe(
         # Normalize to unified dict format
         variant = _normalize_variant_data(item)
         
-        tier = ACMG_TIERS.get(
-            variant["acmg_classification"],
-            {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY},
-        )
+        # Get tier info using helper function
+        tier = _get_acmg_tier(variant["acmg_classification"])
 
         record = {
             "rsid": variant["rsid"] or "",
@@ -374,16 +410,33 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
         5 2.5
     """
     total = len(results_df)
-
+    
+    # Use correct column name: acmg_classification
     stats = {
         "total": total,
-        "pathogenic": int((results_df["classification"] == "Pathogenic").sum()),
-        "likely_pathogenic": int(
-            (results_df["classification"] == "Likely Pathogenic").sum()
+        "pathogenic": int(
+            (
+                results_df["acmg_classification"].isin(["P", "Pathogenic"])
+            ).sum()
         ),
-        "vus": int((results_df["classification"] == "Uncertain Significance").sum()),
-        "likely_benign": int((results_df["classification"] == "Likely Benign").sum()),
-        "benign": int((results_df["classification"] == "Benign").sum()),
+        "likely_pathogenic": int(
+            (
+                results_df["acmg_classification"].isin(["LP", "Likely Pathogenic"])
+            ).sum()
+        ),
+        "vus": int(
+            (
+                results_df["acmg_classification"].isin(
+                    ["VUS", "Uncertain Significance"]
+                )
+            ).sum()
+        ),
+        "likely_benign": int(
+            (results_df["acmg_classification"].isin(["LB", "Likely Benign"])).sum()
+        ),
+        "benign": int(
+            (results_df["acmg_classification"].isin(["B", "Benign"])).sum()
+        ),
         "conflicts": (
             int(results_df["has_conflicts"].sum())
             if "has_conflicts" in results_df
@@ -478,22 +531,24 @@ def generate_all_reports(
 
     # JSON Report
     if generate_json:
-        # Create minimal stats dict for reports
+        # Create minimal stats dict for reports - use correct column name
         stats = {
             "total_variants": len(results_df),
             "classified": len(results_df),
             "pathogenic": len(
                 results_df[
-                    results_df["classification"].str.contains(
+                    results_df["acmg_classification"].str.contains(
                         "Pathogenic", na=False, case=False
                     )
+                    | results_df["acmg_classification"].isin(["P"])
                 ]
             ),
             "benign": len(
                 results_df[
-                    results_df["classification"].str.contains(
+                    results_df["acmg_classification"].str.contains(
                         "Benign", na=False, case=False
                     )
+                    | results_df["acmg_classification"].isin(["B", "LB"])
                 ]
             ),
         }
