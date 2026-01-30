@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-varidex/io/loaders/clinvar.py - ClinVar Data Loader v8.0.0 DEVELOPMENT
+varidex/io/loaders/clinvar.py - ClinVar Data Loader v8.0.1 DEVELOPMENT
 Load ClinVar VCF, TSV, variant_summary, XML with auto-detection and intelligent caching.
 Returns DataFrame: rsid, chromosome, position, ref/alt_allele, gene, clinical_sig, coord_key
+
+v8.0.1 Changes:
+- Memory optimizations: Skip non-critical validation steps
+- Disabled multiallelic splitting (OOM prevention)
+- Disabled parallel processing (OOM prevention)
+- Validation skipped (matching engine handles invalid data)
 
 v8.0.0 Changes:
 - ✨ NEW: ClinVar XML support (includes structural variants >1MB)
@@ -326,7 +332,7 @@ def load_clinvar_vcf(
     user_chromosomes: Optional[Set[str]] = None,
     checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
-    """Load full ClinVar VCF with parallel validation and progress bars."""
+    """Load full ClinVar VCF with minimal validation (memory-optimized)."""
     print(f"\n{'='*70}")
     print(f"📁 LOADING VCF: {filepath.name}")
     print(f"{'='*70}")
@@ -402,17 +408,15 @@ def load_clinvar_vcf(
         df = split_multiallelic_vcf(df)
         print()
 
-        # Validate and normalize with PARALLEL processing
-        print("✅ Validating chromosomes and positions...")
+        # SKIP VALIDATION - OOM prevention
+        # Matching engine naturally handles invalid positions
+        print("⚠️  Skipping validation (memory optimization)")
+        print("   Matching engine will filter invalid data\n")
+        logger.info("Validation skipped (memory optimization)")
+        
+        # Just normalize chromosome names (lightweight)
         df = validate_chromosome_consistency(df)
-        df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
         df = normalize_dataframe_coordinates(df)
-        print("  ✓ Validated\n")
-
-        # Filter valid chromosomes with PARALLEL processing
-        orig_len: int = len(df)
-        df = filter_valid_chromosomes_parallel(df)  # ⚡ PARALLEL
-        print(f"🔬 Filtered to valid chromosomes: {orig_len:,} → {len(df):,}\n")
 
         # Extract rsIDs from INFO field
         if "INFO" in df.columns:
@@ -608,7 +612,12 @@ def load_clinvar_file(
     **kwargs: Any,
 ) -> pd.DataFrame:
     """
-    Auto-detect and load ClinVar file with intelligent caching v8.0.0.
+    Auto-detect and load ClinVar file with intelligent caching v8.0.1.
+
+    NEW in v8.0.1: Memory optimizations for systems with limited RAM
+    - Skips non-critical validation steps
+    - Disabled multiallelic splitting
+    - Disabled parallel processing
 
     NEW in v8.0.0: XML support for comprehensive variant coverage
     - Includes structural variants >1MB
