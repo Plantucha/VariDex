@@ -186,7 +186,10 @@ def load_clinvar_xml_indexed(
     checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """
-    Load XML using pre-built byte-offset index (Phase 3).
+    Load XML using pre-built byte-offset index.
+
+    First run: Builds index (20-30 min one-time cost)
+    Subsequent runs: 30-60s, <500MB RAM
 
     Args:
         filepath: Path to UNCOMPRESSED XML file
@@ -200,7 +203,8 @@ def load_clinvar_xml_indexed(
     """
     from varidex.io.indexers.clinvar_xml_index import (
         build_xml_index,
-        get_chromosome_offsets,
+        get_offsets_for_chromosomes,
+        extract_variants_at_offsets,
     )
 
     logger.info(f"Loading ClinVar XML (indexed): {filepath.name}")
@@ -209,42 +213,43 @@ def load_clinvar_xml_indexed(
         f"({len(user_chromosomes)} total)"
     )
 
-    # Build or load index
+    # Build or load index (cached automatically)
     index = build_xml_index(filepath)
 
     # Get byte offsets for target chromosomes
-    offsets = get_chromosome_offsets(index, user_chromosomes)
+    offsets = get_offsets_for_chromosomes(index, user_chromosomes)
 
     if not offsets:
         logger.warning("No variants found for specified chromosomes")
         return pd.DataFrame()
 
-    logger.info(f"Found {len(offsets):,} variants to load")
+    # Extract XML chunks at offsets
+    xml_chunks = extract_variants_at_offsets(filepath, offsets)
 
-    # Load variants using byte offsets
+    # Parse XML chunks
+    logger.info("Parsing extracted variants...")
     variants = []
 
-    with open(filepath, "rb") as f:
-        with tqdm(
-            total=len(offsets),
-            desc="Loading variants",
-            unit="var",
-            unit_scale=True,
-        ) as pbar:
-            for byte_offset, variant_id in offsets:
-                # Seek to byte offset
-                f.seek(byte_offset)
-
-                # Read and parse element at this position
-                # Note: We need to read backwards to find element start
-                variant = _read_variant_at_offset(f, byte_offset)
-
+    with tqdm(
+        total=len(xml_chunks),
+        desc="Parsing variants",
+        unit="var",
+        unit_scale=True,
+    ) as pbar:
+        for xml_chunk in xml_chunks:
+            # Parse XML string
+            try:
+                elem = etree.fromstring(xml_chunk.encode("utf-8"))
+                variant = _parse_variation_archive(elem)
                 if variant:
                     variants.append(variant)
+                elem.clear()
+            except Exception as e:
+                logger.debug(f"Failed to parse variant chunk: {e}")
 
-                pbar.update(1)
+            pbar.update(1)
 
-    logger.info(f"Loaded {len(variants):,} variants")
+    logger.info(f"Parsed {len(variants):,} variants")
 
     if not variants:
         return pd.DataFrame()
@@ -257,49 +262,6 @@ def load_clinvar_xml_indexed(
     logger.info(f"Final DataFrame: {len(df):,} rows, {len(df.columns)} columns")
 
     return df
-
-
-def _read_variant_at_offset(f, byte_offset: int) -> Optional[Dict]:
-    """
-    Read and parse variant element at specific byte offset.
-
-    Args:
-        f: Open file handle
-        byte_offset: Byte position in file
-
-    Returns:
-        Variant dict or None
-    """
-    # Seek backwards to find element start
-    # Look for <VariationArchive
-    chunk_size = 50000  # Read 50KB chunks
-    search_start = max(0, byte_offset - chunk_size)
-
-    f.seek(search_start)
-    chunk = f.read(chunk_size + 10000)  # Read a bit extra
-
-    # Find element start
-    tag_start = chunk.rfind(b"<VariationArchive")
-    if tag_start == -1:
-        return None
-
-    # Find element end (after our byte offset)
-    tag_end = chunk.find(b"</VariationArchive>", tag_start)
-    if tag_end == -1:
-        return None
-
-    # Extract element XML
-    element_xml = chunk[tag_start : tag_end + len(b"</VariationArchive>")]
-
-    # Parse element
-    try:
-        elem = etree.fromstring(element_xml)
-        variant = _parse_variation_archive(elem)
-        elem.clear()
-        return variant
-    except Exception as e:
-        logger.debug(f"Failed to parse variant at offset {byte_offset}: {e}")
-        return None
 
 
 def _parse_variation_archive(elem: etree.Element) -> Optional[Dict]:
