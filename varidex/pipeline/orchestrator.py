@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/orchestrator.py - Pipeline Orchestrator v7.0.2 DEVELOPMENT
+varidex/pipeline/orchestrator.py - Pipeline Orchestrator v8.0.0 DEVELOPMENT
 
-Main 7-stage pipeline coordinator with IMPROVED MATCHING.
+Main 7-stage pipeline coordinator with IMPROVED MATCHING and LAZY LOADING.
 
-Changes v7.0.2:
+Changes v8.0.0:
+- Phase 2: Lazy loading with chromosome filtering
+- Reordered stages: user data loads first
+- Automatic chromosome extraction
 - Uses matching_improved.py with genotype verification
 - Removes false positives from coordinate-only matching
-- Accurate matching for production use
 
 Development version - not for production use.
 """
@@ -78,7 +80,10 @@ except ImportError as e:
         load_vcf_file,
         detect_clinvar_file_type,
     )
-    from varidex.io.matching_improved import match_variants_hybrid  # ✅ IMPROVED
+    from varidex.io.matching_improved import (
+        match_variants_hybrid,
+        get_user_chromosomes,  # ✅ Phase 2: Chromosome extraction
+    )
     from varidex.reports.generator import create_results_dataframe, generate_all_reports
 
     config = FallbackConfig()
@@ -88,7 +93,7 @@ except ImportError as e:
         load_23andme_file = staticmethod(load_23andme_file)
         load_vcf_file = staticmethod(load_vcf_file)
         detect_clinvar_file_type = staticmethod(detect_clinvar_file_type)
-        match_variants_hybrid = staticmethod(match_variants_hybrid)  # ✅ IMPROVED
+        match_variants_hybrid = staticmethod(match_variants_hybrid)
 
     class _ReportsWrapper:
         create_results_dataframe = staticmethod(create_results_dataframe)
@@ -262,23 +267,8 @@ def main(
         print(f"  Matching mode: {match_mode}")
         state.file_types = f"{clinvar_type}/{user_type}"
 
-        # STAGE 2: LOAD CLINVAR
-        print_stage_header(2, 7, "📥 LOADING CLINVAR DATABASE")
-
-        checkpoint_dir: Path = Path(
-            get_config_value(config, "CHECKPOINT_DIR", Path(".varidex_cache"))
-        )
-
-        clinvar_df: pd.DataFrame = execute_stage2_load_clinvar(
-            clinvar_file, checkpoint_dir, loader, safeguard_config, _IMPORT_MODE
-        )
-
-        state.variants_loaded = len(clinvar_df)
-        logger.info(f"✓ Loaded {state.variants_loaded:,} ClinVar variants")
-        print(f"  ✓ Loaded: {state.variants_loaded:,} variants")
-
-        # STAGE 3: LOAD USER DATA
-        print_stage_header(3, 7, "📥 LOADING USER GENOMIC DATA")
+        # ✅ PHASE 2: STAGE 2 - LOAD USER DATA FIRST (for chromosome extraction)
+        print_stage_header(2, 7, "📥 LOADING USER GENOMIC DATA")
 
         user_df: pd.DataFrame = execute_stage3_load_user_data(
             user_file, user_type, loader
@@ -287,6 +277,41 @@ def main(
         state.user_variants = len(user_df)
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
         print(f"  ✓ Loaded: {state.user_variants:,} variants")
+
+        # ✅ PHASE 2: Extract chromosomes from user genome
+        from varidex.io.matching_improved import get_user_chromosomes
+
+        user_chromosomes = get_user_chromosomes(user_df)
+        logger.info(
+            f"✓ Extracted {len(user_chromosomes)} chromosomes for lazy loading: "
+            f"{sorted(user_chromosomes)}"
+        )
+        print(
+            f"  ✓ Chromosomes: {len(user_chromosomes)} "
+            f"({', '.join(sorted(user_chromosomes)[:5])}...)"
+        )
+
+        # ✅ PHASE 2: STAGE 3 - LOAD CLINVAR WITH CHROMOSOME FILTERING
+        print_stage_header(3, 7, "📥 LOADING CLINVAR DATABASE (FILTERED)")
+
+        checkpoint_dir: Path = Path(
+            get_config_value(config, "CHECKPOINT_DIR", Path(".varidex_cache"))
+        )
+
+        clinvar_df: pd.DataFrame = execute_stage2_load_clinvar(
+            clinvar_file,
+            checkpoint_dir,
+            loader,
+            safeguard_config,
+            user_chromosomes=user_chromosomes,  # ✅ Lazy loading enabled!
+        )
+
+        state.variants_loaded = len(clinvar_df)
+        logger.info(f"✓ Loaded {state.variants_loaded:,} ClinVar variants (filtered)")
+        print(f"  ✓ Loaded: {state.variants_loaded:,} variants (chromosome-filtered)")
+
+        if clinvar_type == "xml":
+            print("  ⚡ XML indexed mode: 30-60s load time, <500MB RAM")
 
         # STAGE 4: HYBRID MATCHING (IMPROVED v7.0)
         print_stage_header(4, 7, "🔗 MATCHING VARIANTS (IMPROVED)")
@@ -403,7 +428,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="ClinVar-WGS ACMG Pipeline v7.0.2-dev", add_help=False
+        description="ClinVar-WGS ACMG Pipeline v8.0.0-dev (with XML support)",
+        add_help=False,
     )
     parser.add_argument("clinvar_file", nargs="?")
     parser.add_argument("user_data", nargs="?")
