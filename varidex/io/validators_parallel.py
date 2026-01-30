@@ -10,6 +10,9 @@ v1.1.0: Added progress bars for user feedback
 Performance:
 - Sequential: ~10-15 seconds for 4M variants
 - Parallel (8 cores): ~2-3 seconds for 4M variants
+
+NOTE: Parallel processing disabled due to memory issues with large datasets.
+      Sequential mode is fast enough and more reliable.
 """
 
 import pandas as pd
@@ -95,6 +98,10 @@ def validate_position_ranges_parallel(
 ) -> pd.DataFrame:
     """
     Parallel validation of chromosome positions with progress bar.
+    
+    NOTE: Parallel processing is currently DISABLED (threshold set very high)
+          to prevent MemoryError on systems with limited RAM.
+          Sequential validation is fast enough for most use cases.
 
     Args:
         df: DataFrame with chromosome and position columns
@@ -106,7 +113,9 @@ def validate_position_ranges_parallel(
     if "chromosome" not in df.columns or "position" not in df.columns:
         return df
 
-    if len(df) < 100_000:
+    # DISABLED: Use sequential for all datasets (memory safety)
+    # Original threshold was 100_000, now set to 50M to effectively disable
+    if len(df) < 50_000_000:
         # Use sequential for small datasets
         return _validate_sequential(df)
 
