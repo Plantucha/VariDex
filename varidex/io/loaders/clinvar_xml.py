@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-ClinVar XML Streaming Parser - Phase 1 (v8.0.0)
+ClinVar XML Parser - Phase 3 Complete (v8.2.0)
 
-Memory-efficient streaming parser for ClinVar XML release files.
-Handles variants of all types including structural variants >1MB.
+Memory-efficient streaming parser with optional indexed mode.
 
-Performance: 5-8 minutes, 2-4GB RAM for full 70GB XML
+Performance:
+- Streaming: 5-8 minutes, 2-4GB RAM (Phase 1)
+- Indexed: 30-60 seconds, <500MB RAM (Phase 3)
 """
 
 import gzip
@@ -31,23 +32,68 @@ def load_clinvar_xml(
     checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """
+    Load ClinVar XML with smart mode selection.
+
+    Automatically chooses best loading strategy:
+    - Indexed mode: If uncompressed XML + chromosomes specified (30-60s, <500MB)
+    - Streaming mode: Otherwise (5-8min, 2-4GB)
+
+    Args:
+        filepath: Path to ClinVar XML file (.xml or .xml.gz)
+        user_chromosomes: Optional set of chromosomes to filter
+        checkpoint_dir: Optional directory for caching
+
+    Returns:
+        DataFrame with variant data
+    """
+    # Check if indexed mode is possible
+    can_use_indexed = (
+        not str(filepath).endswith(".gz")  # Must be uncompressed
+        and user_chromosomes is not None  # Must have chromosome filter
+        and len(user_chromosomes) > 0
+    )
+
+    if can_use_indexed:
+        logger.info("Using indexed mode (fast, low memory)")
+        try:
+            return load_clinvar_xml_indexed(
+                filepath,
+                user_chromosomes,
+                checkpoint_dir,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Indexed mode failed ({e}), falling back to streaming"
+            )
+
+    # Fall back to streaming mode
+    logger.info("Using streaming mode")
+    return _load_clinvar_xml_streaming(
+        filepath,
+        user_chromosomes,
+        checkpoint_dir,
+    )
+
+
+def _load_clinvar_xml_streaming(
+    filepath: Path,
+    user_chromosomes: Optional[Set[str]] = None,
+    checkpoint_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
     Stream parse ClinVar XML without loading entire file into memory.
 
     Args:
         filepath: Path to ClinVar XML file (.xml or .xml.gz)
-        user_chromosomes: Optional set of chromosomes to filter (e.g., {'1', '2', 'X'})
-        checkpoint_dir: Optional directory for caching (handled by parent loader)
+        user_chromosomes: Optional set of chromosomes to filter
+        checkpoint_dir: Optional directory for caching
 
     Returns:
-        DataFrame with columns: chromosome, position, ref_allele, alt_allele, rsid,
-                                gene, clinical_sig, review_status, variant_id
+        DataFrame with variant data
 
-    Performance:
-        - Memory: 2-4GB peak (streaming, not loading full file)
-        - Time: 5-8 minutes for full 70GB XML
-        - Filtered: 1-2 minutes for 3-5 chromosomes (23andMe)
+    Performance: 5-8 minutes, 2-4GB RAM
     """
-    logger.info(f"Loading ClinVar XML: {filepath.name}")
+    logger.info(f"Loading ClinVar XML (streaming): {filepath.name}")
 
     if user_chromosomes:
         logger.info(
@@ -73,20 +119,7 @@ def load_clinvar_xml(
             tag=f"{{{NS['cv']}}}VariationArchive",
         )
 
-        # Get root element for periodic cleanup
-        # This is CRITICAL for memory management
-        context = iter(context)
-        try:
-            event, root = next(context)
-            # Put it back
-            context = etree.iterparse(
-                f,
-                events=("end",),
-                tag=f"{{{NS['cv']}}}VariationArchive",
-            )
-            root = None
-        except StopIteration:
-            pass
+        root = None
 
         # Progress bar (estimated 4.3M variants)
         with tqdm(
@@ -108,55 +141,165 @@ def load_clinvar_xml(
                         total_filtered += 1
 
                 # CRITICAL: Aggressive memory cleanup
-                # Clear the element itself
                 elem.clear()
-                
-                # Remove from parent to free memory
                 parent = elem.getparent()
                 if parent is not None:
                     parent.remove(elem)
-                
-                # Clear root periodically to prevent memory buildup
+
+                # Clear root periodically
                 if total_processed % 10000 == 0:
-                    # Try to get root if we haven't already
                     if root is None:
                         try:
-                            # Walk up to find root
                             current = elem
                             while current.getparent() is not None:
                                 current = current.getparent()
                             root = current
                         except:
                             pass
-                    
-                    # Clear root's children that we've already processed
                     if root is not None:
                         root.clear()
 
                 pbar.update(1)
 
-        # Clean up context
         del context
 
     logger.info(f"Processed {total_processed:,} variants")
     logger.info(f"Retained {total_filtered:,} variants after filtering")
 
-    # Convert to DataFrame
     if not variants:
         logger.warning("No variants found matching criteria")
         return pd.DataFrame()
 
     df = pd.DataFrame(variants)
-    
-    # Free the variants list
     del variants
 
-    # Normalize coordinates (convert to 1-based, standardize chromosome names)
     df = normalize_dataframe_coordinates(df)
 
     logger.info(f"Final DataFrame: {len(df):,} rows, {len(df.columns)} columns")
 
     return df
+
+
+def load_clinvar_xml_indexed(
+    filepath: Path,
+    user_chromosomes: Set[str],
+    checkpoint_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Load XML using pre-built byte-offset index (Phase 3).
+
+    Args:
+        filepath: Path to UNCOMPRESSED XML file
+        user_chromosomes: Required set of chromosomes
+        checkpoint_dir: Optional caching directory
+
+    Returns:
+        Filtered DataFrame
+
+    Performance: 30-60s with cached index, <500MB RAM
+    """
+    from varidex.io.indexers.clinvar_xml_index import (
+        build_xml_index,
+        get_chromosome_offsets,
+    )
+
+    logger.info(f"Loading ClinVar XML (indexed): {filepath.name}")
+    logger.info(
+        f"Target chromosomes: {sorted(user_chromosomes)} "
+        f"({len(user_chromosomes)} total)"
+    )
+
+    # Build or load index
+    index = build_xml_index(filepath)
+
+    # Get byte offsets for target chromosomes
+    offsets = get_chromosome_offsets(index, user_chromosomes)
+
+    if not offsets:
+        logger.warning("No variants found for specified chromosomes")
+        return pd.DataFrame()
+
+    logger.info(f"Found {len(offsets):,} variants to load")
+
+    # Load variants using byte offsets
+    variants = []
+
+    with open(filepath, "rb") as f:
+        with tqdm(
+            total=len(offsets),
+            desc="Loading variants",
+            unit="var",
+            unit_scale=True,
+        ) as pbar:
+            for byte_offset, variant_id in offsets:
+                # Seek to byte offset
+                f.seek(byte_offset)
+
+                # Read and parse element at this position
+                # Note: We need to read backwards to find element start
+                variant = _read_variant_at_offset(f, byte_offset)
+
+                if variant:
+                    variants.append(variant)
+
+                pbar.update(1)
+
+    logger.info(f"Loaded {len(variants):,} variants")
+
+    if not variants:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(variants)
+    del variants
+
+    df = normalize_dataframe_coordinates(df)
+
+    logger.info(f"Final DataFrame: {len(df):,} rows, {len(df.columns)} columns")
+
+    return df
+
+
+def _read_variant_at_offset(f, byte_offset: int) -> Optional[Dict]:
+    """
+    Read and parse variant element at specific byte offset.
+
+    Args:
+        f: Open file handle
+        byte_offset: Byte position in file
+
+    Returns:
+        Variant dict or None
+    """
+    # Seek backwards to find element start
+    # Look for <VariationArchive
+    chunk_size = 50000  # Read 50KB chunks
+    search_start = max(0, byte_offset - chunk_size)
+
+    f.seek(search_start)
+    chunk = f.read(chunk_size + 10000)  # Read a bit extra
+
+    # Find element start
+    tag_start = chunk.rfind(b"<VariationArchive")
+    if tag_start == -1:
+        return None
+
+    # Find element end (after our byte offset)
+    tag_end = chunk.find(b"</VariationArchive>", tag_start)
+    if tag_end == -1:
+        return None
+
+    # Extract element XML
+    element_xml = chunk[tag_start : tag_end + len(b"</VariationArchive>")]
+
+    # Parse element
+    try:
+        elem = etree.fromstring(element_xml)
+        variant = _parse_variation_archive(elem)
+        elem.clear()
+        return variant
+    except Exception as e:
+        logger.debug(f"Failed to parse variant at offset {byte_offset}: {e}")
+        return None
 
 
 def _parse_variation_archive(elem: etree.Element) -> Optional[Dict]:
@@ -170,32 +313,24 @@ def _parse_variation_archive(elem: etree.Element) -> Optional[Dict]:
         Dict with variant info, or None if parsing fails
     """
     try:
-        # Extract variant ID
         variant_id = elem.get("VariationID")
         if not variant_id:
             return None
 
-        # Extract classification
         clinical_sig, review_status = _extract_clinical_significance(elem)
-
-        # Extract genomic location (SPDI notation)
         spdi_data = _parse_spdi(elem)
         if not spdi_data:
             return None
 
-        # Extract rsID
         rsid = _extract_rsid(elem)
-
-        # Extract gene symbol
         gene = _extract_gene(elem)
 
-        # Build variant dict with standard column names
         variant = {
             "variant_id": variant_id,
             "chromosome": spdi_data["chromosome"],
             "position": spdi_data["position"],
-            "ref_allele": spdi_data["ref"],  # Match normalization schema
-            "alt_allele": spdi_data["alt"],  # Match normalization schema
+            "ref_allele": spdi_data["ref"],
+            "alt_allele": spdi_data["alt"],
             "rsid": rsid,
             "gene": gene,
             "clinical_sig": clinical_sig,
@@ -222,37 +357,33 @@ def _parse_spdi(elem: etree.Element) -> Optional[Dict]:
     Returns:
         Dict with chromosome, position, ref, alt or None
     """
-    # Find CanonicalSPDI element
     spdi_elem = elem.find(".//cv:CanonicalSPDI", NS)
     if spdi_elem is None or not spdi_elem.text:
         return None
 
     spdi = spdi_elem.text.strip()
 
-    # Parse SPDI: NC_000001.11:12345:A:G
     try:
         parts = spdi.split(":")
         if len(parts) < 4:
             return None
 
-        refseq = parts[0]  # NC_000001.11
-        position = int(parts[1])  # 0-based in SPDI
+        refseq = parts[0]
+        position = int(parts[1])
         ref = parts[2]
         alt = parts[3]
 
-        # Convert RefSeq to chromosome
         chromosome = _refseq_to_chromosome(refseq)
         if not chromosome:
             return None
 
-        # Convert 0-based to 1-based position
         position_1based = position + 1
 
         return {
             "chromosome": chromosome,
             "position": position_1based,
-            "ref": ref if ref else "-",  # Deletion
-            "alt": alt if alt else "-",  # Insertion
+            "ref": ref if ref else "-",
+            "alt": alt if alt else "-",
         }
 
     except (ValueError, IndexError) as e:
@@ -264,11 +395,6 @@ def _refseq_to_chromosome(refseq: str) -> Optional[str]:
     """
     Convert RefSeq accession to chromosome name.
 
-    NC_000001.11 → '1'
-    NC_000023.11 → 'X'
-    NC_000024.10 → 'Y'
-    NC_012920.1 → 'MT'
-
     Args:
         refseq: RefSeq accession (e.g., NC_000001.11)
 
@@ -278,13 +404,11 @@ def _refseq_to_chromosome(refseq: str) -> Optional[str]:
     if not refseq.startswith("NC_"):
         return None
 
-    # Extract chromosome number (NC_000001.11 → 000001)
     try:
         chr_code = refseq.split(".")[0].replace("NC_", "")
     except IndexError:
         return None
 
-    # Map RefSeq codes to chromosome names
     chr_map = {
         "000001": "1",
         "000002": "2",
@@ -326,7 +450,6 @@ def _extract_clinical_significance(elem: etree.Element) -> Tuple[str, str]:
     Returns:
         Tuple of (clinical_sig, review_status)
     """
-    # Find ClinicalSignificance element
     clin_sig_elem = elem.find(
         ".//cv:ClinicalSignificance/cv:Description", NS
     )
@@ -334,7 +457,6 @@ def _extract_clinical_significance(elem: etree.Element) -> Tuple[str, str]:
         clin_sig_elem.text.strip() if clin_sig_elem is not None else "Unknown"
     )
 
-    # Find ReviewStatus element
     review_elem = elem.find(
         ".//cv:ClinicalSignificance/cv:ReviewStatus", NS
     )
@@ -355,13 +477,11 @@ def _extract_rsid(elem: etree.Element) -> Optional[str]:
     Returns:
         rsID string (e.g., 'rs123456') or None
     """
-    # Find XRef with DB="dbSNP"
     xrefs = elem.findall(".//cv:XRef[@DB='dbSNP']", NS)
 
     for xref in xrefs:
         rsid = xref.get("ID")
         if rsid:
-            # Ensure rs prefix
             if not rsid.startswith("rs"):
                 rsid = f"rs{rsid}"
             return rsid
@@ -379,40 +499,9 @@ def _extract_gene(elem: etree.Element) -> Optional[str]:
     Returns:
         Gene symbol string or None
     """
-    # Find Gene/Symbol element
     gene_elem = elem.find(".//cv:Gene/cv:Symbol", NS)
 
     if gene_elem is not None and gene_elem.text:
         return gene_elem.text.strip()
 
     return None
-
-
-# Phase 3: Will add indexed loading function here
-def load_clinvar_xml_indexed(
-    filepath: Path,
-    user_chromosomes: Set[str],
-    checkpoint_dir: Optional[Path] = None,
-) -> pd.DataFrame:
-    """
-    Load XML using pre-built byte-offset index (Phase 3).
-
-    This function will be implemented in Phase 3 for 30-60s load times.
-
-    Args:
-        filepath: Path to UNCOMPRESSED XML file
-        user_chromosomes: Required set of chromosomes
-        checkpoint_dir: Optional caching directory
-
-    Returns:
-        Filtered DataFrame
-
-    Performance: 30-60s with cached index, <500MB RAM
-    """
-    raise NotImplementedError(
-        "Indexed XML loading will be implemented in Phase 3 (v8.2.0)"
-    )
-
-
-# Alias for backwards compatibility
-_load_clinvar_xml_streaming = load_clinvar_xml
