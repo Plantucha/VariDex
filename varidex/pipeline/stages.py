@@ -8,6 +8,7 @@ Changes in v8.0.0:
 - Phase 2: Lazy loading with chromosome filtering
 - Phase 3: XML indexed mode support
 - BUGFIX: DataFrame now converted to list of dicts before classification
+- BUGFIX: Calculate stats from classified_variants after parallel processing
 - Uses matching_improved.py with genotype verification
 - Removes false positives from coordinate-only matching
 - Adds confidence scoring to matches
@@ -399,6 +400,44 @@ def _classify_batch(batch_data):
     return classify_variants_production(batch_variants, safeguard_config)
 
 
+def _calculate_classification_stats(classified_variants: List[Dict]) -> Dict[str, int]:
+    """
+    Calculate classification statistics from classified variants.
+    
+    Args:
+        classified_variants: List of classification dicts with 'classification' key
+    
+    Returns:
+        Dict with counts for each ACMG category
+    """
+    stats = {
+        "pathogenic": 0,
+        "likely_pathogenic": 0,
+        "vus": 0,
+        "likely_benign": 0,
+        "benign": 0,
+        "conflicts": 0,
+    }
+    
+    for variant in classified_variants:
+        classification = variant.get("classification", "")
+        
+        if classification in ["P", "Pathogenic"]:
+            stats["pathogenic"] += 1
+        elif classification in ["LP", "Likely Pathogenic"]:
+            stats["likely_pathogenic"] += 1
+        elif classification in ["VUS", "Uncertain Significance"]:
+            stats["vus"] += 1
+        elif classification in ["LB", "Likely Benign"]:
+            stats["likely_benign"] += 1
+        elif classification in ["B", "Benign"]:
+            stats["benign"] += 1
+        elif classification == "CONFLICT":
+            stats["conflicts"] += 1
+    
+    return stats
+
+
 def execute_stage5_acmg_classification(
     matched_df: pd.DataFrame,
     safeguard_config: Dict,
@@ -408,7 +447,7 @@ def execute_stage5_acmg_classification(
     parallel: bool = True,
     batch_size: int = 1000,
 ) -> Tuple[List, Dict]:
-    """STAGE 5: ACMG classification - FIXED v7.0.2."""
+    """STAGE 5: ACMG classification - FIXED v8.0.0."""
     from varidex.utils.helpers import classify_variants_production
 
     if parallel and len(matched_df) > batch_size:
@@ -423,7 +462,6 @@ def execute_stage5_acmg_classification(
         ]
 
         classified_variants = []
-        combined_stats = {}
 
         with ProcessPoolExecutor(max_workers=4) as executor:
             with tqdm(
@@ -444,6 +482,9 @@ def execute_stage5_acmg_classification(
                     classified_variants.extend(batch_classified)
                     pbar.update(1)
 
+        # ✅ BUGFIX: Calculate stats from classified_variants
+        combined_stats = _calculate_classification_stats(classified_variants)
+        
         logger.info(f"✓ Classified {len(classified_variants):,} variants (parallel)")
         return classified_variants, combined_stats
 
