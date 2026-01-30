@@ -271,29 +271,57 @@ def _generate_basic_html(
 def generate_conflicts_report(
     df: pd.DataFrame, output_dir: Path, timestamp: str
 ) -> Optional[Path]:
-    """Generate text report of conflicting variant interpretations."""
-    conflicts = df[df.get("has_conflict", False) == True]
+    """Generate CSV report of conflicting variant interpretations.
+    
+    Args:
+        df: DataFrame with classified variants
+        output_dir: Output directory for report
+        timestamp: Timestamp string for filename
+    
+    Returns:
+        Path to conflicts CSV file, or None if no conflicts found
+    """
+    # Check for conflicts using correct column name (plural)
+    if "has_conflicts" not in df.columns:
+        logger.warning("Column 'has_conflicts' not found in DataFrame")
+        return None
+    
+    # Filter for conflicts - check both boolean and CONFLICT classification
+    conflicts = df[
+        (df["has_conflicts"] == True) | 
+        (df["acmg_classification"] == "CONFLICT")
+    ].copy()
 
     if len(conflicts) == 0:
         logger.info("No conflicts detected")
         return None
 
-    output_path = output_dir / f"conflicts_{timestamp}.txt"
-
-    with open(output_path, "w") as f:
-        f.write(f"VARIANT INTERPRETATION CONFLICTS\n")
-        f.write(f"Generated: {timestamp}\n")
-        f.write(f"Total conflicts: {len(conflicts)}\n")
-        f.write("=" * 70 + "\n\n")
-
-        for idx, row in conflicts.iterrows():
-            f.write(f"Variant: {row.get('rsid', 'Unknown')}\n")
-            f.write(f"Gene: {row.get('gene', 'Unknown')}\n")
-            f.write(f"Classification: {row.get('acmg_classification', 'Unknown')}\n")
-            f.write(f"Conflicting interpretations: {row.get('conflict_count', 0)}\n")
-            f.write("-" * 70 + "\n\n")
-
-    logger.info(f"Conflicts report generated: {output_path.name}")
+    # Generate CSV report (changed from .txt to .csv)
+    output_path = output_dir / f"conflicts_{timestamp}.csv"
+    
+    # Select relevant columns for conflicts report
+    conflict_columns = [
+        "rsid",
+        "chromosome",
+        "position",
+        "gene",
+        "genotype",
+        "acmg_classification",
+        "clinical_significance",
+        "review_status",
+        "num_submitters",
+        "star_rating",
+    ]
+    
+    # Filter to only existing columns
+    available_columns = [col for col in conflict_columns if col in conflicts.columns]
+    conflicts_subset = conflicts[available_columns]
+    
+    # Save as CSV
+    conflicts_subset.to_csv(output_path, index=False)
+    
+    size = format_file_size(output_path.stat().st_size)
+    logger.info(f"Conflicts report generated: {output_path.name} ({size}) - {len(conflicts):,} conflicts")
     return output_path
 
 
