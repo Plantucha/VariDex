@@ -11,7 +11,7 @@ Performance: 5-8 minutes, 2-4GB RAM for full 70GB XML
 import gzip
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 from lxml import etree
@@ -274,7 +274,7 @@ def _refseq_to_chromosome(refseq: str) -> Optional[str]:
     return chr_map.get(chr_code)
 
 
-def _extract_clinical_significance(elem: etree.Element) -> tuple[str, str]:
+def _extract_clinical_significance(elem: etree.Element) -> Tuple[str, str]:
     """
     Extract clinical significance and review status.
 
