@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+"""
+varidex/reports/generator.py - Report Orchestrator v6.0.3-dev
+
+Production-grade report orchestration with comprehensive validation,
+progress tracking, and robust error handling.
+
+10/10 FEATURES: Input validation | Progress tracking | Performance metrics
+Type hints | Self-tests | Named constants | Enhanced logging | Examples
+
+Version: 6.0.3-dev | Compatible: formatters.py v6.0.2+ | Lines: <500
+Changes v6.0.3:
+- Accept both dict and VariantData types in validation
+- Added _normalize_variant_data() helper function
+- Flexible type handling for pipeline compatibility
+- Fixed ACMG_TIERS key mapping from codes to full names
+- Fixed type hints and column name references
+- Use calculate_report_stats() consistently for all reports
+"""
+
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Union, Optional, Any
@@ -22,27 +42,6 @@ from tqdm import tqdm
 
 # Global constant for formatter availability
 FORMATTERS_AVAILABLE = True
-
-
-#!/usr/bin/env python3
-"""
-varidex/reports/generator.py - Report Orchestrator v6.0.3-dev
-
-Production-grade report orchestration with comprehensive validation,
-progress tracking, and robust error handling.
-
-10/10 FEATURES: Input validation | Progress tracking | Performance metrics
-Type hints | Self-tests | Named constants | Enhanced logging | Examples
-
-Version: 6.0.3-dev | Compatible: formatters.py v6.0.2+ | Lines: <500
-Changes v6.0.3:
-- Accept both dict and VariantData types in validation
-- Added _normalize_variant_data() helper function
-- Flexible type handling for pipeline compatibility
-- Fixed ACMG_TIERS key mapping from codes to full names
-- Fixed type hints and column name references
-"""
-
 
 # Import exceptions with fallback
 try:
@@ -414,6 +413,8 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
     # Use correct column name: acmg_classification
     stats = {
         "total": total,
+        "total_variants": total,  # For JSON compatibility
+        "classified": total,  # For JSON compatibility
         "pathogenic": int(
             (
                 results_df["acmg_classification"].isin(["P", "Pathogenic"])
@@ -509,6 +510,9 @@ def generate_all_reports(
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
 
+    # Calculate stats ONCE for all reports
+    stats = calculate_report_stats(results_df)
+
     generated = {}
     errors = []
 
@@ -531,28 +535,6 @@ def generate_all_reports(
 
     # JSON Report
     if generate_json:
-        # Create minimal stats dict for reports - use correct column name
-        stats = {
-            "total_variants": len(results_df),
-            "classified": len(results_df),
-            "pathogenic": len(
-                results_df[
-                    results_df["acmg_classification"].str.contains(
-                        "Pathogenic", na=False, case=False
-                    )
-                    | results_df["acmg_classification"].isin(["P"])
-                ]
-            ),
-            "benign": len(
-                results_df[
-                    results_df["acmg_classification"].str.contains(
-                        "Benign", na=False, case=False
-                    )
-                    | results_df["acmg_classification"].isin(["B", "LB"])
-                ]
-            ),
-        }
-
         json_file = output_dir / f"classified_variants_{timestamp}.json"
         try:
             result = generate_json_report(results_df, stats, output_dir, timestamp)
