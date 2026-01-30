@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-varidex/io/loaders/clinvar.py - ClinVar Data Loader v7.2.0 DEVELOPMENT
-Load ClinVar VCF, TSV, variant_summary with auto-detection and intelligent caching.
+varidex/io/loaders/clinvar.py - ClinVar Data Loader v8.0.0 DEVELOPMENT
+Load ClinVar VCF, TSV, variant_summary, XML with auto-detection and intelligent caching.
 Returns DataFrame: rsid, chromosome, position, ref/alt_allele, gene, clinical_sig, coord_key
 
+v8.0.0 Changes:
+- ✨ NEW: ClinVar XML support (includes structural variants >1MB)
+- Auto-detects XML format (.xml, .xml.gz)
+- Streaming parser for memory efficiency (2-4GB RAM)
+- Maintains full backwards compatibility with VCF/TSV
 
 v7.2.0 Changes:
 - ⚡ Vectorized rsID extraction (6x faster: 3s → 0.5s)
@@ -27,7 +32,7 @@ import re
 import logging
 import json
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Callable
+from typing import Optional, Dict, List, Any, Callable, Set
 from tqdm import tqdm
 from varidex.version import __version__
 from varidex.exceptions import DataLoadError, ValidationError, FileProcessingError
@@ -41,7 +46,7 @@ from varidex.io.validators_parallel import (
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-CLINVAR_FILE_TYPES: List[str] = ["vcf", "vcf_tsv", "variant_summary"]
+CLINVAR_FILE_TYPES: List[str] = ["vcf", "vcf_tsv", "variant_summary", "xml"]
 REQUIRED_COORD_COLUMNS: List[str] = [
     "chromosome",
     "position",
@@ -109,8 +114,28 @@ def count_file_lines(filepath: Path) -> int:
 
 
 def detect_clinvar_file_type(filepath: Path) -> str:
-    """Auto-detect: vcf|vcf_tsv|variant_summary."""
+    """
+    Auto-detect ClinVar file type: vcf|vcf_tsv|variant_summary|xml.
+
+    Args:
+        filepath: Path to ClinVar file
+
+    Returns:
+        String identifier for file type
+
+    Supported types:
+        - xml: ClinVar XML release (includes structural variants)
+        - vcf: Standard VCF format
+        - vcf_tsv: Tab-separated VCF-like format
+        - variant_summary: ClinVar summary text file
+    """
     try:
+        # Quick check: XML file extension
+        filename_lower = str(filepath).lower()
+        if filename_lower.endswith(('.xml', '.xml.gz')):
+            return 'xml'
+
+        # Content-based detection
         opener: Any = (
             gzip.open(filepath, "rt")
             if str(filepath).endswith(".gz")
@@ -118,11 +143,21 @@ def detect_clinvar_file_type(filepath: Path) -> str:
         )
         with opener as f:
             lines: List[str] = [f.readline() for _ in range(5)]
+
         if not lines or not lines[0]:
             raise ValidationError("Empty file", context={"file": str(filepath)})
+
         first_line: str = lines[0].strip()
+
+        # Check for XML signature
+        if first_line.startswith('<?xml') or 'ClinVarVariationRelease' in first_line:
+            return 'xml'
+
+        # Check for VCF
         if first_line.startswith("##fileformat=VCF") or first_line.startswith("#CHROM"):
             return "vcf"
+
+        # Check for VCF-style TSV
         header_lower: str = first_line.lower()
         vcf_markers: int = sum(
             [
@@ -133,6 +168,7 @@ def detect_clinvar_file_type(filepath: Path) -> str:
             ]
         )
         return "vcf_tsv" if vcf_markers >= 3 else "variant_summary"
+
     except Exception as e:
         raise FileProcessingError(
             "Failed to detect file type",
@@ -303,7 +339,9 @@ def _extract_rsids_vectorized(df: pd.DataFrame) -> pd.Series:
 
 
 def load_clinvar_vcf(
-    filepath: Path, checkpoint_dir: Optional[Path] = None
+    filepath: Path,
+    user_chromosomes: Optional[Set[str]] = None,
+    checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """Load full ClinVar VCF with parallel validation and progress bars."""
     print(f"\n{'='*70}")
@@ -416,7 +454,9 @@ def load_clinvar_vcf(
 
 
 def load_clinvar_vcf_tsv(
-    filepath: Path, checkpoint_dir: Optional[Path] = None
+    filepath: Path,
+    user_chromosomes: Optional[Set[str]] = None,
+    checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """Load VCF-style TSV with progress."""
     print(f"\n{'='*70}")
@@ -480,7 +520,9 @@ def load_clinvar_vcf_tsv(
 
 
 def load_variant_summary(
-    filepath: Path, checkpoint_dir: Optional[Path] = None
+    filepath: Path,
+    user_chromosomes: Optional[Set[str]] = None,
+    checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """Load variant_summary.txt with progress."""
     print(f"\n{'='*70}")
@@ -577,20 +619,31 @@ def load_variant_summary(
         )
 
 
-def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
+def load_clinvar_file(
+    filepath: Any,
+    user_chromosomes: Optional[Set[str]] = None,
+    **kwargs: Any,
+) -> pd.DataFrame:
     """
-    Auto-detect and load ClinVar file with intelligent caching v6.3.0.
+    Auto-detect and load ClinVar file with intelligent caching v8.0.0.
+
+    NEW in v8.0.0: XML support for comprehensive variant coverage
+    - Includes structural variants >1MB
+    - Includes CNVs and complex rearrangements
+    - Auto-detects XML format
 
     Caching behavior:
-    - First run: Process VCF (~57s), save compressed cache
-    - Subsequent runs: Load from cache (3-5s)
+    - First run: Process file, save compressed cache
+    - Subsequent runs: Load from cache (3-60s depending on format)
     - Auto-invalidates if source file changes (size/timestamp)
+    - XML: Chromosome-specific caching for faster filtering
 
-    Supports: VCF, VCF-TSV, variant_summary.txt
+    Supports: XML, VCF, VCF-TSV, variant_summary.txt
     Returns DataFrame with coord_key and rsid.
 
     Args:
         filepath: Path to ClinVar file
+        user_chromosomes: Optional set of chromosomes to filter (e.g., {'1', '2', 'X'})
         **kwargs: Additional arguments (checkpoint_dir for cache location)
 
     Returns:
@@ -602,10 +655,24 @@ def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
     cache_dir = Path(kwargs.get("checkpoint_dir", ".varidex_cache"))
     cache_dir.mkdir(exist_ok=True, parents=True)
 
-    # Create cache filenames based on source file
-    cache_name = f"{filepath.stem}_processed.parquet"
+    # Detect file type
+    file_type: str = detect_clinvar_file_type(filepath)
+    logger.info(f"Detected file type: {file_type}")
+
+    # Lazy import XML loader (only when needed)
+    if file_type == 'xml':
+        from varidex.io.loaders.clinvar_xml import load_clinvar_xml
+
+    # Generate cache filename
+    if file_type == 'xml' and user_chromosomes:
+        # XML: Include chromosomes in cache key for filtered loading
+        chr_str = '_'.join(sorted(user_chromosomes))
+        cache_name = f"{filepath.stem}_chr{chr_str}.parquet"
+    else:
+        cache_name = f"{filepath.stem}_processed.parquet"
+
     cache_file = cache_dir / cache_name
-    cache_meta_file = cache_dir / f"{filepath.stem}_meta.json"
+    cache_meta_file = cache_dir / f"{cache_name}.meta.json"
 
     # Check if cache is valid
     use_cache = False
@@ -645,19 +712,23 @@ def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
 
     # Load from source file
     try:
-        file_type: str = detect_clinvar_file_type(filepath)
-
         loaders: Dict[str, Callable[..., pd.DataFrame]] = {
             "vcf": load_clinvar_vcf,
             "vcf_tsv": load_clinvar_vcf_tsv,
             "variant_summary": load_variant_summary,
+            "xml": load_clinvar_xml,  # NEW: XML loader
         }
 
         loader: Optional[Callable[..., pd.DataFrame]] = loaders.get(file_type)
         if loader is None:
             raise ValueError(f"Unknown file type: {file_type}")
 
-        df = loader(filepath, **kwargs)
+        # Call loader with user_chromosomes for filtering
+        df = loader(
+            filepath,
+            user_chromosomes=user_chromosomes,
+            checkpoint_dir=cache_dir,
+        )
 
         # Save to cache
         try:
@@ -674,6 +745,7 @@ def load_clinvar_file(filepath: Any, **kwargs: Any) -> pd.DataFrame:
                 "processed_rows": len(df),
                 "cache_version": __version__,
                 "file_type": file_type,
+                "user_chromosomes": list(user_chromosomes) if user_chromosomes else None,
             }
             with open(cache_meta_file, "w") as f:
                 json.dump(meta, f, indent=2)
