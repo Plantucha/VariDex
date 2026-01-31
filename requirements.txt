@@ -17,6 +17,9 @@ click>=8.0.0
 # Genomic data processing (VCF/BAM files with tabix indexing)
 pysam>=0.21.0
 
+# Genome build coordinate conversion
+pyliftover>=0.4
+
 # Testing dependencies
 hypothesis>=6.0.0
 
