@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/orchestrator.py - Pipeline Orchestrator v8.0.0 DEVELOPMENT
+varidex/pipeline/orchestrator.py - Pipeline Orchestrator v8.1.0 DEVELOPMENT
 
-Main 7-stage pipeline coordinator with IMPROVED MATCHING and LAZY LOADING.
+Main 7-stage pipeline coordinator with IMPROVED MATCHING, LAZY LOADING,
+and AUTOMATIC GENOME BUILD CONVERSION.
+
+Changes v8.1.0:
+- Automatic liftover integration (GRCh37 ↔ GRCh38)
+- Build detection and conversion in Stage 2
+- Seamless coordinate conversion
+- No user configuration required
 
 Changes v8.0.0:
 - Phase 2: Lazy loading with chromosome filtering
@@ -111,6 +118,29 @@ from varidex.pipeline.stages import (
     execute_stage6_create_results,
     execute_stage7_generate_reports,
 )
+
+
+def detect_clinvar_build(clinvar_path: Path) -> str:
+    """
+    Detect ClinVar genome build from filename.
+    
+    Args:
+        clinvar_path: Path to ClinVar file
+    
+    Returns:
+        'GRCh37' or 'GRCh38'
+    """
+    filename = clinvar_path.name.lower()
+    
+    # Check for explicit build markers
+    if 'grch38' in filename or 'hg38' in filename:
+        return 'GRCh38'
+    elif 'grch37' in filename or 'hg19' in filename:
+        return 'GRCh37'
+    
+    # Default to GRCh38 (current ClinVar standard)
+    logger.info("ClinVar build not detected from filename, assuming GRCh38")
+    return 'GRCh38'
 
 
 class PipelineOrchestrator:
@@ -228,7 +258,7 @@ def main(
     log_path: Path = Path("pipeline.log"),
     output_dir: Path = Path("results"),
 ) -> bool:
-    """Execute 7-stage ClinVar variant classification pipeline."""
+    """Execute 7-stage ClinVar variant classification pipeline with automatic liftover."""
     print_pipeline_header()
     print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -277,6 +307,33 @@ def main(
         state.user_variants = len(user_df)
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
         print(f"  ✓ Loaded: {state.user_variants:,} variants")
+
+        # ✅ LIFTOVER: Automatic genome build conversion
+        try:
+            from varidex.utils.liftover import ensure_build_match
+            
+            # Detect ClinVar build
+            clinvar_build = detect_clinvar_build(clinvar_file)
+            logger.info(f"Detected ClinVar build: {clinvar_build}")
+            
+            # Convert user data if needed
+            user_df, detected_build = ensure_build_match(
+                user_df,
+                clinvar_build,
+                auto_convert=True
+            )
+            
+            logger.info(f"✓ Build compatibility ensured: {detected_build} → {clinvar_build}")
+            
+        except ImportError:
+            logger.warning(
+                "⚠️  Liftover module not available. "
+                "Install with: pip install pyliftover\n"
+                "   Coordinate matching may be reduced if genome builds don't match."
+            )
+        except Exception as e:
+            logger.warning(f"⚠️  Liftover failed: {e}")
+            logger.warning("   Continuing without build conversion...")
 
         # ✅ PHASE 2: Extract chromosomes from user genome
         from varidex.io.matching_improved import get_user_chromosomes
@@ -428,7 +485,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="ClinVar-WGS ACMG Pipeline v8.0.0-dev (with XML support)",
+        description="ClinVar-WGS ACMG Pipeline v8.1.0-dev (with liftover support)",
         add_help=False,
     )
     parser.add_argument("clinvar_file", nargs="?")
