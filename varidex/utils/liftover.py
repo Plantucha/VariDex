@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/utils/liftover.py - Genome Build Coordinate Conversion v1.0.1-dev
+varidex/utils/liftover.py - Genome Build Coordinate Conversion v1.0.2-dev
 
 Automatic detection and conversion between GRCh37 (hg19) and GRCh38 (hg38)
 genomic coordinate systems using UCSC liftOver chain files.
@@ -11,14 +11,16 @@ Features:
 - Fallback mode when chain files unavailable
 - Build mismatch warnings
 - Validation of conversion accuracy
+- Proper 0-based/1-based coordinate handling
 
 Dependencies:
 - pyliftover (pip install pyliftover)
 - or manual UCSC liftOver binary
 
-Version: 1.0.1-dev | Lines: <500
+Version: 1.0.2-dev | Lines: <500
 Changelog:
-- v1.0.1: CRITICAL FIX - LiftOver initialization (was passing build names instead of chain file)
+- v1.0.2: CRITICAL FIX #2 - 0-based vs 1-based coordinate conversion
+- v1.0.1: CRITICAL FIX #1 - LiftOver initialization (was passing build names instead of chain file)
 - v1.0.0: Initial release
 """
 
@@ -261,14 +263,17 @@ def liftover_coordinates(
     """
     Convert genomic coordinates between builds using liftOver.
 
+    Note: VCF and 23andMe files use 1-based coordinates, but pyliftover
+    expects 0-based coordinates. This function handles the conversion automatically.
+
     Args:
-        df: DataFrame with ['chromosome', 'position'] columns
+        df: DataFrame with ['chromosome', 'position'] columns (1-based coordinates)
         from_build: Source build ('GRCh37' or 'GRCh38')
         to_build: Target build ('GRCh37' or 'GRCh38')
         chain_file: Path to chain file (auto-downloads if None)
 
     Returns:
-        DataFrame with converted coordinates and success flags
+        DataFrame with converted coordinates (1-based) and success flags
 
     Example:
         >>> df = pd.DataFrame({'chromosome': ['1'], 'position': [754182], 'rsid': ['rs3094315']})
@@ -326,7 +331,7 @@ def liftover_coordinates(
 
     for idx, row in df.iterrows():
         chrom = str(row["chromosome"])
-        pos = int(row["position"])
+        pos_1based = int(row["position"])  # Input is 1-based (VCF/23andMe standard)
 
         # Add 'chr' prefix if needed
         if not chrom.startswith("chr"):
@@ -335,23 +340,29 @@ def liftover_coordinates(
             chrom_query = chrom
 
         try:
-            # LiftOver returns list of (chrom, pos, strand)
-            result = lo.convert_coordinate(chrom_query, pos)
+            # CRITICAL FIX v1.0.2: Convert to 0-based for pyliftover
+            pos_0based = pos_1based - 1
+            
+            # LiftOver returns list of (chrom, pos, strand) in 0-based coordinates
+            result = lo.convert_coordinate(chrom_query, pos_0based)
 
             if result and len(result) > 0:
-                new_chrom, new_pos, strand = result[0]
+                new_chrom, new_pos_0based, strand = result[0]
                 # Remove 'chr' prefix if present
                 new_chrom = new_chrom.replace("chr", "")
 
+                # CRITICAL FIX v1.0.2: Convert back to 1-based for output
+                new_pos_1based = new_pos_0based + 1
+
                 df.at[idx, "chromosome"] = new_chrom
-                df.at[idx, "position"] = int(new_pos)
+                df.at[idx, "position"] = int(new_pos_1based)
                 df.at[idx, "liftover_success"] = True
                 converted += 1
             else:
                 failed += 1
 
         except Exception as e:
-            logger.debug(f"Liftover failed for {chrom}:{pos} - {e}")
+            logger.debug(f"Liftover failed for {chrom}:{pos_1based} - {e}")
             failed += 1
 
     success_rate = 100 * converted / len(df) if len(df) > 0 else 0
@@ -491,7 +502,7 @@ __all__ = [
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("TESTING varidex.utils.liftover v1.0.1-dev")
+    print("TESTING varidex.utils.liftover v1.0.2-dev")
     print("=" * 70)
 
     # Test build detection
