@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-varidex/pipeline/orchestrator.py - Pipeline Orchestrator v8.0.0 DEVELOPMENT
+varidex/pipeline/orchestrator.py - Pipeline Orchestrator v8.1.0 DEVELOPMENT
 
 Main 7-stage pipeline coordinator with IMPROVED MATCHING and LAZY LOADING.
+
+Changes v8.1.0:
+- Added automatic genome build liftover integration
+- Build detection from ClinVar filename
+- Auto-conversion when user data build mismatches
+- New Stage 2.5: Build validation & coordinate conversion
 
 Changes v8.0.0:
 - Phase 2: Lazy loading with chromosome filtering
@@ -16,6 +22,7 @@ Development version - not for production use.
 
 import sys
 import logging
+import re
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, List, Any, Callable
@@ -82,7 +89,7 @@ except ImportError as e:
     )
     from varidex.io.matching_improved import (
         match_variants_hybrid,
-        get_user_chromosomes,  # ✅ Phase 2: Chromosome extraction
+        get_user_chromosomes,
     )
     from varidex.reports.generator import create_results_dataframe, generate_all_reports
 
@@ -111,6 +118,143 @@ from varidex.pipeline.stages import (
     execute_stage6_create_results,
     execute_stage7_generate_reports,
 )
+
+
+def detect_clinvar_build(clinvar_path: Path) -> Optional[str]:
+    """
+    Detect genome build from ClinVar filename.
+    
+    Args:
+        clinvar_path: Path to ClinVar file
+    
+    Returns:
+        "37" for GRCh37/hg19, "38" for GRCh38/hg38, None if unknown
+    """
+    filename = clinvar_path.name.lower()
+    
+    # Check for explicit build markers
+    if "grch38" in filename or "hg38" in filename:
+        return "38"
+    elif "grch37" in filename or "hg19" in filename:
+        return "37"
+    
+    # Check for pattern like "clinvar_20240101.vcf" (default is usually GRCh38)
+    # But be conservative and return None if ambiguous
+    logger.warning(
+        f"Unable to detect build from filename: {filename}. "
+        "Consider renaming to include 'GRCh37' or 'GRCh38'."
+    )
+    return None
+
+
+def apply_liftover_if_needed(
+    user_df: pd.DataFrame,
+    clinvar_build: Optional[str],
+    clinvar_path: Path,
+) -> pd.DataFrame:
+    """
+    Detect build mismatch and apply coordinate conversion if needed.
+    
+    Args:
+        user_df: User genomic data DataFrame
+        clinvar_build: ClinVar build ("37" or "38"), or None if unknown
+        clinvar_path: Path to ClinVar file (for logging)
+    
+    Returns:
+        DataFrame with converted coordinates if needed, original otherwise
+    """
+    try:
+        from varidex.utils.liftover import auto_liftover, detect_build
+    except ImportError:
+        logger.warning(
+            "⚠️  Liftover module not available. Install pyliftover for automatic build conversion: "
+            "pip install pyliftover"
+        )
+        return user_df
+    
+    if clinvar_build is None:
+        logger.warning(
+            "⚠️  ClinVar build unknown - skipping build validation. "
+            "Results may be inaccurate if builds don't match."
+        )
+        return user_df
+    
+    logger.info(f"\n{'='*70}")
+    logger.info("STAGE 2.5: BUILD VALIDATION & LIFTOVER")
+    logger.info(f"{'='*70}")
+    
+    print(f"\n{'='*70}")
+    print("[2.5/7] 🧬 BUILD VALIDATION & COORDINATE CONVERSION")
+    print(f"{'='*70}")
+    
+    # Detect user data build
+    user_build = detect_build(user_df)
+    
+    if user_build is None:
+        logger.warning(
+            "⚠️  Unable to detect user data build. Assuming match with ClinVar."
+        )
+        print("  ⚠️  Build detection inconclusive - assuming correct build")
+        return user_df
+    
+    logger.info(f"User data build: GRCh{user_build}")
+    logger.info(f"ClinVar build: GRCh{clinvar_build} ({clinvar_path.name})")
+    
+    print(f"  User data: GRCh{user_build}")
+    print(f"  ClinVar: GRCh{clinvar_build}")
+    
+    if user_build == clinvar_build:
+        logger.info("✓ Builds match - no conversion needed")
+        print("  ✓ Builds match - proceeding without conversion")
+        return user_df
+    
+    # Builds mismatch - perform liftover
+    logger.warning(
+        f"⚠️  Build mismatch detected! User data (GRCh{user_build}) != ClinVar (GRCh{clinvar_build})"
+    )
+    logger.info(f"🔄 Initiating automatic coordinate conversion: GRCh{user_build} → GRCh{clinvar_build}")
+    
+    print(f"  ⚠️  Build mismatch detected!")
+    print(f"  🔄 Converting coordinates: GRCh{user_build} → GRCh{clinvar_build}")
+    
+    try:
+        converted_df, info = auto_liftover(
+            user_df,
+            target_build=clinvar_build,
+            show_progress=True,
+        )
+        
+        if info["converted"] and info["stats"]:
+            stats = info["stats"]
+            success_rate = stats["converted"] / stats["total"] * 100 if stats["total"] > 0 else 0
+            
+            logger.info(
+                f"✓ Liftover complete: {stats['converted']:,}/{stats['total']:,} "
+                f"({success_rate:.1f}%) | Failed: {stats['failed']:,}"
+            )
+            
+            print(f"  ✓ Conversion complete:")
+            print(f"    • Converted: {stats['converted']:,}/{stats['total']:,} ({success_rate:.1f}%)")
+            print(f"    • Failed: {stats['failed']:,}")
+            
+            if stats["failed"] > 0:
+                print(f"    ℹ️  Failed variants will use rsID matching only")
+        
+        return converted_df
+    
+    except ImportError as e:
+        logger.error(f"Liftover failed - missing dependency: {e}")
+        logger.error("Install with: pip install pyliftover")
+        print(f"  ❌ Liftover failed: {e}")
+        print("     Install: pip install pyliftover")
+        print("     Continuing with original coordinates (results may be inaccurate)")
+        return user_df
+    
+    except Exception as e:
+        logger.error(f"Liftover failed: {e}", exc_info=True)
+        print(f"  ❌ Liftover failed: {e}")
+        print("     Continuing with original coordinates (results may be inaccurate)")
+        return user_df
 
 
 class PipelineOrchestrator:
@@ -173,15 +317,10 @@ class PipelineOrchestrator:
 
         This is a wrapper around the functional main() implementation.
         """
-        # For now, delegate to the functional main() implementation
-        # In a full implementation, this would execute specific stages
-
-        # Convert config to parameters for main()
         clinvar_path = self.config.clinvar_file or "clinvar.vcf"
         user_data_path = self.config.input_vcf or self.config.input_file or "input.vcf"
         output_dir = Path(self.config.output_dir)
 
-        # Call the functional implementation
         result = main(
             clinvar_path=clinvar_path,
             user_data_path=user_data_path,
@@ -206,7 +345,6 @@ class PipelineOrchestrator:
 
     def cleanup(self) -> None:
         """Clean up resources after pipeline execution."""
-        # Placeholder for resource cleanup
         pass
 
     def __enter__(self) -> "PipelineOrchestrator":
@@ -262,12 +400,17 @@ def main(
         )
         match_mode: str = get_config_value(config, "MATCH_MODE", "hybrid")
 
+        # Detect ClinVar build from filename
+        clinvar_build = detect_clinvar_build(clinvar_file)
+        if clinvar_build:
+            logger.info(f"Detected ClinVar build: GRCh{clinvar_build}")
+        
         print(f"  ClinVar format: {clinvar_type}")
         print(f"  User data format: {user_type}")
         print(f"  Matching mode: {match_mode}")
         state.file_types = f"{clinvar_type}/{user_type}"
 
-        # ✅ PHASE 2: STAGE 2 - LOAD USER DATA FIRST (for chromosome extraction)
+        # STAGE 2: LOAD USER DATA FIRST (for chromosome extraction)
         print_stage_header(2, 7, "📥 LOADING USER GENOMIC DATA")
 
         user_df: pd.DataFrame = execute_stage3_load_user_data(
@@ -278,10 +421,13 @@ def main(
         logger.info(f"✓ Loaded {state.user_variants:,} user variants")
         print(f"  ✓ Loaded: {state.user_variants:,} variants")
 
-        # ✅ PHASE 2: Extract chromosomes from user genome
+        # Extract chromosomes from user genome
         from varidex.io.matching_improved import get_user_chromosomes
 
         user_chromosomes = get_user_chromosomes(user_df)
+        logger.info(
+            f"User genome contains {len(user_chromosomes)} chromosomes: {sorted(user_chromosomes)}"
+        )
         logger.info(
             f"✓ Extracted {len(user_chromosomes)} chromosomes for lazy loading: "
             f"{sorted(user_chromosomes)}"
@@ -291,7 +437,10 @@ def main(
             f"({', '.join(sorted(user_chromosomes)[:5])}...)"
         )
 
-        # ✅ PHASE 2: STAGE 3 - LOAD CLINVAR WITH CHROMOSOME FILTERING
+        # STAGE 2.5: BUILD VALIDATION & LIFTOVER (NEW in v8.1.0)
+        user_df = apply_liftover_if_needed(user_df, clinvar_build, clinvar_file)
+
+        # STAGE 3: LOAD CLINVAR WITH CHROMOSOME FILTERING
         print_stage_header(3, 7, "📥 LOADING CLINVAR DATABASE (FILTERED)")
 
         checkpoint_dir: Path = Path(
@@ -303,7 +452,7 @@ def main(
             checkpoint_dir,
             loader,
             safeguard_config,
-            user_chromosomes=user_chromosomes,  # ✅ Lazy loading enabled!
+            user_chromosomes=user_chromosomes,
         )
 
         state.variants_loaded = len(clinvar_df)
@@ -428,7 +577,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="ClinVar-WGS ACMG Pipeline v8.0.0-dev (with XML support)",
+        description="ClinVar-WGS ACMG Pipeline v8.1.0-dev (with auto-liftover)",
         add_help=False,
     )
     parser.add_argument("clinvar_file", nargs="?")
