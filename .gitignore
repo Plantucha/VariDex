@@ -1,4 +1,14 @@
-# VariDex .gitignore
+# Data files (protected)
+data/
+*.vcf
+*.vcf.gz
+*rawM*.txt
+*rawM*.tsv
+
+# Output directories
+results/
+liftover_output/
+varidex/utils/liftover_output/
 
 # Python
 __pycache__/
@@ -6,101 +16,14 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
 venv/
-env/
 ENV/
-.venv
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
+
+# OS
 .DS_Store
-
-# Testing
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.pytest_cache/
-htmlcov/
-.hypothesis/
-test_results*.txt
-mypy_report.txt
-
-# Type checking
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# VariDex specific - Output and Cache
-output/
-results/
-.varidex_cache/
-*.parquet
-*.parquet.tmp
-
-# Data files (don't commit large genomic files)
-data/
-data.tsv
-clinvar/
-*.vcf
-*.vcf.gz
-*.vcf.idx
-*.23andme.txt
-*.fa
-*.fasta
-GRCh37.fa
-GRCh38.fa
-
-# Reports (generated, don't commit)
-reports/
-report.html
-classified_variants_*.csv
-classified_variants_*.html
-classified_variants_*.json
-!docs/**/*.html
-!docs/**/*.csv
-
-# Logs
-logs/
-*.log
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.orig
-*.rej
-*.patch
-enable_parallel.patch
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
+Thumbs.db
