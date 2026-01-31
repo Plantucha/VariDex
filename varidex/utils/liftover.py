@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/utils/liftover.py - Genome Build Coordinate Conversion v1.0.0-dev
+varidex/utils/liftover.py - Genome Build Coordinate Conversion v1.0.1-dev
 
 Automatic detection and conversion between GRCh37 (hg19) and GRCh38 (hg38)
 genomic coordinate systems using UCSC liftOver chain files.
@@ -16,7 +16,10 @@ Dependencies:
 - pyliftover (pip install pyliftover)
 - or manual UCSC liftOver binary
 
-Version: 1.0.0-dev | Lines: <500
+Version: 1.0.1-dev | Lines: <500
+Changelog:
+- v1.0.1: CRITICAL FIX - LiftOver initialization (was passing build names instead of chain file)
+- v1.0.0: Initial release
 """
 
 import logging
@@ -302,12 +305,11 @@ def liftover_coordinates(
             df["liftover_success"] = False
             return df
 
-    # Initialize LiftOver
+    # Initialize LiftOver with chain file path
     logger.info(f"🔄 Converting {len(df):,} variants: {from_build} → {to_build}")
     try:
-        # Map build names to UCSC chromosome format
-        build_map = {"GRCh37": "hg19", "GRCh38": "hg38"}
-        lo = LiftOver(build_map[from_build], build_map[to_build])
+        # CRITICAL FIX v1.0.1: Use chain file path, not build names!
+        lo = LiftOver(str(chain_file))
     except Exception as e:
         logger.error(f"Failed to initialize LiftOver: {e}")
         df = df.copy()
@@ -489,7 +491,7 @@ __all__ = [
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("TESTING varidex.utils.liftover v1.0.0-dev")
+    print("TESTING varidex.utils.liftover v1.0.1-dev")
     print("=" * 70)
 
     # Test build detection
