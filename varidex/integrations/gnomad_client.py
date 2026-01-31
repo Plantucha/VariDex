@@ -7,6 +7,9 @@ Reference:
     Karczewski KJ, et al. The mutational constraint spectrum quantified from
     variation in 141,456 humans. Nature. 2020;581(7809):434-443.
     PMID: 32461654
+
+Version: 6.5.0-dev
+Fixes: Chromosome normalization, error handling
 """
 
 import logging
@@ -17,6 +20,29 @@ from datetime import datetime, timedelta
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_chromosome(chrom: str) -> str:
+    """
+    Normalize chromosome name for gnomAD API.
+
+    Converts:
+    - 'chr1' → '1'
+    - 'chrX' → 'X'
+    - 'M' → 'MT'
+    - 'chrM' → 'MT'
+
+    Args:
+        chrom: Chromosome name
+
+    Returns:
+        Normalized chromosome name
+    """
+    normalized = chrom.replace("chr", "").upper()
+    # Convert M to MT (mitochondrial)
+    if normalized == "M":
+        normalized = "MT"
+    return normalized
 
 
 @dataclass
@@ -37,6 +63,7 @@ class GnomadVariantFrequency:
 
     @property
     def max_af(self) -> Optional[float]:
+        """Get maximum allele frequency across all datasets."""
         afs = [
             af
             for af in [self.genome_af, self.exome_af, self.popmax_af]
@@ -46,11 +73,13 @@ class GnomadVariantFrequency:
 
     @property
     def is_common(self) -> bool:
+        """Check if variant is common (AF > 1%)."""
         max_af = self.max_af
         return max_af is not None and max_af > 0.01
 
     @property
     def is_rare(self) -> bool:
+        """Check if variant is rare (AF < 0.01%)."""
         max_af = self.max_af
         return max_af is None or max_af < 0.0001
 
@@ -64,6 +93,7 @@ class RateLimiter:
         self.requests: List[float] = []
 
     def wait_if_needed(self) -> None:
+        """Wait if rate limit would be exceeded."""
         now = time.time()
         self.requests = [t for t in self.requests if now - t < self.time_window]
 
@@ -94,6 +124,7 @@ class GnomadClient:
         enable_cache: bool = True,
         rate_limit: bool = True,
     ) -> None:
+        """Initialize gnomAD API client."""
         self.api_url: str = api_url or self.DEFAULT_API_URL
         self.timeout: int = timeout
         self.retry_attempts: int = retry_attempts
@@ -102,7 +133,7 @@ class GnomadClient:
         self.session.headers.update(
             {
                 "Content-Type": "application/json",
-                "User-Agent": "VariDex/6.0 (genomic variant analysis)",
+                "User-Agent": "VariDex/6.5 (genomic variant analysis)",
             }
         )
         self.rate_limiter: Optional[RateLimiter] = RateLimiter() if rate_limit else None
@@ -112,6 +143,7 @@ class GnomadClient:
         logger.info(f"Initialized gnomAD client: {self.api_url}")
 
     def _get_from_cache(self, variant_id: str) -> Optional[GnomadVariantFrequency]:
+        """Retrieve variant from cache if available and not expired."""
         if not self.enable_cache:
             return None
         if variant_id in self._cache:
@@ -123,14 +155,17 @@ class GnomadClient:
         return None
 
     def _add_to_cache(self, variant_id: str, result: GnomadVariantFrequency) -> None:
+        """Add variant to cache, evicting old entries if needed."""
         if self.enable_cache:
             self._cache[variant_id] = (result, datetime.now())
             if len(self._cache) > self.CACHE_SIZE:
+                # Evict oldest 10% of entries
                 sorted_items = sorted(self._cache.items(), key=lambda x: x[1][1])
                 for key, _ in sorted_items[: self.CACHE_SIZE // 10]:
                     del self._cache[key]
 
     def _build_graphql_query(self, variant_id: str, dataset: str = "gnomad_r4") -> str:
+        """Build GraphQL query for variant frequency data."""
         query_template = """
         {{
           variant(dataset: "{dataset}", variantId: "{variant_id}") {{
@@ -165,6 +200,7 @@ class GnomadClient:
         return query_template.format(dataset=dataset, variant_id=variant_id)
 
     def _execute_query(self, query: str) -> Dict[str, Any]:
+        """Execute GraphQL query with retry logic."""
         if self.rate_limiter:
             self.rate_limiter.wait_if_needed()
 
@@ -191,13 +227,18 @@ class GnomadClient:
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Failed after {self.retry_attempts} attempts: {e}")
+
+        # Re-raise the last error if all retries failed
         if last_error:
             raise last_error
-        raise RuntimeError("Unexpected error in query execution")
+
+        # This should never be reached, but satisfies type checker
+        raise RuntimeError("Query execution failed without exception")
 
     def _parse_response(
         self, data: Dict[str, Any], variant_id: str
     ) -> Optional[GnomadVariantFrequency]:
+        """Parse GraphQL response into GnomadVariantFrequency object."""
         try:
             variant_data = data.get("data", {}).get("variant")
             if not variant_data:
@@ -256,13 +297,29 @@ class GnomadClient:
         alt: str,
         dataset: str = "gnomad_r4",
     ) -> Optional[GnomadVariantFrequency]:
-        chromosome = chromosome.replace("chr", "")
+        """
+        Query gnomAD for variant allele frequency.
+
+        Args:
+            chromosome: Chromosome name (1-22, X, Y, MT)
+            position: Genomic position (1-based)
+            ref: Reference allele
+            alt: Alternate allele
+            dataset: gnomAD dataset (gnomad_r4, gnomad_r3, etc.)
+
+        Returns:
+            GnomadVariantFrequency object or None if not found
+        """
+        # Normalize chromosome (handles chr prefix, M→MT)
+        chromosome = normalize_chromosome(chromosome)
         variant_id = f"{chromosome}-{position}-{ref}-{alt}"
 
+        # Check cache
         cached = self._get_from_cache(variant_id)
         if cached is not None:
             return cached
 
+        # Query API
         try:
             query = self._build_graphql_query(variant_id, dataset)
             response_data = self._execute_query(query)
@@ -276,10 +333,12 @@ class GnomadClient:
             return None
 
     def clear_cache(self) -> None:
+        """Clear the variant frequency cache."""
         self._cache.clear()
         logger.info("Cache cleared")
 
     def get_cache_stats(self) -> Dict[str, int]:
+        """Get cache statistics."""
         return {
             "size": len(self._cache),
             "max_size": self.CACHE_SIZE,
