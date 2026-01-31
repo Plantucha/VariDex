@@ -23,6 +23,9 @@ Evidence Codes (16 total):
 - PP5: Reputable source reports variant as pathogenic
 
 Reference: Richards et al. 2015, PMID 25741868
+
+Version: 6.5.0-dev
+Fixes: PM2 typo, gnomAD integration, column naming standardization
 """
 
 from typing import Set, Optional, Dict, Any
@@ -104,9 +107,19 @@ class PathogenicEvidenceAssigner:
         self.pm2_gnomad_threshold = self.config.get("pm2_gnomad_threshold", 0.0001)
         self.pm1_hotspot_threshold = self.config.get("pm1_hotspot_threshold", 5)
 
-        logger.info(
-            f"Initialized with {sum([self.enable_pvs1, self.enable_ps1])} codes"
+        enabled_count = sum(
+            [
+                self.enable_pvs1,
+                self.enable_ps1,
+                self.enable_pm1,
+                self.enable_pm2,
+                self.enable_pm4,
+                self.enable_pp2,
+                self.enable_pp3,
+                self.enable_pp5,
+            ]
         )
+        logger.info(f"Initialized PathogenicEvidenceAssigner with {enabled_count} codes enabled")
 
     def check_pvs1(self, variant: Dict[str, Any], lof_genes: Set[str]) -> bool:
         """
@@ -135,14 +148,14 @@ class PathogenicEvidenceAssigner:
 
             # Check if NOT in last exon (reduces PVS1 to PS1)
             if exon_position and "last" in str(exon_position).lower():
-                logger.debug("PVS1: {gene} LOF in last exon, downgrade to PS1")
+                logger.debug(f"PVS1: {gene} LOF in last exon, downgrade to PS1")
                 return False
 
-            logger.info("PVS1: LOF variant in {gene}")
+            logger.info(f"PVS1: LOF variant in {gene}")
             return True
 
-        except Exception:
-            logger.error("PVS1 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PVS1 check failed: {e}")
             return False
 
     def check_ps1(
@@ -163,7 +176,7 @@ class PathogenicEvidenceAssigner:
 
         try:
             aa_change = variant.get("aa_change", "")
-            variant.get("nt_change", "")
+            nt_change = variant.get("nt_change", "")
 
             if not aa_change:
                 return False
@@ -175,8 +188,8 @@ class PathogenicEvidenceAssigner:
             logger.debug("PS1: Check requires pathogenic variant database")
             return False
 
-        except Exception:
-            logger.error("PS1 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PS1 check failed: {e}")
             return False
 
     def check_pm1(
@@ -221,14 +234,14 @@ class PathogenicEvidenceAssigner:
                         and benign_count < 2
                     ):
                         logger.info(
-                            "PM1: {gene} position {aa_position} in functional domain"
+                            f"PM1: {gene} position {aa_position} in functional domain"
                         )
                         return True
 
             return False
 
-        except Exception:
-            logger.error("PM1 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PM1 check failed: {e}")
             return False
 
     def check_pm2(
@@ -243,36 +256,62 @@ class PathogenicEvidenceAssigner:
         - AF < 0.0001 (0.01%) or absent
         - Check both genome and exome datasets
 
-        Note: Requires gnomAD API integration
+        Note: Requires gnomAD API integration or annotated gnomad_af field
         """
         if not self.enable_pm2:
             return False
 
         try:
+            # FIXED: Standardized column naming (was "re" typo, now "ref_allele")
             chrom = variant.get("chromosome", "")
             pos = variant.get("position", 0)
-            ref = variant.get("re", "")
-            alt = variant.get("alt", "")
+            ref = variant.get("ref_allele", "")
+            alt = variant.get("alt_allele", "")
 
             if not all([chrom, pos, ref, alt]):
                 return False
 
-            # PLACEHOLDER: Query gnomAD API
-            # Example:
-            # gnomad_freq = gnomad_api.get_frequency(chrom, pos, ref, alt)
-            # if gnomad_freq is None or gnomad_freq < self.pm2_gnomad_threshold:
-            #     return True
+            # Method 1: Use pre-annotated gnomAD frequency (from pipeline)
+            gnomad_af = variant.get("gnomad_af", None)
+            if gnomad_af is not None:
+                if gnomad_af < self.pm2_gnomad_threshold:
+                    logger.info(
+                        f"PM2: Variant rare in gnomAD (AF={gnomad_af:.6f} < {self.pm2_gnomad_threshold})" 
+                    )
+                    return True
+                else:
+                    return False
 
-            # For now, check if ClinVar indicates rare
+            # Method 2: Query gnomAD API if available
+            if gnomad_api is not None:
+                try:
+                    freq = gnomad_api.get_variant_frequency(
+                        chromosome=chrom, position=pos, ref=ref, alt=alt
+                    )
+                    if freq is None or freq.max_af is None:
+                        # Not found in gnomAD = absent from controls
+                        logger.info("PM2: Variant absent from gnomAD")
+                        return True
+                    elif freq.max_af < self.pm2_gnomad_threshold:
+                        logger.info(
+                            f"PM2: Variant rare in gnomAD (AF={freq.max_af:.6f})"
+                        )
+                        return True
+                    else:
+                        return False
+                except Exception as e:
+                    logger.warning(f"PM2: gnomAD query failed: {e}")
+
+            # Method 3: Fallback - check ClinVar indication (conservative)
             clinical_sig = variant.get("clinical_sig", "").lower()
             if "rare" in clinical_sig or "absent" in clinical_sig:
-                logger.info("PM2: Variant appears rare (placeholder logic)")
+                logger.info("PM2: ClinVar indicates rare (fallback logic)")
                 return True
 
             return False
 
-        except Exception:
-            logger.error("PM2 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PM2 check failed: {e}")
             return False
 
     def check_pm4(self, variant: Dict[str, Any]) -> bool:
@@ -306,8 +345,8 @@ class PathogenicEvidenceAssigner:
             logger.info("PM4: Protein length change detected")
             return True
 
-        except Exception:
-            logger.error("PM4 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PM4 check failed: {e}")
             return False
 
     def check_pm5(
@@ -346,8 +385,8 @@ class PathogenicEvidenceAssigner:
             logger.debug("PM5: Check requires pathogenic variant database")
             return False
 
-        except Exception:
-            logger.error("PM5 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PM5 check failed: {e}")
             return False
 
     def check_pp2(self, variant: Dict[str, Any], missense_rare_genes: Set[str]) -> bool:
@@ -376,12 +415,12 @@ class PathogenicEvidenceAssigner:
                 return False
 
             logger.info(
-                "PP2: Missense in {gene} with known pathogenic missense mechanism"
+                f"PP2: Missense in {gene} with known pathogenic missense mechanism"
             )
             return True
 
-        except Exception:
-            logger.error("PP2 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PP2 check failed: {e}")
             return False
 
     def check_pp3(
@@ -438,14 +477,14 @@ class PathogenicEvidenceAssigner:
             # Require at least 3 predictors with 2/3 or more agreeing
             if total_predictors >= 3 and deleterious_count >= (total_predictors * 0.67):
                 logger.info(
-                    "PP3: {deleterious_count}/{total_predictors} predictors agree on deleterious"
+                    f"PP3: {deleterious_count}/{total_predictors} predictors agree on deleterious"
                 )
                 return True
 
             return False
 
-        except Exception:
-            logger.error("PP3 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PP3 check failed: {e}")
             return False
 
     def check_pp5(self, variant: Dict[str, Any]) -> bool:
@@ -476,14 +515,14 @@ class PathogenicEvidenceAssigner:
             # Require 2+ star rating (multiple submitters, criteria provided)
             if star_rating >= 2:
                 logger.info(
-                    "PP5: Reputable source reports pathogenic (ClinVar {star_rating}★)"
+                    f"PP5: Reputable source reports pathogenic (ClinVar {star_rating}★)"
                 )
                 return True
 
             return False
 
-        except Exception:
-            logger.error("PP5 check failed: {e}")
+        except Exception as e:
+            logger.error(f"PP5 check failed: {e}")
             return False
 
     def assign_all(
@@ -493,13 +532,16 @@ class PathogenicEvidenceAssigner:
         Assign all pathogenic evidence codes to a variant.
 
         Args:
-            variant: Variant data dictionary
+            variant: Variant data dictionary with standardized fields:
+                    - chromosome, position, ref_allele, alt_allele (required)
+                    - gnomad_af (optional, for PM2)
+                    - consequence, gene (optional, for various codes)
             resources: Optional dict with external resources:
                 - lof_genes: Set of LOF-intolerant genes
                 - missense_rare_genes: Set of genes with rare missense
                 - functional_domains: Dict of functional domain annotations
                 - pathogenic_db: Database of known pathogenic variants
-                - gnomad_api: gnomAD API client
+                - gnomad_api: gnomAD API client (fallback if gnomad_af not present)
 
         Returns:
             Set of assigned evidence codes
@@ -544,5 +586,6 @@ class PathogenicEvidenceAssigner:
 
 if __name__ == "__main__":
     print("ACMG Pathogenic Evidence Assigner - 16 codes implemented")
-    print("Enabled codes: PVS1, PM1, PM2, PM4, PP2, PP3, PP5")
+    print("Enabled codes: PVS1, PM1, PM2, PP2, PP3, PP5")
     print("Requires external data: PS1, PM5 (variant DB), PS2-4, PM3, PM6, PP1, PP4")
+    print("\nVersion 6.5.0-dev - PM2 typo fixed, gnomAD integration enabled")

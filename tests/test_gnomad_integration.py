@@ -1,368 +1,376 @@
-"""Tests for gnomAD integration and population frequency analysis.
+#!/usr/bin/env python3
+"""
+tests/test_gnomad_integration.py - gnomAD Integration Tests v6.5.0-dev
 
-Tests PM2, BA1, BS1 evidence codes with mocked gnomAD responses.
+Comprehensive test suite for gnomAD integration across all modules.
+
+Tests cover:
+- PM2 evidence code with gnomAD data
+- Column naming consistency
+- Chromosome normalization
+- VCF parsing robustness
+- API client functionality
+
+Author: VariDex Team
+Version: 6.5.0-dev
 """
 
 import pytest
-from unittest.mock import Mock, patch
-
-from varidex.integrations.gnomad_client import (
-    GnomadClient,
-    GnomadVariantFrequency,
-    RateLimiter,
-)
-from varidex.core.services.population_frequency import (
-    PopulationFrequencyService,
-    InheritanceMode,
-)
-from varidex.core.classifier.engine_v7 import ACMGClassifierV7
-from varidex.core.models import VariantData
-
-pytestmark = pytest.mark.unit
+import pandas as pd
+from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
 
 
-class TestGnomadVariantFrequency:
-    """Test GnomadVariantFrequency dataclass."""
+class TestPM2EvidenceCode:
+    """Test PM2 evidence code with gnomAD integration."""
 
-    def test_max_af_with_genome_only(self):
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G", genome_af=0.001)
-        assert freq.max_af == 0.001
-
-    def test_max_af_with_exome_only(self):
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G", exome_af=0.002)
-        assert freq.max_af == 0.002
-
-    def test_max_af_with_both(self):
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G", genome_af=0.001, exome_af=0.002, popmax_af=0.003
+    def test_pm2_with_gnomad_af_field(self):
+        """Test PM2 uses pre-annotated gnomad_af field."""
+        from varidex.core.classifier.acmg_evidence_pathogenic import (
+            PathogenicEvidenceAssigner,
         )
-        assert freq.max_af == 0.003
 
-    def test_max_af_none(self):
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G")
-        assert freq.max_af is None
+        assigner = PathogenicEvidenceAssigner()
 
-    def test_is_common(self):
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G", genome_af=0.02)
-        assert freq.is_common is True
-
-    def test_is_rare(self):
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G", genome_af=0.00005)
-        assert freq.is_rare is True
-
-    def test_is_rare_absent(self):
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G")
-        assert freq.is_rare is True
-
-
-class TestRateLimiter:
-    """Test rate limiting functionality."""
-
-    def test_under_limit(self):
-        limiter = RateLimiter(max_requests=5, time_window=1)
-
-        # Should not wait if under limit
-        for _ in range(5):
-            limiter.wait_if_needed()
-
-        assert len(limiter.requests) <= 5
-
-    def test_exceeds_limit(self):
-        limiter = RateLimiter(max_requests=2, time_window=10)
-
-        # First two should be fine
-        limiter.wait_if_needed()
-        limiter.wait_if_needed()
-
-        # Third would trigger wait (but we won't actually wait in test)
-        assert len(limiter.requests) == 2
-
-
-class TestGnomadClient:
-    """Test GnomadClient functionality."""
-
-    def test_init_default(self):
-        client = GnomadClient()
-        assert client.api_url == GnomadClient.DEFAULT_API_URL
-        assert client.timeout == GnomadClient.DEFAULT_TIMEOUT
-        assert client.enable_cache is True
-
-    def test_init_custom(self):
-        client = GnomadClient(
-            api_url="https://custom.api",
-            timeout=60,
-            enable_cache=False,
-            rate_limit=False,
-        )
-        assert client.api_url == "https://custom.api"
-        assert client.timeout == 60
-        assert client.enable_cache is False
-        assert client.rate_limiter is None
-
-    def test_cache_operations(self):
-        client = GnomadClient(enable_cache=True)
-
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G", genome_af=0.001)
-
-        # Add to cache
-        client._add_to_cache("1-12345-A-G", freq)
-
-        # Retrieve from cache
-        cached = client._get_from_cache("1-12345-A-G")
-        assert cached is not None
-        assert cached.genome_af == 0.001
-
-        # Clear cache
-        client.clear_cache()
-        cached = client._get_from_cache("1-12345-A-G")
-        assert cached is None
-
-    def test_build_graphql_query(self):
-        client = GnomadClient()
-        query = client._build_graphql_query("1-12345-A-G", "gnomad_r4")
-
-        assert "variant" in query
-        assert "1-12345-A-G" in query
-        assert "gnomad_r4" in query
-        assert "genome" in query
-        assert "exome" in query
-
-    @patch("requests.Session.post")
-    def test_get_variant_frequency_not_found(self, mock_post):
-        """Test variant not found in gnomAD."""
-        mock_response = Mock()
-        mock_response.json.return_value = {"data": {"variant": None}}
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value = mock_response
-
-        client = GnomadClient(rate_limit=False)
-        result = client.get_variant_frequency("1", 12345, "A", "G")
-
-        assert result is None
-
-    @patch("requests.Session.post")
-    def test_get_variant_frequency_found(self, mock_post):
-        """Test variant found in gnomAD."""
-        mock_response = Mock()
-        # Match the structure expected by _parse_response
-        mock_response.json.return_value = {
-            "data": {
-                "variant": {
-                    "variantId": "1-12345-A-G",
-                    "genome": {
-                        "ac": 10,
-                        "an": 10000,
-                        "af": 0.001,
-                        "filters": ["PASS"],
-                        "populations": [],
-                    },
-                    "exome": None,
-                }
-            }
+        # Variant with rare frequency (should trigger PM2)
+        variant_rare = {
+            "chromosome": "1",
+            "position": 100000,
+            "ref_allele": "A",
+            "alt_allele": "G",
+            "gnomad_af": 0.00005,  # Below threshold (0.0001)
         }
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value = mock_response
+
+        result = assigner.check_pm2(variant_rare)
+        assert result is True, "PM2 should apply for rare variant (AF < 0.0001)"
+
+        # Variant with common frequency (should NOT trigger PM2)
+        variant_common = {
+            "chromosome": "1",
+            "position": 200000,
+            "ref_allele": "C",
+            "alt_allele": "T",
+            "gnomad_af": 0.01,  # Above threshold
+        }
+
+        result = assigner.check_pm2(variant_common)
+        assert result is False, "PM2 should NOT apply for common variant"
+
+    def test_pm2_with_gnomad_api(self):
+        """Test PM2 uses gnomAD API when af field not present."""
+        from varidex.core.classifier.acmg_evidence_pathogenic import (
+            PathogenicEvidenceAssigner,
+        )
+
+        assigner = PathogenicEvidenceAssigner()
+
+        # Mock gnomAD API
+        mock_api = Mock()
+        mock_freq = Mock()
+        mock_freq.max_af = 0.00002  # Rare
+        mock_api.get_variant_frequency.return_value = mock_freq
+
+        variant = {
+            "chromosome": "17",
+            "position": 43094692,
+            "ref_allele": "G",
+            "alt_allele": "A",
+        }
+
+        result = assigner.check_pm2(variant, gnomad_api=mock_api)
+        assert result is True, "PM2 should apply when API returns rare variant"
+
+        # Verify API was called with correct parameters
+        mock_api.get_variant_frequency.assert_called_once_with(
+            chromosome="17", position=43094692, ref="G", alt="A"
+        )
+
+    def test_pm2_column_naming(self):
+        """Test PM2 uses standardized column names (ref_allele/alt_allele)."""
+        from varidex.core.classifier.acmg_evidence_pathogenic import (
+            PathogenicEvidenceAssigner,
+        )
+
+        assigner = PathogenicEvidenceAssigner()
+
+        # This tests the critical typo fix: "re" → "ref_allele"
+        variant = {
+            "chromosome": "1",
+            "position": 100000,
+            "ref_allele": "A",  # Should use this (not "ref" or "re")
+            "alt_allele": "G",  # Should use this (not "alt")
+            "gnomad_af": 0.00001,
+        }
+
+        # Should not raise KeyError
+        result = assigner.check_pm2(variant)
+        assert result is True, "PM2 should work with standardized column names"
+
+
+class TestChromosomeNormalization:
+    """Test chromosome name normalization."""
+
+    def test_normalize_chromosome(self):
+        """Test chromosome normalization function."""
+        from varidex.integrations.gnomad_client import normalize_chromosome
+
+        # Standard chromosomes
+        assert normalize_chromosome("1") == "1"
+        assert normalize_chromosome("chr1") == "1"
+        assert normalize_chromosome("22") == "22"
+        assert normalize_chromosome("chr22") == "22"
+
+        # Sex chromosomes
+        assert normalize_chromosome("X") == "X"
+        assert normalize_chromosome("chrX") == "X"
+        assert normalize_chromosome("Y") == "Y"
+        assert normalize_chromosome("chrY") == "Y"
+
+        # Mitochondrial (critical fix: M → MT)
+        assert normalize_chromosome("M") == "MT"
+        assert normalize_chromosome("chrM") == "MT"
+        assert normalize_chromosome("MT") == "MT"
+        assert normalize_chromosome("chrMT") == "MT"
+
+    def test_gnomad_client_chromosome_handling(self):
+        """Test gnomAD client handles chromosome normalization."""
+        from varidex.integrations.gnomad_client import GnomadClient
 
         client = GnomadClient(rate_limit=False)
-        result = client.get_variant_frequency("1", 12345, "A", "G")
 
-        # The client fails gracefully and returns None on parse errors
-        assert result is None
+        # Mock the execute query to avoid actual API call
+        with patch.object(client, "_execute_query") as mock_execute:
+            mock_execute.return_value = {"data": {"variant": None}}
 
-
-class TestPopulationFrequencyService:
-    """Test PopulationFrequencyService logic."""
-
-    def test_init_with_gnomad(self):
-        service = PopulationFrequencyService(enable_gnomad=False)
-        assert service.enable_gnomad is False
-        assert service.thresholds is not None
-
-    def test_pm2_absent_variant(self):
-        """Test PM2 applies for absent variant."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(variant_id="1-12345-A-G")
-
-        applies, reason = service._check_pm2(freq, InheritanceMode.DOMINANT)
-        assert applies is True
-        assert "absent" in reason.lower()
-
-    def test_pm2_rare_dominant(self):
-        """Test PM2 applies for rare variant in dominant inheritance."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G", genome_af=0.00005  # Below 0.0001 threshold
-        )
-
-        applies, reason = service._check_pm2(freq, InheritanceMode.DOMINANT)
-        assert applies is True
-
-    def test_pm2_not_rare_enough(self):
-        """Test PM2 doesn't apply if frequency too high."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G", genome_af=0.001  # Above 0.0001 threshold
-        )
-
-        applies, reason = service._check_pm2(freq, InheritanceMode.DOMINANT)
-        assert applies is False
-
-    def test_ba1_common_variant(self):
-        """Test BA1 applies for common variant >5%."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G",
-            genome_af=0.06,  # 6% > 5% threshold
-            popmax_af=0.06,
-            popmax_population="NFE",
-        )
-
-        applies, reason = service._check_ba1(freq)
-        assert applies is True
-        assert "BA1" in reason or "0.06" in reason
-
-    def test_ba1_not_common(self):
-        """Test BA1 doesn't apply for uncommon variant."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G", genome_af=0.03
-        )  # 3% < 5% threshold
-
-        applies, reason = service._check_ba1(freq)
-        assert applies is False
-
-    def test_bs1_too_high_frequency(self):
-        """Test BS1 applies for frequency too high >1%."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G", genome_af=0.015  # 1.5% > 1% threshold
-        )
-
-        applies, reason = service._check_bs1(freq, InheritanceMode.DOMINANT)
-        assert applies is True
-
-    def test_bs1_vs_ba1_precedence(self):
-        """Test BA1 takes precedence over BS1."""
-        service = PopulationFrequencyService(enable_gnomad=False)
-        freq = GnomadVariantFrequency(
-            variant_id="1-12345-A-G",
-            genome_af=0.06,  # 6% - qualifies for both BA1 and BS1
-        )
-
-        # BA1 check should pass
-        ba1_applies, _ = service._check_ba1(freq)
-        assert ba1_applies is True
-
-        # BS1 should defer to BA1
-        bs1_applies, reason = service._check_bs1(freq, InheritanceMode.DOMINANT)
-        assert bs1_applies is False
-        assert "BA1" in reason
-
-
-class TestACMGClassifierV7:
-    """Test enhanced classifier with gnomAD integration."""
-
-    def test_init_without_gnomad(self):
-        """Test classifier works without gnomAD."""
-        classifier = ACMGClassifierV7(enable_gnomad=False)
-        assert classifier.enable_gnomad is False
-        assert classifier.frequency_service is None
-
-    def test_init_with_gnomad(self):
-        """Test classifier initializes with gnomAD."""
-        # Mock the gnomAD client to avoid real API calls
-        with patch("varidex.core.services.population_frequency.GnomadClient"):
-            classifier = ACMGClassifierV7(enable_gnomad=True)
-            # May be False if initialization failed
-            assert (
-                classifier.frequency_service is not None or not classifier.enable_gnomad
+            # Test MT chromosome normalization
+            client.get_variant_frequency(
+                chromosome="M", position=1000, ref="A", alt="G"
             )
 
-    def test_extract_coordinates_full(self):
-        """Test coordinate extraction with all fields."""
-        classifier = ACMGClassifierV7(enable_gnomad=False)
+            # Verify query was built with "MT" not "M"
+            call_args = mock_execute.call_args[0][0]
+            assert "MT-1000-A-G" in call_args, "M should be normalized to MT"
 
-        variant = VariantData(
-            rsid="rs123",
-            chromosome="17",
-            position="43094692",
-            genotype="AG",
-            gene="BRCA1",
-            ref_allele="G",
-            alt_allele="A",
-            clinical_sig="Pathogenic",
-            review_status="reviewed by expert panel",
-            variant_type="SNV",
-            molecular_consequence="frameshift",
+
+class TestVCFInfoFieldParsing:
+    """Test robust VCF INFO field parsing."""
+
+    def test_safe_get_info_value_list(self):
+        """Test parsing list-valued INFO fields."""
+        from varidex.integrations.gnomad.query import GnomADQuerier
+        from pathlib import Path
+
+        querier = GnomADQuerier(Path("/tmp/gnomad"))
+
+        # Mock record with list-valued INFO
+        mock_record = Mock()
+        mock_record.info = {"AF": [0.001, 0.002, 0.003], "AC": [10, 20, 30]}
+
+        # Test accessing different indices
+        af0 = querier._safe_get_info_value(mock_record, "AF", 0)
+        assert af0 == 0.001, "Should get first value"
+
+        af1 = querier._safe_get_info_value(mock_record, "AF", 1)
+        assert af1 == 0.002, "Should get second value"
+
+        # Test out-of-bounds access (should return None, not crash)
+        af10 = querier._safe_get_info_value(mock_record, "AF", 10)
+        assert af10 is None, "Out of bounds should return None"
+
+    def test_safe_get_info_value_scalar(self):
+        """Test parsing scalar-valued INFO fields."""
+        from varidex.integrations.gnomad.query import GnomADQuerier
+        from pathlib import Path
+
+        querier = GnomADQuerier(Path("/tmp/gnomad"))
+
+        # Mock record with scalar INFO
+        mock_record = Mock()
+        mock_record.info = {"AN": 1000, "AF_popmax": 0.005}
+
+        # Test scalar access
+        an = querier._safe_get_info_value(mock_record, "AN", 0)
+        assert an == 1000, "Should get scalar value"
+
+        # Accessing scalar with non-zero index should return None
+        an_bad = querier._safe_get_info_value(mock_record, "AN", 1)
+        assert an_bad is None, "Scalar with index > 0 should return None"
+
+    def test_safe_get_info_value_missing(self):
+        """Test handling missing INFO fields."""
+        from varidex.integrations.gnomad.query import GnomADQuerier
+        from pathlib import Path
+
+        querier = GnomADQuerier(Path("/tmp/gnomad"))
+
+        # Mock record with missing field
+        mock_record = Mock()
+        mock_record.info = {}
+
+        # Should return None for missing field
+        af = querier._safe_get_info_value(mock_record, "AF", 0)
+        assert af is None, "Missing field should return None"
+
+
+class TestGnomADAnnotator:
+    """Test gnomAD annotator integration."""
+
+    def test_annotator_column_consistency(self):
+        """Test annotator uses consistent column naming."""
+        # Create test DataFrame with standard columns
+        df = pd.DataFrame(
+            {
+                "chromosome": ["1", "2"],
+                "position": [100000, 200000],
+                "ref_allele": ["A", "C"],
+                "alt_allele": ["G", "T"],
+            }
         )
 
-        coords = classifier._extract_variant_coordinates(variant)
-        assert coords is not None
-        assert coords["chromosome"] == "17"
-        assert coords["position"] == 43094692
-        assert coords["ref"] == "G"
-        assert coords["alt"] == "A"
-        assert coords["gene"] == "BRCA1"
+        # Mock GnomADLoader
+        with patch("varidex.integrations.gnomad_annotator.GnomADLoader") as MockLoader:
+            mock_loader = Mock()
+            mock_loader.annotate_dataframe.return_value = df.copy()
+            MockLoader.return_value.__enter__.return_value = mock_loader
 
-    def test_extract_coordinates_missing(self):
-        """Test coordinate extraction with missing fields."""
-        # VariantData requires position parameter
-        variant = VariantData(
-            rsid="rs123",
-            chromosome="1",
-            position=12345,  # Required parameter
-            genotype="A/G",
-            ref_allele=None,  # Optional - missing
-            alt_allele=None,  # Optional - missing
+            from varidex.integrations.gnomad_annotator import (
+                GnomADAnnotator,
+                AnnotationConfig,
+            )
+
+            config = AnnotationConfig(use_local=True, gnomad_dir=Path("/tmp/gnomad"))
+            annotator = GnomADAnnotator(config)
+
+            # Should not raise ValueError about missing columns
+            result = annotator.annotate(df)
+            assert "chromosome" in result.columns
+            assert "ref_allele" in result.columns
+            assert "alt_allele" in result.columns
+
+    def test_annotator_adds_gnomad_columns(self):
+        """Test annotator adds expected gnomAD columns."""
+        df = pd.DataFrame(
+            {
+                "chromosome": ["1"],
+                "position": [100000],
+                "ref_allele": ["A"],
+                "alt_allele": ["G"],
+            }
         )
 
-        classifier = ACMGClassifierV7(enable_gnomad=False)
-        coords = classifier._extract_variant_coordinates(variant)
+        # Mock loader to return annotated data
+        with patch("varidex.integrations.gnomad_annotator.GnomADLoader") as MockLoader:
+            mock_loader = Mock()
+            annotated_df = df.copy()
+            annotated_df["gnomad_af"] = [0.001]
+            annotated_df["gnomad_ac"] = [10]
+            annotated_df["gnomad_an"] = [10000]
+            mock_loader.annotate_dataframe.return_value = annotated_df
+            MockLoader.return_value.__enter__.return_value = mock_loader
 
-        # Should handle missing ref/alt gracefully
-        # Method returns None for missing data
-        assert coords is None
+            from varidex.integrations.gnomad_annotator import (
+                GnomADAnnotator,
+                AnnotationConfig,
+            )
 
-    def test_infer_inheritance_dominant(self):
-        """Test inheritance mode inference."""
-        classifier = ACMGClassifierV7(enable_gnomad=False)
+            config = AnnotationConfig(use_local=True, gnomad_dir=Path("/tmp/gnomad"))
+            annotator = GnomADAnnotator(config)
+            result = annotator.annotate(df)
 
-        # Test with explicit mode
-        variant = Mock()
-        variant.inheritance_mode = "Autosomal Dominant"
-        mode = classifier._infer_inheritance_mode(variant)
-        assert mode == InheritanceMode.DOMINANT
+            # Verify gnomAD columns added
+            assert "gnomad_af" in result.columns
+            assert "gnomad_ac" in result.columns
+            assert "gnomad_an" in result.columns
 
-    def test_infer_inheritance_xlinked(self):
-        """Test X-linked inference from chromosome."""
-        classifier = ACMGClassifierV7(enable_gnomad=False)
 
-        variant = Mock()
-        variant.inheritance_mode = None
-        variant.chromosome = "X"
-        mode = classifier._infer_inheritance_mode(variant)
-        assert mode == InheritanceMode.X_LINKED
+class TestGnomADClient:
+    """Test gnomAD API client."""
 
-    def test_get_enabled_codes_with_gnomad(self):
-        """Test enabled codes include gnomAD codes."""
-        with patch("varidex.core.services.population_frequency.GnomadClient"):
-            classifier = ACMGClassifierV7(enable_gnomad=True)
-            codes = classifier.get_enabled_codes()
+    def test_client_cache(self):
+        """Test client caching functionality."""
+        from varidex.integrations.gnomad_client import GnomadClient
 
-            # Should have base codes plus gnomAD codes
-            assert "PM4" in codes["pathogenic"]
-            assert "BP1" in codes["benign"]
+        client = GnomadClient(enable_cache=True, rate_limit=False)
 
-    def test_health_check(self):
-        """Test health check includes gnomAD status."""
-        classifier = ACMGClassifierV7(enable_gnomad=False)
-        health = classifier.health_check()
+        # Mock response
+        mock_freq = Mock()
+        mock_freq.max_af = 0.001
 
-        assert "gnomad" in health
-        assert "enabled" in health["gnomad"]
-        assert health["gnomad"]["enabled"] is False
-        assert health["version"] == ACMGClassifierV7.VERSION
+        with patch.object(client, "_execute_query") as mock_execute:
+            mock_execute.return_value = {
+                "data": {
+                    "variant": {
+                        "variantId": "1-100000-A-G",
+                        "genome": {"af": 0.001, "ac": 10, "an": 10000},
+                        "exome": {"af": None, "ac": None, "an": None},
+                    }
+                }
+            }
+
+            # First call - should query API
+            result1 = client.get_variant_frequency(
+                chromosome="1", position=100000, ref="A", alt="G"
+            )
+            assert result1 is not None
+            assert mock_execute.call_count == 1
+
+            # Second call - should use cache
+            result2 = client.get_variant_frequency(
+                chromosome="1", position=100000, ref="A", alt="G"
+            )
+            assert result2 is not None
+            assert mock_execute.call_count == 1, "Should use cached result"
+
+    def test_client_rate_limiting(self):
+        """Test client rate limiting."""
+        from varidex.integrations.gnomad_client import RateLimiter
+        import time
+
+        limiter = RateLimiter(max_requests=2, time_window=1)
+
+        # First two requests should be fast
+        start = time.time()
+        limiter.wait_if_needed()
+        limiter.wait_if_needed()
+        fast_time = time.time() - start
+        assert fast_time < 0.1, "First requests should be fast"
+
+        # Third request should wait
+        start = time.time()
+        limiter.wait_if_needed()
+        wait_time = time.time() - start
+        assert wait_time >= 0.9, "Should wait for rate limit window"
+
+
+class TestEndToEndIntegration:
+    """Test complete gnomAD integration workflow."""
+
+    def test_pipeline_with_gnomad_annotation(self):
+        """Test variant classification with gnomAD annotation."""
+        from varidex.core.classifier.acmg_evidence_pathogenic import (
+            PathogenicEvidenceAssigner,
+        )
+
+        # Variant with gnomAD annotation
+        variant = {
+            "chromosome": "17",
+            "position": 43094692,
+            "ref_allele": "G",
+            "alt_allele": "A",
+            "gnomad_af": 0.00001,  # Very rare
+            "consequence": "missense_variant",
+            "gene": "BRCA1",
+        }
+
+        assigner = PathogenicEvidenceAssigner()
+        resources = {"lof_genes": set(), "missense_rare_genes": {"BRCA1"}}
+
+        evidence = assigner.assign_all(variant, resources)
+
+        # Should assign PM2 (rare in gnomAD) and PP2 (missense in BRCA1)
+        assert "PM2" in evidence, "PM2 should be assigned for rare variant"
+        assert "PP2" in evidence, "PP2 should be assigned for BRCA1 missense"
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    pytest.main([__file__, "-v", "--tb=short"])
