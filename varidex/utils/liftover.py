@@ -22,7 +22,7 @@ Version: 1.0.0-dev | Lines: <500
 import logging
 import pandas as pd
 from pathlib import Path
-from typing import Tuple, Optional, Dict, List
+from typing import Tuple, Optional, Dict, List, Any
 import urllib.request
 import gzip
 import shutil
@@ -335,7 +335,7 @@ def liftover_coordinates(
     return df
 
 
-def validate_after_liftover(df: pd.DataFrame, expected_build: str) -> Dict[str, any]:
+def validate_after_liftover(df: pd.DataFrame, expected_build: str) -> Dict[str, Any]:
     """
     Validate data after liftover conversion.
     
