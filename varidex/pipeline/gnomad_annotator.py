@@ -22,7 +22,7 @@ def annotate_with_gnomad(
     Annotate DataFrame with gnomAD allele frequencies.
 
     Args:
-        df: DataFrame with columns: chromosome, position, ref, alt
+        df: DataFrame with columns: chromosome, position, ref_allele, alt_allele
         gnomad_dir: Path to gnomAD VCF files
         batch_size: Process in batches for progress tracking
 
@@ -44,8 +44,8 @@ def annotate_with_gnomad(
                 result = querier.query(
                     str(row["chromosome"]),
                     int(row["position"]),
-                    str(row["ref"]),
-                    str(row["alt"]),
+                    str(row["ref_allele"]),
+                    str(row["alt_allele"]),
                 )
                 frequencies.append(result.af)
             except Exception as e:
