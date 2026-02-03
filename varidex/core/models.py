@@ -1,5 +1,3 @@
-# Save this as: varidex/core/models.py
-
 #!/usr/bin/env python3
 """
 varidex/core/models.py - Data Models v2.3.3
