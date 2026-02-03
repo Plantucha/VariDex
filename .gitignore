@@ -27,3 +27,75 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Development and testing
+*.backup
+*.bak
+*_backup/
+*.log
+analysis_log.txt
+mypy-report/
+mypy_report.txt
+
+# Test and benchmark scripts
+analyze_*.py
+audit_*.py
+benchmark_*.py
+check_*.py
+debug_*.py
+diagnostic_*.py
+fix_*.py
+test_*.py
+implement_*.py
+integrate_*.py
+show_*.py
+apply_*.py
+report_*.py
+run_*.py
+update_*.py
+*_test.py
+normalization_*.py
+phase1_*.py
+
+# Pipeline variations
+pipeline_*.py
+*_pipeline.py
+
+# Temporary directories
+.cache/
+.checkpoint/
+.varidex_cache/
+.backup_*/
+temp_*/
+
+# Results and output
+results*/
+resultsFINAL/
+output/
+gnomad/
+clinvar/
+
+# Build and coverage
+.hypothesis/
+.coverage
+varidex.egg-info/
+
+# Documentation drafts
+CHANGELOG.md
+WORKING_PIPELINE_*.md
+docs/LIFTOVER_GUIDE.md
+
+# Scripts
+commit_*.sh
+enable_*.patch
+start_*.sh
+audit_*.sh
+analyze_*.sh
+
+# Data files
+data.tsv
+GRCh37.fa
+report.html
+
+# Orphaned files
+=5.0.0
