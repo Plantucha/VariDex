@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 varidex/core/models.py - Data Models v2.3.2
-============================================
 Optimized data structures for variant analysis with sets for O(1) operations.
 Enhanced with serialization, hashing, validation, and proper exception handling.
 
@@ -34,7 +33,7 @@ from datetime import datetime
 import re
 
 # Import ValidationError for proper exception handling
-from varidex.exceptions import ValidationError
+from varidex.core.exceptions import ValidationError
 
 
 @dataclass
@@ -101,24 +100,23 @@ class ACMGEvidenceSet:
 
 
 def _validate_chromosome(chrom: Union[str, int, None], strict: bool = False) -> str:
-    """
-    Validate chromosome format (relaxed for testing by default).
-
-    Accepts: 1-22, X, Y, M, MT with optional 'chr' prefix
-    Also accepts integers 1-22 (common in data files)
-    Returns normalized chromosome string.
-    Raises ValidationError if invalid.
-
-    Args:
-        chrom: Chromosome identifier (str, int, or None)
-
-    Returns:
-        Validated chromosome string
-
-    Raises:
-        ValidationError: If chromosome format is invalid
-    """
-    # Handle None and empty values
+    """Validate chromosome format."""
+    if not chrom:
+        raise ValidationError("Chromosome cannot be empty")
+    
+    chrom_str = str(chrom).strip().upper()
+    chrom_clean = chrom_str.replace("CHR", "")
+    
+    VALID_CHROM = {
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+        "11", "12", "13", "14", "15", "16", "17", "18", "19", 
+        "20", "21", "22", "X", "Y", "M", "MT"
+    }
+    
+    if chrom_clean not in VALID_CHROM:
+        raise ValidationError(f"Invalid chromosome '{chrom_str}'. Must be 1-22, X, Y, or M/MT")
+    
+    return chrom_str.lower().replace("MT", "M")  # Normalize
     if chrom is None or chrom == "":
         return ""
 
@@ -923,9 +921,7 @@ class PipelineState:
         )
 
 
-# ===================================================================
 # BACKWARD COMPATIBILITY ALIASES
-# ===================================================================
 # These aliases maintain backward compatibility with existing tests
 # while the codebase transitions to the new class names.
 
@@ -980,78 +976,3 @@ if __name__ == "__main__":
     print("MODELS MODULE v2.3.2 - POSITION INT COMPATIBILITY")
     print("=" * 80)
 
-<<<<<<< HEAD
-# ============================================================================
-# Backward-compatibility aliases (for tests)
-# ============================================================================
-
-# Old name for ACMGEvidenceSet used in tests
-ACMGCriteria = ACMGEvidenceSet
-
-# Old name for position-based variant representation used in tests
-GenomicVariant = VariantData
-
-__all__ = [
-    "ACMGEvidence",
-    "ACMGEvidenceSet",
-    "ACMGCriteria",      # NEW
-    "Variant",
-    "VariantData",
-    "GenomicVariant",    # NEW
-    "VariantAnnotation",
-    "AnnotatedVariant",
-    "VariantClassification",
-    "VariantBatch",
-    "PathogenicityClass",
-]
-=======
-    # Test positional argument syntax
-    print("\n✓ Test: Positional argument constructor")
-    try:
-        v1 = Variant("chr1", 12345, "A", "G")
-        print(
-            f"  - Positional args accepted: {v1.chromosome}:{v1.position} {v1.ref_allele}>{v1.alt_allele}"
-        )
-        print(f"  - Position type: {type(v1.position)} = {v1.position}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    # Test position as int for comparisons
-    print("\n✓ Test: Position returns int for comparisons")
-    try:
-        v2 = Variant("chr2", 67890, "C", "T")
-        assert isinstance(v2.position, int), f"Expected int, got {type(v2.position)}"
-        assert 60000 <= v2.position <= 70000, f"Position comparison failed"
-        print(f"  - Position comparison works: 60000 <= {v2.position} <= 70000")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    # Test with annotations
-    print("\n✓ Test: Positional args with annotations")
-    try:
-        v3 = Variant(
-            "chr3", 11111, "G", "T", annotations={"gene": "TP53", "impact": "HIGH"}
-        )
-        print(
-            f"  - With annotations: {v3.gene} (impact: {v3.annotations.get('impact')})"
-        )
-        print(f"  - Position type: {type(v3.position)} = {v3.position}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    # Test named parameters still work
-    print("\n✓ Test: Named parameters (backward compatibility)")
-    try:
-        v4 = Variant(chromosome="chr4", position=22222, reference="A", alternate="C")
-        print(f"  - Named params work: {v4.chromosome}:{v4.position}")
-        print(f"  - Position type: {type(v4.position)} = {v4.position}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    print("\n✅ All v2.3.2 tests passed!")
-    print("   - Positional argument support: ✓")
-    print("   - Position returns int: ✓")
-    print("   - Annotations support: ✓")
-    print("   - Backward compatibility: ✓")
-    print("=" * 80)
->>>>>>> parent of ec1a91d (Fix validation in models.py - all tests pass)
