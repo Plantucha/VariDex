@@ -1,116 +1,88 @@
-#!/usr/bin/env python3
 """
-varidex/core/models.py - Data Models v2.3.2
-============================================
-Optimized data structures for variant analysis with sets for O(1) operations.
-Enhanced with serialization, hashing, validation, and proper exception handling.
+Core data models for VariDex variant analysis system.
 
-Changes v2.3.2 (2026-02-02) - POSITION INT COMPATIBILITY:
-- Added Variant.__getattribute__() to return position as int when numeric
-- Fixes test_filter_by_region which expects int position for comparisons
-- Maintains backward compatibility for non-numeric position values
+This module provides dataclass-based models for genetic variants, annotations,
+and ACMG classifications with comprehensive validation.
 
-Changes v2.3.1 (2026-01-29) - TEST COMPATIBILITY:
-- Added Variant wrapper class to support positional arguments (chrom, pos, ref, alt)
-- Preserves all v2.3.0 fixes and features
-
-Previous changes v2.3.0 (2026-01-25):
-- FIX: _validate_chromosome() now handles int inputs (converts to str before .strip())
-- FIX: _validate_position() handles None, int, and empty string properly
-- FIX: _validate_allele() handles None properly
-- FIX: Type annotations updated to Union[str, int, None] for validation functions
-- All validation functions now properly handle mixed type inputs from data files
-- Preserves all v2.2.0 features (4A/4D/4E fixes)
-
-Previous changes v2.2.0 (2026-01-24):
-- FIX 4A: Relaxed empty allele validation for coordinate-only variants
-- FIX 4D: Enhanced to_dict() with VCF-style keys for test compatibility
-- FIX 4E: AnnotatedVariant convenience constructor for direct creation
+Development version - Black formatted, PEP 8 compliant.
 """
 
 from dataclasses import dataclass, field
-from typing import Set, List, Optional, Dict, Any, Union
 from datetime import datetime
-import re
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set, Union
+import dataclasses
 
-# Import ValidationError for proper exception handling
-from varidex.exceptions import ValidationError
+from varidex.core.exceptions import ValidationError
+
+
+# ============================================================================
+# ACMG Evidence Models
+# ============================================================================
+
+
+@dataclass
+class ACMGEvidence:
+    """Single piece of ACMG evidence with code and strength."""
+
+    code: str
+    strength: str
+    description: str = ""
+
+    def __post_init__(self):
+        """Validate evidence after initialization."""
+        valid_strengths = {
+            "very_strong",
+            "strong",
+            "moderate",
+            "supporting",
+            "stand_alone",
+        }
+        if self.strength not in valid_strengths:
+            raise ValidationError(
+                f"Invalid strength '{self.strength}'. "
+                f"Must be one of: {valid_strengths}"
+            )
 
 
 @dataclass
 class ACMGEvidenceSet:
+    """Collection of ACMG evidence codes for variant classification."""
+
+    pathogenic: List[ACMGEvidence] = field(default_factory=list)
+    benign: List[ACMGEvidence] = field(default_factory=list)
+
+    def add_pathogenic(self, code: str, strength: str, description: str = ""):
+        """Add pathogenic evidence."""
+        self.pathogenic.append(ACMGEvidence(code, strength, description))
+
+    def add_benign(self, code: str, strength: str, description: str = ""):
+        """Add benign evidence."""
+        self.benign.append(ACMGEvidence(code, strength, description))
+
+    def summary(self) -> Dict[str, List[str]]:
+        """Get summary of evidence codes."""
+        return {
+            "pathogenic": [e.code for e in self.pathogenic],
+            "benign": [e.code for e in self.benign],
+        }
+
+    def has_evidence(self) -> bool:
+        """Check if any evidence exists."""
+        return len(self.pathogenic) > 0 or len(self.benign) > 0
+
+
+# ============================================================================
+# Validation Functions
+# ============================================================================
+
+
+def _validate_chromosome(chrom: Union[str, int]) -> str:
     """
-    Complete set of ACMG evidence codes for a variant (OPTIMIZED).
-
-    Uses sets for O(1) operations and auto-deduplication.
-    """
-
-    # Pathogenic evidence (sets for optimization)
-    pvs: Set[str] = field(default_factory=set)  # Very Strong
-    ps: Set[str] = field(default_factory=set)  # Strong
-    pm: Set[str] = field(default_factory=set)  # Moderate
-    pp: Set[str] = field(default_factory=set)  # Supporting
-
-    # Benign evidence (sets for optimization)
-    ba: Set[str] = field(default_factory=set)  # Stand-alone
-    bs: Set[str] = field(default_factory=set)  # Strong
-    bp: Set[str] = field(default_factory=set)  # Supporting
-
-    # Conflicts (set for auto-deduplication)
-    conflicts: Set[str] = field(default_factory=set)
-
-    def all_pathogenic(self) -> Set[str]:
-        """Get all pathogenic evidence codes (O(1) set union)."""
-        return self.pvs | self.ps | self.pm | self.pp
-
-    def all_benign(self) -> Set[str]:
-        """Get all benign evidence codes (O(1) set union)."""
-        return self.ba | self.bs | self.bp
-
-    def has_conflict(self) -> bool:
-        """
-        Check if both pathogenic and benign evidence present (OPTIMIZED).
-
-        O(1) boolean checks instead of list creation.
-        """
-        has_pathogenic = bool(self.pvs or self.ps or self.pm or self.pp)
-        has_benign = bool(self.ba or self.bs or self.bp)
-        return has_pathogenic and has_benign
-
-    def summary(self) -> str:
-        """Get human-readable summary."""
-        parts: List[str] = []
-        if self.pvs:
-            parts.append(f"PVS:{len(self.pvs)}")
-        if self.ps:
-            parts.append(f"PS:{len(self.ps)}")
-        if self.pm:
-            parts.append(f"PM:{len(self.pm)}")
-        if self.pp:
-            parts.append(f"PP:{len(self.pp)}")
-        if self.ba:
-            parts.append(f"BA:{len(self.ba)}")
-        if self.bs:
-            parts.append(f"BS:{len(self.bs)}")
-        if self.bp:
-            parts.append(f"BP:{len(self.bp)}")
-        return " | ".join(parts) if parts else "No evidence"
-
-    def __str__(self) -> str:
-        return self.summary()
-
-
-def _validate_chromosome(chrom: Union[str, int, None], strict: bool = False) -> str:
-    """
-    Validate chromosome format (relaxed for testing by default).
-
-    Accepts: 1-22, X, Y, M, MT with optional 'chr' prefix
-    Also accepts integers 1-22 (common in data files)
-    Returns normalized chromosome string.
-    Raises ValidationError if invalid.
+    Validate chromosome identifier.
 
     Args:
-        chrom: Chromosome identifier (str, int, or None)
+        chrom: Chromosome identifier (e.g., 'chr1', '1', 'chrX', 'chrM')
 
     Returns:
         Validated chromosome string
@@ -118,128 +90,98 @@ def _validate_chromosome(chrom: Union[str, int, None], strict: bool = False) -> 
     Raises:
         ValidationError: If chromosome format is invalid
     """
-    # Handle None and empty values
-    if chrom is None or chrom == "":
-        return ""
+    if not chrom and chrom != 0:
+        raise ValidationError("Chromosome cannot be empty")
 
-    # Convert to string first (handles int inputs) - CRITICAL FIX
-    chrom_str = str(chrom)
+    # Convert to string and normalize
+    chrom_str = str(chrom).strip().upper()
+    if chrom_str.startswith("CHR"):
+        chrom_part = chrom_str[3:]
+    else:
+        chrom_part = chrom_str
 
-    # Strip whitespace
-    chrom_str = chrom_str.strip()
+    # Valid chromosome identifiers: 1-22, X, Y, M/MT (mitochondrial)
+    valid_chroms = set(map(str, range(1, 23))) | {"X", "Y", "M", "MT"}
 
-    # Handle empty string after stripping
-    if not chrom_str:
-        return ""
-
-    # Remove 'chr' prefix if present for validation
-    normalized = chrom_str.upper().replace("CHR", "")
-
-    # Valid chromosomes: 1-22, X, Y, M, MT
-    valid_chroms = set(str(i) for i in range(1, 23)) | {"X", "Y", "M", "MT"}
-
-    if strict and normalized not in valid_chroms:
+    if chrom_part not in valid_chroms:
         raise ValidationError(
-            f"Invalid chromosome '{chrom}'. Must be 1-22, X, Y, M, or MT "
-            f"(with optional 'chr' prefix)"
+            f"Invalid chromosome '{chrom}'. Must be 1-22, X, Y, or M/MT"
         )
 
-    return chrom_str
+    # Return normalized format with 'chr' prefix
+    return f"chr{chrom_part}"
 
 
-def _validate_position(pos: Union[str, int, None]) -> str:
+def _validate_position(position: Union[str, int]) -> int:
     """
     Validate genomic position.
 
-    Accepts strings or integers.
-    Must be positive integer when provided.
-    Returns validated position string.
-    Raises ValidationError if invalid.
-
     Args:
-        pos: Position value (str, int, or None)
+        position: Genomic position (must be positive integer)
 
     Returns:
-        Validated position as string
+        Validated position as integer
 
     Raises:
         ValidationError: If position is invalid
     """
-    # Handle None and empty string explicitly - CRITICAL FIX
-    if pos is None or pos == "":
-        return ""
-
-    # Convert to string if not already - CRITICAL FIX
-    pos_str = str(pos) if not isinstance(pos, str) else pos
-
-    # Strip whitespace
-    pos_str = pos_str.strip()
-
-    # Handle empty after stripping
-    if not pos_str:
-        return ""
-
     try:
-        pos_int = int(pos_str)
-        if pos_int <= 0:
-            raise ValidationError(f"Position must be positive, got {pos_int}")
-        return str(pos_int)
-    except ValueError as e:
-        if "invalid literal" in str(e):
-            raise ValidationError(
-                f"Position must be an integer, got '{pos_str}'"
-            ) from e
-        raise
+        pos_int = int(position)
+    except (ValueError, TypeError) as e:
+        raise ValidationError(
+            f"Position must be an integer, got '{position}'"
+        ) from e
+
+    if pos_int <= 0:
+        raise ValidationError(f"Position must be positive, got {pos_int}")
+
+    return pos_int
 
 
 def _validate_allele(
-    allele: Union[str, None], allele_type: str = "allele", allow_empty: bool = False
+    allele: str, allele_type: str = "allele", allow_empty: bool = False
 ) -> str:
     """
-    Validate nucleotide allele sequence.
-
-    Must contain only A, C, G, T, N (case-insensitive).
-    Empty alleles can be allowed for coordinate-only variants.
-    Returns uppercase allele string.
-    Raises ValidationError if invalid.
+    Validate nucleotide allele string.
 
     Args:
-        allele: Allele sequence to validate (str or None)
-        allele_type: Type name for error messages ("reference allele", "alternate allele")
-        allow_empty: If True, allow empty alleles (for coordinate-only matching)
+        allele: Nucleotide sequence (A, C, G, T, N, or empty for deletions)
+        allele_type: Type of allele for error messages
+        allow_empty: Whether empty alleles are allowed (for deletions)
 
     Returns:
-        Validated uppercase allele string
+        Validated allele string (uppercase)
 
     Raises:
-        ValidationError: If allele format is invalid
+        ValidationError: If allele contains invalid characters
     """
-    # Handle None - CRITICAL FIX
-    if allele is None:
-        allele = ""
+    # CRITICAL FIX: Check for empty string explicitly
+    if allele == "" or allele is None:
+        if not allow_empty:
+            raise ValidationError(f"{allele_type.capitalize()} cannot be empty")
+        return ""
 
-    if not allele or not allele.strip():
-        if allow_empty:
-            return ""
-        raise ValidationError(f"{allele_type.capitalize()} cannot be empty")
-
-    # Strip whitespace
-    allele = allele.strip()
     allele_upper = allele.upper()
-    valid_pattern = re.compile(r"^[ACGTN]+$")
+    valid_nucleotides = set("ACGTN")
 
-    if not valid_pattern.match(allele_upper):
-        raise ValidationError(
-            f"Invalid {allele_type} '{allele}'. "
-            f"Must contain only nucleotides A, C, G, T, or N"
-        )
+    for char in allele_upper:
+        if char not in valid_nucleotides:
+            raise ValidationError(
+                f"Invalid {allele_type} '{allele}'. "
+                f"Must contain only nucleotides A, C, G, T, or N"
+            )
 
     return allele_upper
 
 
+# ============================================================================
+# Core Variant Models
+# ============================================================================
+
+
 @dataclass
 class VariantData:
-    """Complete information for a single genetic variant with enhanced features"""
+    """Complete information for a single genetic variant with enhanced features."""
 
     # Core identification
     rsid: str = ""
@@ -270,362 +212,75 @@ class VariantData:
     # Classification results
     acmg_evidence: ACMGEvidenceSet = field(default_factory=ACMGEvidenceSet)
     acmg_classification: str = ""
-    confidence_level: str = ""
 
     # Quality metrics
-    star_rating: int = 0
-    conflict_details: List[str] = field(default_factory=list)
+    quality_score: float = 0.0
+    depth: int = 0
+    allele_frequency: float = 0.0
 
-    # Additional annotations (for test compatibility)
+    # Additional annotations
     annotations: Dict[str, Any] = field(default_factory=dict)
 
-    # Metadata
-    _processed_timestamp: Optional[str] = field(default=None, repr=False)
-
-    def __init__(
-        self,
-        rsid: str = "",
-        chromosome: str = "",
-        position: str = "",
-        genotype: str = "",
-        normalized_genotype: str = "",
-        genotype_class: str = "",
-        zygosity: str = "",
-        ref_allele: str = "",
-        alt_allele: str = "",
-        assembly: str = "",
-        gene: str = "",
-        clinical_sig: str = "",
-        review_status: str = "",
-        num_submitters: int = 0,
-        variant_type: str = "",
-        molecular_consequence: str = "",
-        acmg_evidence: Optional[ACMGEvidenceSet] = None,
-        acmg_classification: str = "",
-        confidence_level: str = "",
-        star_rating: int = 0,
-        conflict_details: Optional[List[str]] = None,
-        annotations: Optional[Dict[str, Any]] = None,
-        _processed_timestamp: Optional[str] = None,
-        # VCF-style aliases for compatibility
-        chrom: Union[str, int, None] = "",
-        pos: Optional[int] = None,
-        ref: str = "",
-        alt: str = "",
-        # Aliases for test compatibility
-        reference: str = "",
-        alternate: str = "",
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, **kwargs):
         """
-        Initialize VariantData with validation and dual naming support.
+        Initialize VariantData with validation.
 
-        Supports both traditional (chromosome, position) and VCF-style (chrom, pos)
-        parameter names. Validates chromosome, position, and alleles for data quality.
-
-        FIX 4A: Allows empty ref/alt alleles when chromosome AND position are provided
-        (coordinate-only variants for matching purposes).
-
-        Raises:
-            ValidationError: If chromosome, position, or alleles are invalid
+        Supports keyword arguments for all fields.
         """
-        # Handle VCF-style parameters (chrom, pos, ref, alt)
+        # Extract and validate core fields with proper mapping
+        chrom = kwargs.pop("chrom", None) or kwargs.pop("chromosome", "")
+        # CRITICAL FIX: Handle pos=0 correctly (can't use 'or' because 0 is falsy)
+        pos = kwargs.pop("pos", None) if "pos" in kwargs else kwargs.pop("position", "")
+        ref = kwargs.pop("ref", None) if "ref" in kwargs else kwargs.pop("ref_allele", "")
+        alt = kwargs.pop("alt", None) if "alt" in kwargs else kwargs.pop("alt_allele", "")
+
+        # Validate if provided
         if chrom:
-            chromosome = chrom if isinstance(chrom, str) else str(chrom)
-        if pos is not None:
-            position = str(pos)
-        if ref:
-            ref_allele = ref
-        if alt:
-            alt_allele = alt
-        if reference:
-            ref_allele = reference
-        if alternate:
-            alt_allele = alternate
+            chrom = _validate_chromosome(chrom)
+            kwargs["chromosome"] = chrom
 
-        # FIX 4A: Determine if empty alleles should be allowed
-        # Allow empty alleles for coordinate-only variants (chrom+pos without alleles)
-        has_coordinates = bool(chromosome and position)
-        has_alleles = bool(ref_allele or alt_allele)
-        allow_empty_alleles = has_coordinates and not has_alleles
+        if pos or pos == 0:  # CRITICAL: handle pos=0 explicitly
+            pos_int = _validate_position(pos)
+            kwargs["position"] = str(pos_int)
 
-        # VALIDATION: Validate inputs before assignment
-        try:
-            chromosome = _validate_chromosome(chromosome)
-            position = _validate_position(position)
-            ref_allele = _validate_allele(
-                ref_allele, "reference allele", allow_empty=allow_empty_alleles
-            )
-            alt_allele = _validate_allele(
-                alt_allele, "alternate allele", allow_empty=allow_empty_alleles
-            )
+        # CRITICAL FIX: Always validate alleles if explicitly provided
+        if ref is not None:
+            ref = _validate_allele(ref, "reference allele", allow_empty=False)
+            kwargs["ref_allele"] = ref
 
-            # Additional validation: ref and alt cannot be the same (if both provided)
-            if ref_allele and alt_allele and ref_allele == alt_allele:
-                raise ValidationError(
-                    f"Reference and alternate alleles cannot be identical: '{ref_allele}'"
-                )
-        except ValidationError as e:
-            raise ValidationError(f"Invalid variant data: {e}") from e
+        if alt is not None:
+            alt = _validate_allele(alt, "alternate allele", allow_empty=False)
+            kwargs["alt_allele"] = alt
 
-        # Set all fields
-        self.rsid = rsid
-        self.chromosome = chromosome
-        self.position = position
-        self.genotype = genotype
-        self.normalized_genotype = normalized_genotype
-        self.genotype_class = genotype_class
-        self.zygosity = zygosity
-        self.ref_allele = ref_allele
-        self.alt_allele = alt_allele
-        self.assembly = assembly
-        self.gene = gene
-        self.clinical_sig = clinical_sig
-        self.review_status = review_status
-        self.num_submitters = num_submitters
-        self.variant_type = variant_type
-        self.molecular_consequence = molecular_consequence
-        self.acmg_evidence = acmg_evidence or ACMGEvidenceSet()
-        self.acmg_classification = acmg_classification
-        self.confidence_level = confidence_level
-        self.star_rating = star_rating
-        self.conflict_details = conflict_details or []
-        self.annotations = annotations or {}
-        self._processed_timestamp = _processed_timestamp
-
-        # Extract gene from annotations if not set
-        if not self.gene and self.annotations and "gene" in self.annotations:
-            self.gene = self.annotations["gene"]
-
-    def __hash__(self) -> int:
-        """Make VariantData hashable for use in sets and as dict keys."""
-        return hash(self.variant_key)
-
-    def __eq__(self, other: Any) -> bool:
-        """Equality comparison based on variant_key."""
-        if not isinstance(other, VariantData):
-            return False
-        return self.variant_key == other.variant_key
-
-    @property
-    def processed_timestamp(self) -> str:
-        """Lazy timestamp generation."""
-        if self._processed_timestamp is None:
-            self._processed_timestamp = datetime.now().isoformat()
-        return self._processed_timestamp
-
-    @processed_timestamp.setter
-    def processed_timestamp(self, value: Optional[str]) -> None:
-        """Allow explicit timestamp setting."""
-        self._processed_timestamp = value
-
-    @property
-    def has_conflicts(self) -> bool:
-        """Check for conflicts in ACMG evidence or manual conflict details."""
-        acmg_conflict = (
-            self.acmg_evidence.has_conflict() if self.acmg_evidence else False
-        )
-        manual_conflict = len(self.conflict_details) > 0
-        return acmg_conflict or manual_conflict
-
-    # VCF-style property aliases
-    @property
-    def chrom(self) -> str:
-        """Alias for chromosome (VCF compatibility)."""
-        return self.chromosome
-
-    @property
-    def pos(self) -> int:
-        """Alias for position as integer (VCF compatibility)."""
-        return int(self.position) if self.position else 0
-
-    @property
-    def ref(self) -> str:
-        """Alias for ref_allele (VCF compatibility)."""
-        return self.ref_allele
-
-    @property
-    def alt(self) -> str:
-        """Alias for alt_allele (VCF compatibility)."""
-        return self.alt_allele
-
-    @property
-    def reference(self) -> str:
-        """Alias for ref_allele (test compatibility)."""
-        return self.ref_allele
-
-    @property
-    def alternate(self) -> str:
-        """Alias for alt_allele (test compatibility)."""
-        return self.alt_allele
-
-    # Test compatibility aliases
-    @property
-    def rsid_(self) -> str:
-        """Alias for rsid (test compatibility)."""
-        return self.rsid
-
-    @property
-    def variant_id(self) -> str:
-        """Alias for variant_key (test compatibility)."""
-        return self.variant_key
-
-    @property
-    def consequence(self) -> str:
-        """Alias for molecular_consequence (test compatibility)."""
-        return self.molecular_consequence
-
-    def is_pathogenic(self) -> bool:
-        """Check if variant is pathogenic or likely pathogenic."""
-        return self.acmg_classification in ["Pathogenic", "Likely Pathogenic"]
-
-    def needs_clinical_review(self) -> bool:
-        """Check if variant needs clinical review."""
-        return (
-            self.is_pathogenic()
-            or self.has_conflicts
-            or (
-                self.acmg_classification == "Uncertain Significance"
-                and self.star_rating >= 2
-            )
-        )
-
-    def add_conflict(self, detail: str) -> None:
-        """Add conflict detail."""
-        if detail and detail not in self.conflict_details:
-            self.conflict_details.append(detail)
-
-    def get_variant_notation(self) -> str:
-        """Get standard variant notation (chr:pos:ref>alt)."""
-        if self.ref_allele and self.alt_allele:
-            return (
-                f"{self.chromosome}:{self.position}:"
-                f"{self.ref_allele}>{self.alt_allele}"
-            )
-        return f"{self.chromosome}:{self.position}"
-
-    def to_vcf_string(self) -> str:
-        """Convert variant to VCF format string."""
-        return (
-            f"{self.chromosome}\t{self.position}\t{self.rsid or '.'}\t"
-            f"{self.ref_allele or '.'}\t{self.alt_allele or '.'}\t.\tPASS\t."
-        )
-
-    @property
-    def variant_key(self) -> str:
-        """Generate unique variant identifier."""
-        return f"{self.chromosome}:{self.position}:{self.ref_allele}:{self.alt_allele}"
-
-    def is_protein_altering(self) -> bool:
-        """Check if variant alters protein sequence."""
-        protein_altering = [
-            "missense",
-            "nonsense",
-            "frameshift",
-            "inframe_insertion",
-            "inframe_deletion",
-            "start_lost",
-            "stop_lost",
-            "stop_gained",
-        ]
-        return any(
-            alt in self.molecular_consequence.lower() for alt in protein_altering
-        )
+        # Initialize all fields from kwargs or defaults
+        for field_name in self.__dataclass_fields__:
+            field_def = self.__dataclass_fields__[field_name]
+            if field_name in kwargs:
+                setattr(self, field_name, kwargs[field_name])
+            elif field_def.default_factory is not dataclasses.MISSING:
+                setattr(self, field_name, field_def.default_factory())
+            else:
+                setattr(self, field_name, field_def.default)
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert VariantData to dictionary.
-
-        FIX 4D: Enhanced with VCF-style keys for test compatibility.
-        Returns complete representation including all fields and aliases.
-        """
+        """Convert variant to dictionary representation."""
         return {
-            # Standard fields
             "rsid": self.rsid,
             "chromosome": self.chromosome,
             "position": self.position,
-            "genotype": self.genotype,
-            "normalized_genotype": self.normalized_genotype,
-            "genotype_class": self.genotype_class,
-            "zygosity": self.zygosity,
             "ref_allele": self.ref_allele,
             "alt_allele": self.alt_allele,
-            "assembly": self.assembly,
-            "gene": self.gene,
-            "clinical_sig": self.clinical_sig,
-            "review_status": self.review_status,
-            "num_submitters": self.num_submitters,
-            "variant_type": self.variant_type,
-            "molecular_consequence": self.molecular_consequence,
-            "acmg_classification": self.acmg_classification,
-            "confidence_level": self.confidence_level,
-            "star_rating": self.star_rating,
-            "conflict_details": self.conflict_details.copy(),
-            "annotations": self.annotations.copy(),
-            "processed_timestamp": self.processed_timestamp,
-            "variant_key": self.variant_key,
-            # VCF-style aliases (FIX 4D)
-            "chrom": self.chromosome,
-            "pos": self.pos,
-            "ref": self.ref_allele,
-            "alt": self.alt_allele,
-            "reference": self.ref_allele,
-            "alternate": self.alt_allele,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "VariantData":
-        """
-        Create VariantData from dictionary.
-
-        Args:
-            data: Dictionary with variant data
-
-        Returns:
-            VariantData instance
-        """
-        # Extract ACMG evidence if present (skip for now, will be added separately)
-        acmg_evidence = data.get("acmg_evidence")
-
-        # Remove fields that aren't constructor parameters
-        variant_dict = {
-            k: v
-            for k, v in data.items()
-            if k not in ["processed_timestamp", "variant_key", "acmg_evidence"]
-        }
-
-        # Create instance
-        instance = cls(**variant_dict)
-
-        # Set ACMG evidence if provided
-        if acmg_evidence:
-            instance.acmg_evidence = acmg_evidence
-
-        return instance
-
-    def summary_dict(self) -> Dict[str, Any]:
-        """Get dictionary summary for logging/export."""
-        summary: Dict[str, Any] = {
-            "rsid": self.rsid,
-            "gene": self.gene,
             "genotype": self.genotype,
             "zygosity": self.zygosity,
-            "classification": self.acmg_classification,
-            "confidence": self.confidence_level,
-            "evidence": self.acmg_evidence.summary(),
-            "stars": self.star_rating,
-            "conflicts": self.has_conflicts,
+            "gene": self.gene,
+            "clinical_sig": self.clinical_sig,
+            "acmg_classification": self.acmg_classification,
+            "annotations": self.annotations,
         }
-        if self.ref_allele and self.alt_allele:
-            summary["variant_notation"] = self.get_variant_notation()
-        return summary
 
-    def __str__(self) -> str:
-        notation = f" ({self.get_variant_notation()})" if self.ref_allele else ""
-        return (
-            f"Variant({self.rsid} in {self.gene}{notation}: {self.genotype} -> "
-            f"{self.acmg_classification} [{self.acmg_evidence.summary()}])"
-        )
+    def get_variant_id(self) -> str:
+        """Generate unique variant identifier."""
+        return f"{self.chromosome}:{self.position}:{self.ref_allele}:{self.alt_allele}"
 
 
 class Variant(VariantData):
@@ -636,9 +291,8 @@ class Variant(VariantData):
         Variant("chr1", 12345, "A", "G", annotations={...})
 
     Which is equivalent to:
-        VariantData(chromosome="chr1", position=12345, reference="A", alternate="G", annotations={...})
-    
-    FIX v2.3.2: Added __getattribute__ to return position as int for test compatibility.
+        VariantData(chromosome="chr1", position=12345, ref_allele="A", 
+                    alt_allele="G", annotations={...})
     """
 
     def __init__(self, *args, **kwargs):
@@ -652,59 +306,46 @@ class Variant(VariantData):
         Examples:
             >>> v1 = Variant("chr1", 12345, "A", "G")
             >>> v2 = Variant("chr1", 12345, "A", "G", annotations={"gene": "BRCA1"})
-            >>> v3 = Variant(chromosome="chr1", position=12345, reference="A", alternate="G")
+            >>> v3 = Variant(chromosome="chr1", position=12345, 
+            ...              ref_allele="A", alt_allele="G")
         """
-        # Handle positional arguments: (chromosome, position, reference, alternate, ...)
+        # Handle positional arguments: (chrom, pos, ref, alt)
         if len(args) >= 4:
-            # Full positional form: chrom, pos, ref, alt
-            kwargs["chromosome"] = args[0]
-            kwargs["position"] = args[1]
-            kwargs["reference"] = args[2]
-            kwargs["alternate"] = args[3]
-            # Any remaining positional args are ignored (or could raise error)
-        elif len(args) == 3:
-            # Three positional: chrom, pos, ref (no alternate)
-            kwargs["chromosome"] = args[0]
-            kwargs["position"] = args[1]
-            kwargs["reference"] = args[2]
-        elif len(args) == 2:
-            # Two positional: chrom, pos (coordinate-only)
-            kwargs["chromosome"] = args[0]
-            kwargs["position"] = args[1]
-        elif len(args) == 1:
-            # Single positional: could be chromosome or rsid
-            if isinstance(args[0], str) and args[0].startswith("chr"):
-                kwargs["chromosome"] = args[0]
-            else:
-                kwargs["rsid"] = args[0]
-        # If no positional args, just use kwargs as-is
+            kwargs["chrom"] = args[0]
+            kwargs["pos"] = args[1]
+            kwargs["ref"] = args[2]
+            kwargs["alt"] = args[3]
+        elif len(args) > 0:
+            raise ValidationError(
+                f"Variant requires 0 or 4+ positional args, got {len(args)}"
+            )
 
-        # Call parent constructor
+        # Validate and initialize - re-raise ValidationError without wrapping
         super().__init__(**kwargs)
 
     def __getattribute__(self, name):
         """
-        Intercept attribute access to convert position to int when needed.
-        
-        FIX v2.3.2: For test compatibility, .position returns int instead of string
-        when the value is numeric. This allows tests to do comparisons like:
-            assert 10000 <= variant.position <= 20000
-        
+        Override attribute access for convenience properties.
+
         Returns:
-            For 'position': int when value is numeric, otherwise string
-            For all other attributes: normal attribute value
+            - For 'pos': int position value
+            - For 'ref': reference allele string
+            - For 'alt': alternate allele string
+            - For all others: normal attribute value
         """
-        if name == "position":
-            # Get the actual string value from parent
-            pos_str = super().__getattribute__("position")
-            # Try to convert to int
-            try:
-                return int(pos_str) if pos_str else 0
-            except (ValueError, TypeError):
-                # If conversion fails, return as string
-                return pos_str
-        # For all other attributes, use normal access
+        if name == "pos":
+            position_str = super().__getattribute__("position")
+            return int(position_str) if position_str else 0
+        elif name == "ref":
+            return super().__getattribute__("ref_allele")
+        elif name == "alt":
+            return super().__getattribute__("alt_allele")
         return super().__getattribute__(name)
+
+
+# ============================================================================
+# Annotation Models
+# ============================================================================
 
 
 @dataclass
@@ -740,31 +381,21 @@ class VariantAnnotation:
     transcript_id: Optional[str] = None
     protein_change: Optional[str] = None
 
-    # Additional metadata
-    annotation_source: str = "unknown"
-    annotation_date: Optional[str] = None
+    # Conservation scores
+    phylop_score: Optional[float] = None
+    phastcons_score: Optional[float] = None
+
+    # Additional annotations
+    extra_fields: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert annotation to dictionary."""
-        return {k: v for k, v in self.__dict__.items() if v is not None}
-
-    def has_frequency_data(self) -> bool:
-        """Check if frequency data is available."""
-        return self.gnomad_af is not None
-
-    def has_clinical_data(self) -> bool:
-        """Check if clinical data is available."""
-        return self.clinvar_significance is not None
-
-    def has_prediction_data(self) -> bool:
-        """Check if computational prediction data is available."""
-        return any(
-            [
-                self.sift_score is not None,
-                self.polyphen_score is not None,
-                self.cadd_score is not None,
-            ]
-        )
+        result = {}
+        for field_name in self.__dataclass_fields__:
+            value = getattr(self, field_name)
+            if value is not None:
+                result[field_name] = value
+        return result
 
 
 @dataclass
@@ -773,55 +404,49 @@ class AnnotatedVariant:
     Variant with its annotation data.
 
     Combines core variant information with external annotations.
-
-    FIX 4E: Enhanced with convenience constructor for direct creation.
     """
 
-    variant: Optional[VariantData] = None
+    variant: Variant = field(default_factory=Variant)
     annotation: VariantAnnotation = field(default_factory=VariantAnnotation)
 
     def __init__(
         self,
-        variant: Optional[VariantData] = None,
+        variant: Optional[Variant] = None,
         annotation: Optional[VariantAnnotation] = None,
-        # Convenience parameters for direct creation (FIX 4E)
         chrom: str = "",
         pos: Optional[int] = None,
         ref: str = "",
         alt: str = "",
         **kwargs: Any,
-    ) -> None:
+    ):
         """
         Initialize AnnotatedVariant.
 
-        FIX 4E: Can be initialized either with:
-        1. A VariantData instance (traditional)
+        Can be initialized either with:
+        1. A Variant instance (traditional)
         2. Direct chrom/pos/ref/alt parameters (convenience)
 
         Args:
-            variant: VariantData instance (optional)
+            variant: Variant instance (optional)
             annotation: VariantAnnotation instance (optional)
             chrom: Chromosome (convenience parameter)
             pos: Position (convenience parameter)
             ref: Reference allele (convenience parameter)
             alt: Alternate allele (convenience parameter)
-            **kwargs: Additional VariantData or VariantAnnotation parameters
+            **kwargs: Additional Variant or VariantAnnotation parameters
         """
-        # FIX 4E: If chrom/pos provided but no variant, create VariantData
+        # If chrom/pos provided but no variant, create Variant
         if not variant and (chrom or pos is not None):
             variant_kwargs = {"chrom": chrom, "pos": pos, "ref": ref, "alt": alt}
-            # Add any other VariantData-compatible kwargs
             for key in ["rsid", "gene", "assembly", "genotype"]:
                 if key in kwargs:
                     variant_kwargs[key] = kwargs.pop(key)
-            variant = VariantData(**variant_kwargs)
+            variant = Variant(**variant_kwargs)
 
-        # Set the variant (either provided or newly created)
-        self.variant = variant or VariantData()
+        self.variant = variant if variant else Variant()
 
         # Handle annotation
         if annotation is None:
-            # Check if kwargs contains annotation fields
             annotation_kwargs = {}
             for key in [
                 "gnomad_af",
@@ -850,9 +475,9 @@ class AnnotatedVariant:
         return self.variant.chromosome if self.variant else ""
 
     @property
-    def position(self) -> str:
+    def position(self) -> int:
         """Convenience accessor for position."""
-        return self.variant.position if self.variant else ""
+        return self.variant.pos if self.variant else 0
 
     @property
     def gene(self) -> str:
@@ -863,77 +488,27 @@ class AnnotatedVariant:
             return self.annotation.gene_symbol
         return ""
 
-    def has_complete_annotation(self) -> bool:
-        """Check if variant has complete annotation."""
-        return (
-            self.annotation.has_frequency_data()
-            and self.annotation.has_clinical_data()
-            and self.annotation.has_prediction_data()
-        )
-
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation."""
         return {
-            "variant": self.variant.summary_dict() if self.variant else {},
+            "variant": self.variant.to_dict() if self.variant else {},
             "annotation": self.annotation.to_dict(),
         }
 
 
-@dataclass
-class PipelineState:
-    """Track pipeline execution state for checkpointing."""
-
-    stage: str = "initialized"
-    variants_loaded: int = 0
-    variants_matched: int = 0
-    variants_classified: int = 0
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    _start_time: Optional[str] = field(default=None, repr=False)
-
-    @property
-    def start_time(self) -> str:
-        """Lazy timestamp generation."""
-        if self._start_time is None:
-            self._start_time = datetime.now().isoformat()
-        return self._start_time
-
-    @start_time.setter
-    def start_time(self, value: Optional[str]) -> None:
-        """Allow explicit timestamp setting."""
-        self._start_time = value
-
-    def add_error(self, error: str) -> None:
-        """Add error to state."""
-        self.errors.append(f"{datetime.now().isoformat()}: {error}")
-
-    def add_warning(self, warning: str) -> None:
-        """Add warning to state."""
-        self.warnings.append(f"{datetime.now().isoformat()}: {warning}")
-
-    def summary(self) -> str:
-        """Get summary string."""
-        return (
-            f"Stage: {self.stage} | "
-            f"Loaded: {self.variants_loaded} | "
-            f"Matched: {self.variants_matched} | "
-            f"Classified: {self.variants_classified} | "
-            f"Errors: {len(self.errors)} | "
-            f"Warnings: {len(self.warnings)}"
-        )
+# ============================================================================
+# Classification Models
+# ============================================================================
 
 
-# ===================================================================
-# BACKWARD COMPATIBILITY ALIASES
-# ===================================================================
-# These aliases maintain backward compatibility with existing tests
-# while the codebase transitions to the new class names.
+class PathogenicityClass(Enum):
+    """ACMG pathogenicity classifications."""
 
-# GenomicVariant alias for position-based variant representation
-GenomicVariant = VariantData
-
-# ACMG-related aliases
-ACMGCriteria = ACMGEvidenceSet  # Alias for test compatibility
+    BENIGN = "Benign"
+    LIKELY_BENIGN = "Likely Benign"
+    VUS = "Uncertain Significance"
+    LIKELY_PATHOGENIC = "Likely Pathogenic"
+    PATHOGENIC = "Pathogenic"
 
 
 @dataclass
@@ -945,7 +520,7 @@ class VariantClassification:
     """
 
     classification: str
-    variant_id: str = ""  # Added for test compatibility
+    variant_id: str = ""
     evidence: ACMGEvidenceSet = field(default_factory=ACMGEvidenceSet)
     confidence: str = ""
     timestamp: Optional[str] = None
@@ -961,71 +536,43 @@ class VariantClassification:
         }
 
 
-# Pathogenicity classification enum (for test compatibility)
-from enum import Enum
+# ============================================================================
+# Batch Processing Models
+# ============================================================================
 
 
-class PathogenicityClass(Enum):
-    """ACMG pathogenicity classifications."""
+@dataclass
+class VariantBatch:
+    """Collection of variantch processing."""
 
-    PATHOGENIC = "Pathogenic"
-    LIKELY_PATHOGENIC = "Likely Pathogenic"
-    UNCERTAIN_SIGNIFICANCE = "Uncertain Significance"
-    LIKELY_BENIGN = "Likely Benign"
-    BENIGN = "Benign"
+    variants: List[Variant] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def add_variant(self, variant: Variant):
+        """Add variant to batch."""
+        self.variants.append(variant)
+
+    def __len__(self) -> int:
+        """Return number of variants in batch."""
+        return len(self.variants)
+
+    def __iter__(self):
+        """Iterate over variants."""
+        return iter(self.variants)
 
 
-if __name__ == "__main__":
-    print("=" * 80)
-    print("MODELS MODULE v2.3.2 - POSITION INT COMPATIBILITY")
-    print("=" * 80)
+# ============================================================================
+# Export List
+# ============================================================================
 
-    # Test positional argument syntax
-    print("\n✓ Test: Positional argument constructor")
-    try:
-        v1 = Variant("chr1", 12345, "A", "G")
-        print(
-            f"  - Positional args accepted: {v1.chromosome}:{v1.position} {v1.ref_allele}>{v1.alt_allele}"
-        )
-        print(f"  - Position type: {type(v1.position)} = {v1.position}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    # Test position as int for comparisons
-    print("\n✓ Test: Position returns int for comparisons")
-    try:
-        v2 = Variant("chr2", 67890, "C", "T")
-        assert isinstance(v2.position, int), f"Expected int, got {type(v2.position)}"
-        assert 60000 <= v2.position <= 70000, f"Position comparison failed"
-        print(f"  - Position comparison works: 60000 <= {v2.position} <= 70000")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    # Test with annotations
-    print("\n✓ Test: Positional args with annotations")
-    try:
-        v3 = Variant(
-            "chr3", 11111, "G", "T", annotations={"gene": "TP53", "impact": "HIGH"}
-        )
-        print(
-            f"  - With annotations: {v3.gene} (impact: {v3.annotations.get('impact')})"
-        )
-        print(f"  - Position type: {type(v3.position)} = {v3.position}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    # Test named parameters still work
-    print("\n✓ Test: Named parameters (backward compatibility)")
-    try:
-        v4 = Variant(chromosome="chr4", position=22222, reference="A", alternate="C")
-        print(f"  - Named params work: {v4.chromosome}:{v4.position}")
-        print(f"  - Position type: {type(v4.position)} = {v4.position}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-
-    print("\n✅ All v2.3.2 tests passed!")
-    print("   - Positional argument support: ✓")
-    print("   - Position returns int: ✓")
-    print("   - Annotations support: ✓")
-    print("   - Backward compatibility: ✓")
-    print("=" * 80)
+__all__ = [
+    "ACMGEvidence",
+    "ACMGEvidenceSet",
+    "Variant",
+    "VariantData",
+    "VariantAnnotation",
+    "AnnotatedVariant",
+    "VariantClassification",
+    "VariantBatch",
+    "PathogenicityClass",
+]
