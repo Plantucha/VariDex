@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 
 def normalize_genes(gene_input: str) -> Set[str]:
     """Extract gene symbols from gene field."""
-    if not gene_input or str(gene_input) == 'nan':
+    if not gene_input or str(gene_input) == "nan":
         return set()
-    
+
     genes = set()
-    for gene in str(gene_input).split(';'):
+    for gene in str(gene_input).split(";"):
         gene = gene.strip()
-        if gene and gene != 'nan':
+        if gene and gene != "nan":
             genes.add(gene)
     return genes
 
@@ -34,8 +34,14 @@ def check_lof(consequence: str, sig_lower: str = "") -> bool:
     if not consequence:
         return False
     lof_terms = [
-        'stop_gained', 'frameshift', 'splice_acceptor', 'splice_donor',
-        'start_lost', 'transcript_ablation', 'nonsense', 'truncating'
+        "stop_gained",
+        "frameshift",
+        "splice_acceptor",
+        "splice_donor",
+        "start_lost",
+        "transcript_ablation",
+        "nonsense",
+        "truncating",
     ]
     return any(term in consequence.lower() for term in lof_terms)
 
@@ -44,14 +50,14 @@ def check_missense(consequence: str) -> bool:
     """Check if variant is missense."""
     if not consequence:
         return False
-    return 'missense' in consequence.lower()
+    return "missense" in consequence.lower()
 
 
 def check_inframe_indel(consequence: str) -> bool:
     """Check if variant is in-frame indel."""
     if not consequence:
         return False
-    inframe_terms = ['inframe_insertion', 'inframe_deletion']
+    inframe_terms = ["inframe_insertion", "inframe_deletion"]
     return any(term in consequence.lower() for term in inframe_terms)
 
 
@@ -59,26 +65,26 @@ def check_pm2(variant: VariantData, config: ACMGConfig) -> bool:
     """Check PM2: Absent/rare in population databases."""
     if not config.enable_pm2:
         return False
-    
+
     try:
-        if not hasattr(variant, 'gnomad_af'):
+        if not hasattr(variant, "gnomad_af"):
             return False
-        
+
         gnomad_af = variant.gnomad_af
-        
+
         # Absent from gnomAD
         if gnomad_af is None:
             logger.debug("PM2: Absent from gnomAD")
             return True
-        
+
         # Very rare
         threshold = 0.0001
         if gnomad_af < threshold:
             logger.debug(f"PM2: Rare (AF={gnomad_af:.6f} < {threshold})")
             return True
-        
+
         return False
-        
+
     except Exception as e:
         logger.error(f"PM2 check failed: {e}")
         return False
@@ -92,7 +98,7 @@ def assign_pathogenic_evidence(
     config: ACMGConfig,
 ) -> None:
     """Assign pathogenic evidence codes."""
-    
+
     # PVS1: LOF in LOF-intolerant genes
     if config.enable_pvs1:
         try:
@@ -142,11 +148,11 @@ def assign_benign_evidence(
     config: ACMGConfig,
 ) -> None:
     """Assign benign evidence codes."""
-    
+
     # BA1: Very common (>5%)
     if config.enable_ba1:
         try:
-            if hasattr(variant, 'gnomad_af') and variant.gnomad_af is not None:
+            if hasattr(variant, "gnomad_af") and variant.gnomad_af is not None:
                 if variant.gnomad_af > 0.05:
                     evidence.ba.add("BA1")
                     logger.debug(f"BA1: Common (AF={variant.gnomad_af:.4f})")
@@ -156,7 +162,7 @@ def assign_benign_evidence(
     # BS1: Common (>1%)
     if config.enable_bs1:
         try:
-            if hasattr(variant, 'gnomad_af') and variant.gnomad_af is not None:
+            if hasattr(variant, "gnomad_af") and variant.gnomad_af is not None:
                 if 0.01 < variant.gnomad_af <= 0.05:
                     evidence.bs.add("BS1")
                     logger.debug(f"BS1: Moderately common (AF={variant.gnomad_af:.4f})")
@@ -192,11 +198,11 @@ def assign_evidence_codes(
     evidence = ACMGEvidenceSet()
 
     # Get fields from VariantData
-    gene_str = getattr(variant, 'gene', '')
+    gene_str = getattr(variant, "gene", "")
     genes = normalize_genes(gene_str)
-    
+
     # Use molecular_consequence (not consequence)
-    consequence_str = getattr(variant, 'molecular_consequence', '')
+    consequence_str = getattr(variant, "molecular_consequence", "")
     consequence = consequence_str.lower() if consequence_str else ""
 
     # Assign evidence

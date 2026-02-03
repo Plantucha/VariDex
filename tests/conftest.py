@@ -99,11 +99,7 @@ def variant_data_builder() -> Callable:
     from varidex.core.models import VariantData, ACMGEvidenceSet
 
     def builder(
-        rsid="rs80357906",
-        chromosome="17",
-        position="43094692",
-        genotype="AG",
-        **kwargs
+        rsid="rs80357906", chromosome="17", position="43094692", genotype="AG", **kwargs
     ):
         defaults = {
             "rsid": rsid,
@@ -274,18 +270,10 @@ def mock_externals(monkeypatch):
         )
 
         # Replace with mocks
-        monkeypatch.setattr(
-            "src.annotation.CADDLoader", Mock(return_value=Mock())
-        )
-        monkeypatch.setattr(
-            "src.annotation.ClinVarLoader", Mock(return_value=Mock())
-        )
-        monkeypatch.setattr(
-            "src.annotation.DbNSFPLoader", Mock(return_value=Mock())
-        )
-        monkeypatch.setattr(
-            "src.annotation.GnomADLoader", Mock(return_value=Mock())
-        )
+        monkeypatch.setattr("src.annotation.CADDLoader", Mock(return_value=Mock()))
+        monkeypatch.setattr("src.annotation.ClinVarLoader", Mock(return_value=Mock()))
+        monkeypatch.setattr("src.annotation.DbNSFPLoader", Mock(return_value=Mock()))
+        monkeypatch.setattr("src.annotation.GnomADLoader", Mock(return_value=Mock()))
     except (ImportError, AttributeError):
         # If imports fail, still try to mock the modules
         pass

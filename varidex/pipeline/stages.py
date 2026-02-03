@@ -403,10 +403,10 @@ def _classify_batch(batch_data):
 def _calculate_classification_stats(classified_variants: List[Dict]) -> Dict[str, int]:
     """
     Calculate classification statistics from classified variants.
-    
+
     Args:
         classified_variants: List of classification dicts with 'classification' key
-    
+
     Returns:
         Dict with counts for each ACMG category
     """
@@ -418,10 +418,10 @@ def _calculate_classification_stats(classified_variants: List[Dict]) -> Dict[str
         "benign": 0,
         "conflicts": 0,
     }
-    
+
     for variant in classified_variants:
         classification = variant.get("classification", "")
-        
+
         if classification in ["P", "Pathogenic"]:
             stats["pathogenic"] += 1
         elif classification in ["LP", "Likely Pathogenic"]:
@@ -434,7 +434,7 @@ def _calculate_classification_stats(classified_variants: List[Dict]) -> Dict[str
             stats["benign"] += 1
         elif classification == "CONFLICT":
             stats["conflicts"] += 1
-    
+
     return stats
 
 
@@ -484,7 +484,7 @@ def execute_stage5_acmg_classification(
 
         # ✅ BUGFIX: Calculate stats from classified_variants
         combined_stats = _calculate_classification_stats(classified_variants)
-        
+
         logger.info(f"✓ Classified {len(classified_variants):,} variants (parallel)")
         return classified_variants, combined_stats
 

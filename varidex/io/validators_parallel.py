@@ -98,7 +98,7 @@ def validate_position_ranges_parallel(
 ) -> pd.DataFrame:
     """
     Parallel validation of chromosome positions with progress bar.
-    
+
     NOTE: Parallel processing is currently DISABLED (threshold set very high)
           to prevent MemoryError on systems with limited RAM.
           Sequential validation is fast enough for most use cases.

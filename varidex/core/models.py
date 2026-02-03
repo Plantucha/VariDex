@@ -953,15 +953,21 @@ if __name__ == "__main__":
     print("\n✓ Test: Positional argument constructor")
     try:
         v1 = Variant("chr1", 12345, "A", "G")
-        print(f"  - Positional args accepted: {v1.chromosome}:{v1.position} {v1.ref_allele}>{v1.alt_allele}")
+        print(
+            f"  - Positional args accepted: {v1.chromosome}:{v1.position} {v1.ref_allele}>{v1.alt_allele}"
+        )
     except Exception as e:
         print(f"  ✗ Failed: {e}")
 
     # Test with annotations
     print("\n✓ Test: Positional args with annotations")
     try:
-        v2 = Variant("chr2", 67890, "C", "T", annotations={"gene": "TP53", "impact": "HIGH"})
-        print(f"  - With annotations: {v2.gene} (impact: {v2.annotations.get('impact')})") 
+        v2 = Variant(
+            "chr2", 67890, "C", "T", annotations={"gene": "TP53", "impact": "HIGH"}
+        )
+        print(
+            f"  - With annotations: {v2.gene} (impact: {v2.annotations.get('impact')})"
+        )
     except Exception as e:
         print(f"  ✗ Failed: {e}")
 

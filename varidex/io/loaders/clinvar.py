@@ -138,8 +138,8 @@ def detect_clinvar_file_type(filepath: Path) -> str:
     try:
         # Quick check: XML file extension
         filename_lower = str(filepath).lower()
-        if filename_lower.endswith(('.xml', '.xml.gz')):
-            return 'xml'
+        if filename_lower.endswith((".xml", ".xml.gz")):
+            return "xml"
 
         # Content-based detection
         opener: Any = (
@@ -156,8 +156,8 @@ def detect_clinvar_file_type(filepath: Path) -> str:
         first_line: str = lines[0].strip()
 
         # Check for XML signature
-        if first_line.startswith('<?xml') or 'ClinVarVariationRelease' in first_line:
-            return 'xml'
+        if first_line.startswith("<?xml") or "ClinVarVariationRelease" in first_line:
+            return "xml"
 
         # Check for VCF
         if first_line.startswith("##fileformat=VCF") or first_line.startswith("#CHROM"):
@@ -216,19 +216,19 @@ def validate_position_ranges(df: pd.DataFrame) -> pd.DataFrame:
 def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
     """
     Split ALT=A,G → 2 rows with progress bar.
-    
+
     TEMPORARILY DISABLED: Memory optimization needed (requires 1.7GB for filtering step).
     The matching engine handles multiallelic variants correctly, so skipping this
     step doesn't affect final results.
     """
     if df is None or len(df) == 0 or "ALT" not in df.columns:
         return df
-    
+
     # Check if there are multiallelic variants
     multiallelic_count = df["ALT"].str.contains(",", na=False).sum()
     if multiallelic_count == 0:
         return df
-    
+
     # TEMPORARY: Skip splitting to avoid OOM (1.7GB allocation)
     print(f"  ⚠️  Skipping multiallelic split ({multiallelic_count:,} variants)")
     print(f"     Matching engine handles these correctly")
@@ -237,7 +237,7 @@ def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
         f"{multiallelic_count:,} multiallelic variants retained."
     )
     return df
-    
+
     # Original implementation commented out (OOM on large files)
     # try:
     #     multiallelic: pd.DataFrame = df[df["ALT"].str.contains(",", na=False)]
@@ -413,7 +413,7 @@ def load_clinvar_vcf(
         print("⚠️  Skipping validation (memory optimization)")
         print("   Matching engine will filter invalid data\n")
         logger.info("Validation skipped (memory optimization)")
-        
+
         # Just normalize chromosome names (lightweight)
         df = validate_chromosome_consistency(df)
         df = normalize_dataframe_coordinates(df)
@@ -655,9 +655,9 @@ def load_clinvar_file(
     from varidex.io.loaders.clinvar_xml import load_clinvar_xml
 
     # Generate cache filename
-    if file_type == 'xml' and user_chromosomes:
+    if file_type == "xml" and user_chromosomes:
         # XML: Include chromosomes in cache key for filtered loading
-        chr_str = '_'.join(sorted(user_chromosomes))
+        chr_str = "_".join(sorted(user_chromosomes))
         cache_name = f"{filepath.stem}_chr{chr_str}.parquet"
     else:
         cache_name = f"{filepath.stem}_processed.parquet"
@@ -736,7 +736,9 @@ def load_clinvar_file(
                 "processed_rows": len(df),
                 "cache_version": __version__,
                 "file_type": file_type,
-                "user_chromosomes": list(user_chromosomes) if user_chromosomes else None,
+                "user_chromosomes": (
+                    list(user_chromosomes) if user_chromosomes else None
+                ),
             }
             with open(cache_meta_file, "w") as f:
                 json.dump(meta, f, indent=2)

@@ -69,7 +69,9 @@ class GnomadAnnotationStage:
         bs1_count = result.get("BS1", pd.Series([False])).sum()
         pm2_count = result.get("PM2", pd.Series([False])).sum()
 
-        print(f"\n⭐ gnomAD criteria applied: BA1={ba1_count}, BS1={bs1_count}, PM2={pm2_count}")
+        print(
+            f"\n⭐ gnomAD criteria applied: BA1={ba1_count}, BS1={bs1_count}, PM2={pm2_count}"
+        )
         print("✅ Complete\n")
 
         return result

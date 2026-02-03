@@ -119,7 +119,9 @@ class PathogenicEvidenceAssigner:
                 self.enable_pp5,
             ]
         )
-        logger.info(f"Initialized PathogenicEvidenceAssigner with {enabled_count} codes enabled")
+        logger.info(
+            f"Initialized PathogenicEvidenceAssigner with {enabled_count} codes enabled"
+        )
 
     def check_pvs1(self, variant: Dict[str, Any], lof_genes: Set[str]) -> bool:
         """
@@ -276,7 +278,7 @@ class PathogenicEvidenceAssigner:
             if gnomad_af is not None:
                 if gnomad_af < self.pm2_gnomad_threshold:
                     logger.info(
-                        f"PM2: Variant rare in gnomAD (AF={gnomad_af:.6f} < {self.pm2_gnomad_threshold})" 
+                        f"PM2: Variant rare in gnomAD (AF={gnomad_af:.6f} < {self.pm2_gnomad_threshold})"
                     )
                     return True
                 else:

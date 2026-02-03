@@ -91,9 +91,7 @@ class GnomADQuerier:
                 if alt_index < len(value):
                     return value[alt_index]
                 else:
-                    logger.debug(
-                        f"Index {alt_index} out of range for {key}={value}"
-                    )
+                    logger.debug(f"Index {alt_index} out of range for {key}={value}")
                     return None
             # Handle scalar values
             else:

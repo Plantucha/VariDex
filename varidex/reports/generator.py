@@ -125,12 +125,12 @@ ACMG_CODE_TO_NAME = {
 def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
     """
     Validate variant list with detailed error messages.
-    
+
     Accepts both VariantData objects and dictionaries for flexibility.
-    
+
     Args:
         variants: List of VariantData objects or classification dicts
-    
+
     Raises:
         ValidationError: If validation fails
     """
@@ -138,7 +138,7 @@ def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
         raise ValidationError("No classified variants provided")
     if not isinstance(variants, list):
         raise ValidationError(f"Expected list, got {type(variants).__name__}")
-    
+
     # Accept both VariantData objects and dicts
     for i, v in enumerate(variants):
         if not isinstance(v, (dict, VariantData)):
@@ -146,7 +146,7 @@ def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
                 f"Invalid variant type at index {i}: {type(v).__name__}. "
                 f"Expected dict or VariantData"
             )
-    
+
     if len(variants) > MAX_VARIANTS_WARNING:
         logger.warning(f"⚠️  Large dataset: {len(variants):,} variants")
 
@@ -154,13 +154,13 @@ def _validate_variants(variants: List[Union[Dict, VariantData]]) -> None:
 def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, Any]:
     """
     Normalize variant data from dict or VariantData to unified dict format.
-    
+
     Handles output from classify_variants_production() which returns dicts with
     structure: {"variant": {...}, "classification": "P", "evidence": [...]}
-    
+
     Args:
         item: Either a VariantData object or classification dict
-    
+
     Returns:
         Normalized dict with all required fields
     """
@@ -186,12 +186,12 @@ def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, Any]:
             "molecular_consequence": item.molecular_consequence,
             "acmg_evidence": item.acmg_evidence,
         }
-    
+
     elif isinstance(item, dict):
         # Dict from classify_variants_production()
         # Structure: {"variant": {...}, "classification": "P", "evidence": [...]}
         variant_data = item.get("variant", {})
-        
+
         return {
             "rsid": variant_data.get("rsid", ""),
             "chromosome": variant_data.get("chromosome", ""),
@@ -213,7 +213,7 @@ def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, Any]:
             "acmg_evidence": None,  # Evidence in list format, not object
             "evidence_list": item.get("evidence", []),  # Store for later
         }
-    
+
     else:
         raise ValidationError(f"Unsupported type: {type(item).__name__}")
 
@@ -221,16 +221,16 @@ def _normalize_variant_data(item: Union[Dict, VariantData]) -> Dict[str, Any]:
 def _get_acmg_tier(classification: str) -> Dict[str, Any]:
     """
     Get ACMG tier info, handling both codes (P, LP) and full names.
-    
+
     Args:
         classification: ACMG code (P, LP, VUS, LB, B) or full name
-    
+
     Returns:
         Dict with icon and priority
     """
     # Convert code to full name if needed
     full_name = ACMG_CODE_TO_NAME.get(classification, classification)
-    
+
     # Look up in ACMG_TIERS
     return ACMG_TIERS.get(
         full_name, {"icon": UNKNOWN_ICON, "priority": UNKNOWN_PRIORITY}
@@ -255,7 +255,7 @@ def create_results_dataframe(
 ) -> pd.DataFrame:
     """
     Create standardized 27-column DataFrame from classified variants.
-    
+
     Accepts both VariantData objects and dicts from classify_variants_production().
 
     Args:
@@ -290,7 +290,7 @@ def create_results_dataframe(
     for item in iterator:
         # Normalize to unified dict format
         variant = _normalize_variant_data(item)
-        
+
         # Get tier info using helper function
         tier = _get_acmg_tier(variant["acmg_classification"])
 
@@ -320,7 +320,7 @@ def create_results_dataframe(
         if include_evidence:
             acmg_ev = variant.get("acmg_evidence")
             evidence_list = variant.get("evidence_list", [])
-            
+
             if acmg_ev and hasattr(acmg_ev, "pvs"):
                 # VariantData with ACMGEvidenceSet object
                 record.update(
@@ -409,21 +409,17 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
         5 2.5
     """
     total = len(results_df)
-    
+
     # Use correct column name: acmg_classification
     stats = {
         "total": total,
         "total_variants": total,  # For JSON compatibility
         "classified": total,  # For JSON compatibility
         "pathogenic": int(
-            (
-                results_df["acmg_classification"].isin(["P", "Pathogenic"])
-            ).sum()
+            (results_df["acmg_classification"].isin(["P", "Pathogenic"])).sum()
         ),
         "likely_pathogenic": int(
-            (
-                results_df["acmg_classification"].isin(["LP", "Likely Pathogenic"])
-            ).sum()
+            (results_df["acmg_classification"].isin(["LP", "Likely Pathogenic"])).sum()
         ),
         "vus": int(
             (
@@ -435,9 +431,7 @@ def calculate_report_stats(results_df: pd.DataFrame) -> Dict[str, Union[int, flo
         "likely_benign": int(
             (results_df["acmg_classification"].isin(["LB", "Likely Benign"])).sum()
         ),
-        "benign": int(
-            (results_df["acmg_classification"].isin(["B", "Benign"])).sum()
-        ),
+        "benign": int((results_df["acmg_classification"].isin(["B", "Benign"])).sum()),
         "conflicts": (
             int(results_df["has_conflicts"].sum())
             if "has_conflicts" in results_df
@@ -617,7 +611,9 @@ class ReportGenerator:
         self.json_formatter = JSONFormatter()
         self.tsv_formatter = TSVFormatter()
 
-    def create_dataframe(self, variants: List[Union[Dict, VariantData]]) -> pd.DataFrame:
+    def create_dataframe(
+        self, variants: List[Union[Dict, VariantData]]
+    ) -> pd.DataFrame:
         """Create results DataFrame from classified variants."""
         return create_results_dataframe(variants)
 
@@ -673,9 +669,7 @@ class ReportGenerator:
 
         return summary
 
-    def generate_html_report(
-        self, variants: List[Variant], output_file: Path
-    ) -> None:
+    def generate_html_report(self, variants: List[Variant], output_file: Path) -> None:
         """
         Generate HTML report from variant list.
 
@@ -710,9 +704,7 @@ class ReportGenerator:
 
         self.logger.info(f"HTML report generated: {output_file}")
 
-    def generate_json_report(
-        self, variants: List[Variant], output_file: Path
-    ) -> None:
+    def generate_json_report(self, variants: List[Variant], output_file: Path) -> None:
         """
         Generate JSON report from variant list.
 
@@ -732,9 +724,7 @@ class ReportGenerator:
 
         self.logger.info(f"JSON report generated: {output_file}")
 
-    def generate_tsv_report(
-        self, variants: List[Variant], output_file: Path
-    ) -> None:
+    def generate_tsv_report(self, variants: List[Variant], output_file: Path) -> None:
         """
         Generate TSV report from variant list.
 

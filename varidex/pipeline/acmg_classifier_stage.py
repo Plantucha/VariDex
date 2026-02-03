@@ -27,7 +27,7 @@ def evidence_summary(evidence: ACMGEvidenceSet) -> str:
     codes.extend(sorted(evidence.ba))
     codes.extend(sorted(evidence.bs))
     codes.extend(sorted(evidence.bp))
-    return ', '.join(codes) if codes else ''
+    return ", ".join(codes) if codes else ""
 
 
 def classify_from_evidence(evidence: ACMGEvidenceSet) -> Tuple[str, str]:
@@ -38,9 +38,9 @@ def classify_from_evidence(evidence: ACMGEvidenceSet) -> Tuple[str, str]:
     ba_count = len(evidence.ba)
     bs_count = len(evidence.bs)
     bp_count = len(evidence.bp)
-    
+
     summary = evidence_summary(evidence)
-    
+
     if ba_count > 0:
         return "Benign", f"BA1 ({summary})"
     if bs_count >= 2:
@@ -64,50 +64,56 @@ def classify_variant_with_acmg(row: pd.Series, config: ACMGConfig) -> Dict[str, 
     """Classify a single variant."""
     try:
         variant = VariantData(
-            chromosome=str(row['chromosome']),
-            position=str(row['position']),
-            ref=str(row['ref_allele']),
-            alt=str(row['alt_allele']),
+            chromosome=str(row["chromosome"]),
+            position=str(row["position"]),
+            ref=str(row["ref_allele"]),
+            alt=str(row["alt_allele"]),
         )
-        
-        variant.gene = str(row.get('gene', ''))
-        variant.molecular_consequence = str(row.get('molecular_consequence', ''))
-        
-        if pd.notna(row.get('gnomad_af')):
-            object.__setattr__(variant, 'gnomad_af', float(row['gnomad_af']))
-        
+
+        variant.gene = str(row.get("gene", ""))
+        variant.molecular_consequence = str(row.get("molecular_consequence", ""))
+
+        if pd.notna(row.get("gnomad_af")):
+            object.__setattr__(variant, "gnomad_af", float(row["gnomad_af"]))
+
         evidence = assign_evidence_codes(variant, config)
         classification, reason = classify_from_evidence(evidence)
-        
+
         return {
-            'PVS1': 'PVS1' in evidence.pvs,
-            'PM2': 'PM2' in evidence.pm,
-            'PM4': 'PM4' in evidence.pm,
-            'PP2': 'PP2' in evidence.pp,
-            'BA1': 'BA1' in evidence.ba,
-            'BS1': 'BS1' in evidence.bs,
-            'BP1': 'BP1' in evidence.bp,
-            'BP3': 'BP3' in evidence.bp,
-            'acmg_classification': classification,
-            'classification_reason': reason,
-            'evidence_summary': evidence_summary(evidence),
+            "PVS1": "PVS1" in evidence.pvs,
+            "PM2": "PM2" in evidence.pm,
+            "PM4": "PM4" in evidence.pm,
+            "PP2": "PP2" in evidence.pp,
+            "BA1": "BA1" in evidence.ba,
+            "BS1": "BS1" in evidence.bs,
+            "BP1": "BP1" in evidence.bp,
+            "BP3": "BP3" in evidence.bp,
+            "acmg_classification": classification,
+            "classification_reason": reason,
+            "evidence_summary": evidence_summary(evidence),
         }
-        
+
     except Exception as e:
         logger.debug(f"Classification error: {e}")
         return {
-            'PVS1': False, 'PM2': False, 'PM4': False, 'PP2': False,
-            'BA1': False, 'BS1': False, 'BP1': False, 'BP3': False,
-            'acmg_classification': 'Uncertain Significance',
-            'classification_reason': 'Error',
-            'evidence_summary': '',
+            "PVS1": False,
+            "PM2": False,
+            "PM4": False,
+            "PP2": False,
+            "BA1": False,
+            "BS1": False,
+            "BP1": False,
+            "BP3": False,
+            "acmg_classification": "Uncertain Significance",
+            "classification_reason": "Error",
+            "evidence_summary": "",
         }
 
 
 def apply_full_acmg_classification(df: pd.DataFrame) -> pd.DataFrame:
     """Apply full ACMG classification to all variants."""
     logger.info("🧬 Applying full ACMG classification (8 codes)...")
-    
+
     config = ACMGConfig(
         enable_pvs1=True,
         enable_pm2=True,
@@ -118,26 +124,26 @@ def apply_full_acmg_classification(df: pd.DataFrame) -> pd.DataFrame:
         enable_bp1=True,
         enable_bp3=True,
     )
-    
+
     result = df.copy()
-    for code in ['PVS1', 'PM2', 'PM4', 'PP2', 'BA1', 'BS1', 'BP1', 'BP3']:
+    for code in ["PVS1", "PM2", "PM4", "PP2", "BA1", "BS1", "BP1", "BP3"]:
         result[code] = False
-    
-    result['acmg_classification'] = 'Uncertain Significance'
-    result['classification_reason'] = ''
-    result['evidence_summary'] = ''
-    
+
+    result["acmg_classification"] = "Uncertain Significance"
+    result["classification_reason"] = ""
+    result["evidence_summary"] = ""
+
     for idx, row in result.iterrows():
         classification_result = classify_variant_with_acmg(row, config)
         for key, value in classification_result.items():
             result.at[idx, key] = value
-    
+
     logger.info(f"✅ Classified {len(result):,} variants")
-    
-    for code in ['PVS1', 'PM2', 'PM4', 'PP2', 'BA1', 'BS1', 'BP1', 'BP3']:
+
+    for code in ["PVS1", "PM2", "PM4", "PP2", "BA1", "BS1", "BP1", "BP3"]:
         count = result[code].sum()
         pct = count / len(result) * 100
         if count > 0:
             logger.info(f"  {code}: {count:,} ({pct:.1f}%)")
-    
+
     return result

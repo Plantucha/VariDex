@@ -62,9 +62,7 @@ def load_clinvar_xml(
                 checkpoint_dir,
             )
         except Exception as e:
-            logger.warning(
-                f"Indexed mode failed ({e}), falling back to streaming"
-            )
+            logger.warning(f"Indexed mode failed ({e}), falling back to streaming")
 
     # Fall back to streaming mode
     logger.info("Using streaming mode")
@@ -136,7 +134,10 @@ def _load_clinvar_xml_streaming(
 
                 # Filter by chromosome if specified
                 if variant:
-                    if not user_chromosomes or variant["chromosome"] in user_chromosomes:
+                    if (
+                        not user_chromosomes
+                        or variant["chromosome"] in user_chromosomes
+                    ):
                         variants.append(variant)
                         total_filtered += 1
 
@@ -412,19 +413,13 @@ def _extract_clinical_significance(elem: etree.Element) -> Tuple[str, str]:
     Returns:
         Tuple of (clinical_sig, review_status)
     """
-    clin_sig_elem = elem.find(
-        ".//cv:ClinicalSignificance/cv:Description", NS
-    )
+    clin_sig_elem = elem.find(".//cv:ClinicalSignificance/cv:Description", NS)
     clinical_sig = (
         clin_sig_elem.text.strip() if clin_sig_elem is not None else "Unknown"
     )
 
-    review_elem = elem.find(
-        ".//cv:ClinicalSignificance/cv:ReviewStatus", NS
-    )
-    review_status = (
-        review_elem.text.strip() if review_elem is not None else "Unknown"
-    )
+    review_elem = elem.find(".//cv:ClinicalSignificance/cv:ReviewStatus", NS)
+    review_status = review_elem.text.strip() if review_elem is not None else "Unknown"
 
     return clinical_sig, review_status
 

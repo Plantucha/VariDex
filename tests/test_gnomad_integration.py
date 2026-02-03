@@ -221,9 +221,9 @@ class TestGnomADAnnotator:
         from varidex.core.classifier.acmg_evidence_pathogenic import (
             PathogenicEvidenceAssigner,
         )
-        
+
         assigner = PathogenicEvidenceAssigner()
-        
+
         # Test that PM2 works with standardized columns
         variant = {
             "chromosome": "1",
@@ -232,7 +232,7 @@ class TestGnomADAnnotator:
             "alt_allele": "G",
             "gnomad_af": 0.00001,
         }
-        
+
         # Should not raise KeyError with standardized columns
         result = assigner.check_pm2(variant)
         assert result is True, "PM2 should work with standardized column names"
@@ -242,9 +242,9 @@ class TestGnomADAnnotator:
         from varidex.core.classifier.acmg_evidence_pathogenic import (
             PathogenicEvidenceAssigner,
         )
-        
+
         assigner = PathogenicEvidenceAssigner()
-        
+
         # Test that PM2 can read gnomad_af column
         variant_with_gnomad = {
             "chromosome": "1",
@@ -255,7 +255,7 @@ class TestGnomADAnnotator:
             "gnomad_ac": 10,
             "gnomad_an": 100000,
         }
-        
+
         result = assigner.check_pm2(variant_with_gnomad)
         assert result is True, "PM2 should use gnomad_af column when present"
 

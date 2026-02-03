@@ -216,7 +216,7 @@ def _generate_basic_html(
 ) -> Path:
     """Generate enhanced basic HTML report with meaningful data display."""
     output_path = output_dir / f"classified_variants_{timestamp}.html"
-    
+
     # Define classification colors
     classification_colors = {
         "P": "#dc3545",  # Red
@@ -231,19 +231,27 @@ def _generate_basic_html(
         "Benign": "#20c997",
         "CONFLICT": "#6c757d",  # Gray
     }
-    
+
     # Select meaningful columns for display
-    display_columns = ["icon", "rsid", "chromosome", "position", "gene", 
-                      "genotype", "acmg_classification", "star_rating",
-                      "clinical_significance"]
-    
+    display_columns = [
+        "icon",
+        "rsid",
+        "chromosome",
+        "position",
+        "gene",
+        "genotype",
+        "acmg_classification",
+        "star_rating",
+        "clinical_significance",
+    ]
+
     # Filter to existing columns
     available_cols = [col for col in display_columns if col in df.columns]
-    
+
     # Prepare display data - filter out rows with missing rsid
     display_df = df[available_cols].copy()
     display_df = display_df[display_df["rsid"].notna() & (display_df["rsid"] != "")]
-    
+
     # Replace NaN with empty strings
     display_df = display_df.fillna("")
 
@@ -346,9 +354,12 @@ def _generate_basic_html(
         ("Pathogenic", stats.get("pathogenic", 0)),
         ("Likely Pathogenic", stats.get("likely_pathogenic", 0)),
         ("VUS", stats.get("vus", 0)),
-        ("Benign/Likely Benign", stats.get("benign", 0) + stats.get("likely_benign", 0)),
+        (
+            "Benign/Likely Benign",
+            stats.get("benign", 0) + stats.get("likely_benign", 0),
+        ),
     ]
-    
+
     for label, value in stat_items:
         html_content += f"""            <div class="stat-box">
                 <div class="stat-label">{html.escape(label)}</div>
@@ -374,7 +385,7 @@ def _generate_basic_html(
         "star_rating": "⭐",
         "clinical_significance": "Clinical Significance",
     }
-    
+
     for col in available_cols:
         friendly_name = column_names.get(col, col)
         html_content += f"                <th>{html.escape(str(friendly_name))}</th>\n"
@@ -386,7 +397,7 @@ def _generate_basic_html(
         html_content += "            <tr>\n"
         for col in available_cols:
             value = str(row.get(col, ""))
-            
+
             # Special formatting for classification
             if col == "acmg_classification" and value:
                 color = classification_colors.get(value, "#6c757d")
@@ -397,8 +408,12 @@ def _generate_basic_html(
                 cell_content = f'<span class="stars">{"★" * stars}</span>'
             # Regular cells
             else:
-                cell_content = html.escape(value) if value else "<span style='color: #adb5bd;'>-</span>"
-            
+                cell_content = (
+                    html.escape(value)
+                    if value
+                    else "<span style='color: #adb5bd;'>-</span>"
+                )
+
             html_content += f"                <td>{cell_content}</td>\n"
         html_content += "            </tr>\n"
 
@@ -427,12 +442,12 @@ def generate_conflicts_report(
     df: pd.DataFrame, output_dir: Path, timestamp: str
 ) -> Optional[Path]:
     """Generate CSV report of conflicting variant interpretations.
-    
+
     Args:
         df: DataFrame with classified variants
         output_dir: Output directory for report
         timestamp: Timestamp string for filename
-    
+
     Returns:
         Path to conflicts CSV file, or None if no conflicts found
     """
@@ -440,11 +455,10 @@ def generate_conflicts_report(
     if "has_conflicts" not in df.columns:
         logger.warning("Column 'has_conflicts' not found in DataFrame")
         return None
-    
+
     # Filter for conflicts - check both boolean and CONFLICT classification
     conflicts = df[
-        (df["has_conflicts"] == True) | 
-        (df["acmg_classification"] == "CONFLICT")
+        (df["has_conflicts"] == True) | (df["acmg_classification"] == "CONFLICT")
     ].copy()
 
     if len(conflicts) == 0:
@@ -453,7 +467,7 @@ def generate_conflicts_report(
 
     # Generate CSV report (changed from .txt to .csv)
     output_path = output_dir / f"conflicts_{timestamp}.csv"
-    
+
     # Select relevant columns for conflicts report
     conflict_columns = [
         "rsid",
@@ -467,16 +481,18 @@ def generate_conflicts_report(
         "num_submitters",
         "star_rating",
     ]
-    
+
     # Filter to only existing columns
     available_columns = [col for col in conflict_columns if col in conflicts.columns]
     conflicts_subset = conflicts[available_columns]
-    
+
     # Save as CSV
     conflicts_subset.to_csv(output_path, index=False)
-    
+
     size = format_file_size(output_path.stat().st_size)
-    logger.info(f"Conflicts report generated: {output_path.name} ({size}) - {len(conflicts):,} conflicts")
+    logger.info(
+        f"Conflicts report generated: {output_path.name} ({size}) - {len(conflicts):,} conflicts"
+    )
     return output_path
 
 

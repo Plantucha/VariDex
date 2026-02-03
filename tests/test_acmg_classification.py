@@ -284,7 +284,7 @@ def classify_variant(criteria: ACMGCriteria) -> PathogenicityClass:
         return PathogenicityClass.UNCERTAIN_SIGNIFICANCE
 
     # Benign classifications
-    if 'BA1' in criteria.ba:
+    if "BA1" in criteria.ba:
         return PathogenicityClass.BENIGN
     if benign_weight >= 8:  # 2+ Strong
         return PathogenicityClass.BENIGN
@@ -308,28 +308,33 @@ def calculate_pathogenic_weight(criteria: ACMGCriteria) -> int:
     """Calculate total pathogenic evidence weight."""
     weight = 0
     # Very Strong (8 points)
-    if 'PVS1' in criteria.pvs:
+    if "PVS1" in criteria.pvs:
         weight += 8
     # Strong (4 points each)
-    strong_criteria = ['PS1' in criteria.ps, 'PS2' in criteria.ps, 'PS3' in criteria.ps, 'PS4' in criteria.ps]
+    strong_criteria = [
+        "PS1" in criteria.ps,
+        "PS2" in criteria.ps,
+        "PS3" in criteria.ps,
+        "PS4" in criteria.ps,
+    ]
     weight += sum(4 for c in strong_criteria if c)
     # Moderate (2 points each)
     moderate_criteria = [
-        'PM1' in criteria.pm,
-        'PM2' in criteria.pm,
-        'PM3' in criteria.pm,
-        'PM4' in criteria.pm,
-        'PM5' in criteria.pm,
-        'PM6' in criteria.pm,
+        "PM1" in criteria.pm,
+        "PM2" in criteria.pm,
+        "PM3" in criteria.pm,
+        "PM4" in criteria.pm,
+        "PM5" in criteria.pm,
+        "PM6" in criteria.pm,
     ]
     weight += sum(2 for c in moderate_criteria if c)
     # Supporting (1 point each)
     supporting_criteria = [
-        'PP1' in criteria.pp,
-        'PP2' in criteria.pp,
-        'PP3' in criteria.pp,
-        'PP4' in criteria.pp,
-        'PP5' in criteria.pp,
+        "PP1" in criteria.pp,
+        "PP2" in criteria.pp,
+        "PP3" in criteria.pp,
+        "PP4" in criteria.pp,
+        "PP5" in criteria.pp,
     ]
     weight += sum(1 for c in supporting_criteria if c)
     return weight
@@ -339,20 +344,25 @@ def calculate_benign_weight(criteria: ACMGCriteria) -> int:
     """Calculate total benign evidence weight."""
     weight = 0
     # Stand-alone (8 points)
-    if 'BA1' in criteria.ba:
+    if "BA1" in criteria.ba:
         weight += 8
     # Strong (4 points each)
-    strong_criteria = ['BS1' in criteria.bs, 'BS2' in criteria.bs, 'BS3' in criteria.bs, 'BS4' in criteria.bs]
+    strong_criteria = [
+        "BS1" in criteria.bs,
+        "BS2" in criteria.bs,
+        "BS3" in criteria.bs,
+        "BS4" in criteria.bs,
+    ]
     weight += sum(4 for c in strong_criteria if c)
     # Supporting (1 point each)
     supporting_criteria = [
-        'BP1' in criteria.bp,
-        'BP2' in criteria.bp,
-        'BP3' in criteria.bp,
-        'BP4' in criteria.bp,
-        'BP5' in criteria.bp,
-        'BP6' in criteria.bp,
-        'BP7' in criteria.bp,
+        "BP1" in criteria.bp,
+        "BP2" in criteria.bp,
+        "BP3" in criteria.bp,
+        "BP4" in criteria.bp,
+        "BP5" in criteria.bp,
+        "BP6" in criteria.bp,
+        "BP7" in criteria.bp,
     ]
     weight += sum(1 for c in supporting_criteria if c)
     return weight
