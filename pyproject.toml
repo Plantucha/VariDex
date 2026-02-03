@@ -10,7 +10,7 @@ authors = [
     {name = "VariDex Development Team", email = "plantucha@gmail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "AGPL-3.0-or-later"}
 classifiers = [
     "Development Status :: 4 - Beta",
