@@ -26,26 +26,37 @@ from varidex.core.exceptions import (
     validate_type,
 )
 
+
 # Additional exceptions not in core.exceptions
 class VariDexError(VaridexError):
     """Alias for VaridexError (backward compatibility)."""
+
     pass
+
 
 class DownloadError(VaridexError):
     """Raised when download operations fail."""
+
     pass
+
 
 class DataIntegrityError(VaridexError):
     """Raised when data integrity checks fail."""
+
     pass
+
 
 class MatchingError(VaridexError):
     """Raised when variant matching fails."""
+
     pass
+
 
 class PipelineError(VaridexError):
     """Raised when pipeline execution fails."""
+
     pass
+
 
 # Backward compatibility aliases
 ProcessingError = DataProcessingError
