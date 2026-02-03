@@ -565,11 +565,23 @@ class VariantBatch:
 # Export List
 # ============================================================================
 
+# ============================================================================
+# Backward-compatibility aliases (for tests)
+# ============================================================================
+
+# Old name for ACMGEvidenceSet used in tests
+ACMGCriteria = ACMGEvidenceSet
+
+# Old name for position-based variant representation used in tests
+GenomicVariant = VariantData
+
 __all__ = [
     "ACMGEvidence",
     "ACMGEvidenceSet",
+    "ACMGCriteria",      # NEW
     "Variant",
     "VariantData",
+    "GenomicVariant",    # NEW
     "VariantAnnotation",
     "AnnotatedVariant",
     "VariantClassification",
