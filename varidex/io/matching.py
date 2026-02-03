@@ -4,7 +4,7 @@ Variant matching utilities for VariDex.
 
 This module provides functions to match variants between datasets using various strategies:
 - Coordinate-based matching
-- Variant ID matching  
+- Variant ID matching
 - Exact and fuzzy matching algorithms
 
 Version: 3.0.4 DEVELOPMENT
@@ -137,9 +137,7 @@ def match_by_coordinates(
         merge_on.append(temp_name)
 
     # Perform merge
-    matched = user_temp.merge(
-        ref_temp, on=merge_on, how="inner", suffixes=("", "_ref")
-    )
+    matched = user_temp.merge(ref_temp, on=merge_on, how="inner", suffixes=("", "_ref"))
 
     # Drop temporary merge columns
     matched = matched.drop(columns=merge_on)

@@ -597,10 +597,9 @@ class ValidationStage:
         """Initialize with list of validators."""
         self.validators = validators or []
         # Add config attribute for test compatibility
-        self.config = type('Config', (), {
-            'input_vcf': None,
-            'reference_genome': 'GRCh38'
-        })()
+        self.config = type(
+            "Config", (), {"input_vcf": None, "reference_genome": "GRCh38"}
+        )()
 
     def execute(self, data=None):
         """Execute validation on data."""
@@ -618,28 +617,30 @@ class ValidationStage:
     def validate_vcf_format(self, path):
         """Test compatibility: validate VCF format - RAISES ValidationError."""
         from varidex.exceptions import ValidationError
-        
+
         path = Path(path)
         if not path.exists():
             raise ValidationError(f"VCF file not found: {path}")
-        
+
         # Check if file is readable and has VCF-like content
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 first_line = f.readline()
-                if not first_line.startswith('##fileformat=VCF'):
-                    raise ValidationError(f"Invalid VCF format: missing VCF header in {path}")
+                if not first_line.startswith("##fileformat=VCF"):
+                    raise ValidationError(
+                        f"Invalid VCF format: missing VCF header in {path}"
+                    )
         except Exception as e:
             if isinstance(e, ValidationError):
                 raise
             raise ValidationError(f"Cannot read VCF file {path}: {e}")
-        
+
         return True
 
     def validate_reference_genome(self, genome):
         """Test compatibility: validate reference genome - RAISES ValidationError."""
         from varidex.exceptions import ValidationError
-        
+
         valid_genomes = ["GRCh37", "GRCh38", "hg19", "hg38"]
         if genome not in valid_genomes:
             raise ValidationError(
@@ -654,7 +655,7 @@ class ValidationStage:
     def validate_position(self, pos):
         """Test compatibility: validate genomic position - RAISES ValidationError."""
         from varidex.exceptions import ValidationError
-        
+
         if not isinstance(pos, int) or pos <= 0:
             raise ValidationError(f"Position must be positive, got {pos}")
         return True
@@ -662,14 +663,14 @@ class ValidationStage:
     def validate_alleles(self, ref, alt):
         """Test compatibility: validate alleles - RAISES ValidationError."""
         from varidex.exceptions import ValidationError
-        
+
         if not ref:
             raise ValidationError("Reference allele cannot be empty")
         if not alt:
             raise ValidationError("Alternate allele cannot be empty")
-        
+
         # Check for valid nucleotides
-        valid_bases = set('ACGTNacgtn')
+        valid_bases = set("ACGTNacgtn")
         if not all(c in valid_bases for c in ref):
             raise ValidationError(
                 f"Invalid reference allele '{ref}'. Must contain only nucleotides A, C, G, T, or N"
@@ -678,7 +679,7 @@ class ValidationStage:
             raise ValidationError(
                 f"Invalid alternate allele '{alt}'. Must contain only nucleotides A, C, G, T, or N"
             )
-        
+
         return True
 
 
@@ -721,27 +722,27 @@ class AnnotationStage:
         """Test compatibility: annotate single variant - FIXED to check None."""
         if sources is None:
             sources = ["gnomad", "clinvar", "dbnsfp"]
-        
+
         annotations = {}
-        
+
         # Check for None before updating - handles mocked returns
         if "gnomad" in sources:
             data = self._fetch_gnomad_data(variant)
             if data is not None:
                 annotations.update(data)
-        
+
         if "clinvar" in sources:
             data = self._fetch_clinvar_data(variant)
             if data is not None:
                 annotations.update(data)
-        
+
         if "dbnsfp" in sources:
             data = self._fetch_dbnsfp_data(variant)
             if data is not None:
                 annotations.update(data)
-        
+
         # Return variant with annotations
-        if hasattr(variant, 'annotations'):
+        if hasattr(variant, "annotations"):
             variant.annotations.update(annotations)
             return variant
         return {**variant, **annotations}
@@ -789,7 +790,7 @@ class FilteringStage:
     def _get_variant_value(self, variant, key, default=None):
         """Helper to get value from Variant object or dict - preserves int type."""
         # Try annotations first
-        if hasattr(variant, 'annotations') and key in variant.annotations:
+        if hasattr(variant, "annotations") and key in variant.annotations:
             value = variant.annotations[key]
             # Return as-is, preserving type
             return value
@@ -797,7 +798,7 @@ class FilteringStage:
         elif hasattr(variant, key):
             value = getattr(variant, key)
             # If it's position and it's an int, keep it as int
-            if key == 'position' and isinstance(value, int):
+            if key == "position" and isinstance(value, int):
                 return value
             return value
         # Try dict-like access
@@ -808,25 +809,27 @@ class FilteringStage:
     def filter_by_quality(self, variants, min_quality=0):
         """Test compatibility: filter by quality score."""
         return [
-            v for v in variants 
+            v
+            for v in variants
             if self._get_variant_value(v, "quality", 0) >= min_quality
         ]
 
     def filter_by_frequency(self, variants, max_af=1.0):
         """Test compatibility: filter by allele frequency."""
         return [
-            v for v in variants 
-            if self._get_variant_value(v, "gnomad_af", 0) <= max_af
+            v for v in variants if self._get_variant_value(v, "gnomad_af", 0) <= max_af
         ]
 
-    def filter_by_region(self, variants, regions=None, chromosome=None, start=None, end=None):
+    def filter_by_region(
+        self, variants, regions=None, chromosome=None, start=None, end=None
+    ):
         """Test compatibility: filter by genomic regions - FIXED to handle int positions."""
         if chromosome and start and end:
             result = []
             for v in variants:
                 var_chrom = self._get_variant_value(v, "chromosome")
                 var_pos = self._get_variant_value(v, "position", 0)
-                
+
                 # Convert position to int if it's a string
                 if isinstance(var_pos, str):
                     try:
@@ -838,7 +841,7 @@ class FilteringStage:
                     pass  # Already int, no conversion needed
                 else:
                     var_pos = 0
-                
+
                 if var_chrom == chromosome and start <= var_pos <= end:
                     result.append(v)
             return result
@@ -850,10 +853,7 @@ class FilteringStage:
             return variants
         if isinstance(genes, str):
             genes = [genes]
-        return [
-            v for v in variants
-            if self._get_variant_value(v, "gene") in genes
-        ]
+        return [v for v in variants if self._get_variant_value(v, "gene") in genes]
 
     def filter_by_impact(self, variants, impacts=None):
         """Test compatibility: filter by variant impact."""
@@ -861,27 +861,32 @@ class FilteringStage:
             return variants
         if isinstance(impacts, str):
             impacts = [impacts]
-        return [
-            v for v in variants
-            if self._get_variant_value(v, "impact") in impacts
-        ]
+        return [v for v in variants if self._get_variant_value(v, "impact") in impacts]
 
-    def apply_filters(self, variants, filters=None, min_quality=None, max_af=None, genes=None, impacts=None):
+    def apply_filters(
+        self,
+        variants,
+        filters=None,
+        min_quality=None,
+        max_af=None,
+        genes=None,
+        impacts=None,
+    ):
         """Test compatibility: apply multiple filters."""
         result = variants
-        
+
         if min_quality is not None:
             result = self.filter_by_quality(result, min_quality)
-        
+
         if max_af is not None:
             result = self.filter_by_frequency(result, max_af)
-        
+
         if genes is not None:
             result = self.filter_by_gene(result, genes)
-        
+
         if impacts is not None:
             result = self.filter_by_impact(result, impacts)
-        
+
         return result
 
 
@@ -906,7 +911,7 @@ class OutputStage:
         """Test compatibility: write VCF output."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write("##fileformat=VCFv4.2\n")
             f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
 
@@ -914,28 +919,28 @@ class OutputStage:
         """Test compatibility: write TSV output."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write("chromosome\tposition\trsid\tgenotype\n")
 
     def write_json(self, variants, output_file):
         """Test compatibility: write JSON output."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump({"variants": []}, f)
 
     def write_html_report(self, variants, output_file):
         """Test compatibility: write HTML report."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write("<html><head><title>Report</title></head><body></body></html>")
 
     def write_summary(self, variants, output_file):
         """Test compatibility: write summary statistics."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write("Total variants: 0\n")
 
 
