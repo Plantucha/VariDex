@@ -30,6 +30,7 @@ Previous changes v2.2.0 (2026-01-24):
 from dataclasses import dataclass, field
 from typing import Set, List, Optional, Dict, Any, Union
 from datetime import datetime
+from enum import Enum
 import re
 
 # Import ValidationError for proper exception handling
@@ -983,7 +984,6 @@ class VariantClassification:
 
 
 # Pathogenicity classification enum (for test compatibility)
-from enum import Enum
 
 
 class PathogenicityClass(Enum):
