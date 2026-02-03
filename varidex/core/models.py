@@ -103,19 +103,44 @@ def _validate_chromosome(chrom: Union[str, int, None], strict: bool = False) -> 
     """Validate chromosome format."""
     if not chrom:
         raise ValidationError("Chromosome cannot be empty")
-    
+
     chrom_str = str(chrom).strip().upper()
     chrom_clean = chrom_str.replace("CHR", "")
-    
+
     VALID_CHROM = {
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-        "11", "12", "13", "14", "15", "16", "17", "18", "19", 
-        "20", "21", "22", "X", "Y", "M", "MT"
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "X",
+        "Y",
+        "M",
+        "MT",
     }
-    
+
     if chrom_clean not in VALID_CHROM:
-        raise ValidationError(f"Invalid chromosome '{chrom_str}'. Must be 1-22, X, Y, or M/MT")
-    
+        raise ValidationError(
+            f"Invalid chromosome '{chrom_str}'. Must be 1-22, X, Y, or M/MT"
+        )
+
     return chrom_str.lower().replace("MT", "M")  # Normalize
     if chrom is None or chrom == "":
         return ""
@@ -635,7 +660,7 @@ class Variant(VariantData):
 
     Which is equivalent to:
         VariantData(chromosome="chr1", position=12345, reference="A", alternate="G", annotations={...})
-    
+
     FIX v2.3.2: Added __getattribute__ to return position as int for test compatibility.
     """
 
@@ -683,11 +708,11 @@ class Variant(VariantData):
     def __getattribute__(self, name):
         """
         Intercept attribute access to convert position to int when needed.
-        
+
         FIX v2.3.2: For test compatibility, .position returns int instead of string
         when the value is numeric. This allows tests to do comparisons like:
             assert 10000 <= variant.position <= 20000
-        
+
         Returns:
             For 'position': int when value is numeric, otherwise string
             For all other attributes: normal attribute value
@@ -975,4 +1000,3 @@ if __name__ == "__main__":
     print("=" * 80)
     print("MODELS MODULE v2.3.2 - POSITION INT COMPATIBILITY")
     print("=" * 80)
-
