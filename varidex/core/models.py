@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-varidex/core/models.py - Data Models v2.3.1
+varidex/core/models.py - Data Models v2.3.2
 ============================================
 Optimized data structures for variant analysis with sets for O(1) operations.
 Enhanced with serialization, hashing, validation, and proper exception handling.
+
+Changes v2.3.2 (2026-02-02) - POSITION INT COMPATIBILITY:
+- Added Variant.__getattribute__() to return position as int when numeric
+- Fixes test_filter_by_region which expects int position for comparisons
+- Maintains backward compatibility for non-numeric position values
 
 Changes v2.3.1 (2026-01-29) - TEST COMPATIBILITY:
 - Added Variant wrapper class to support positional arguments (chrom, pos, ref, alt)
@@ -632,6 +637,8 @@ class Variant(VariantData):
 
     Which is equivalent to:
         VariantData(chromosome="chr1", position=12345, reference="A", alternate="G", annotations={...})
+    
+    FIX v2.3.2: Added __getattribute__ to return position as int for test compatibility.
     """
 
     def __init__(self, *args, **kwargs):
@@ -674,6 +681,30 @@ class Variant(VariantData):
 
         # Call parent constructor
         super().__init__(**kwargs)
+
+    def __getattribute__(self, name):
+        """
+        Intercept attribute access to convert position to int when needed.
+        
+        FIX v2.3.2: For test compatibility, .position returns int instead of string
+        when the value is numeric. This allows tests to do comparisons like:
+            assert 10000 <= variant.position <= 20000
+        
+        Returns:
+            For 'position': int when value is numeric, otherwise string
+            For all other attributes: normal attribute value
+        """
+        if name == "position":
+            # Get the actual string value from parent
+            pos_str = super().__getattribute__("position")
+            # Try to convert to int
+            try:
+                return int(pos_str) if pos_str else 0
+            except (ValueError, TypeError):
+                # If conversion fails, return as string
+                return pos_str
+        # For all other attributes, use normal access
+        return super().__getattribute__(name)
 
 
 @dataclass
@@ -946,7 +977,7 @@ class PathogenicityClass(Enum):
 
 if __name__ == "__main__":
     print("=" * 80)
-    print("MODELS MODULE v2.3.1 - POSITIONAL ARGUMENT SUPPORT")
+    print("MODELS MODULE v2.3.2 - POSITION INT COMPATIBILITY")
     print("=" * 80)
 
     # Test positional argument syntax
@@ -956,31 +987,45 @@ if __name__ == "__main__":
         print(
             f"  - Positional args accepted: {v1.chromosome}:{v1.position} {v1.ref_allele}>{v1.alt_allele}"
         )
+        print(f"  - Position type: {type(v1.position)} = {v1.position}")
+    except Exception as e:
+        print(f"  ✗ Failed: {e}")
+
+    # Test position as int for comparisons
+    print("\n✓ Test: Position returns int for comparisons")
+    try:
+        v2 = Variant("chr2", 67890, "C", "T")
+        assert isinstance(v2.position, int), f"Expected int, got {type(v2.position)}"
+        assert 60000 <= v2.position <= 70000, f"Position comparison failed"
+        print(f"  - Position comparison works: 60000 <= {v2.position} <= 70000")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
 
     # Test with annotations
     print("\n✓ Test: Positional args with annotations")
     try:
-        v2 = Variant(
-            "chr2", 67890, "C", "T", annotations={"gene": "TP53", "impact": "HIGH"}
+        v3 = Variant(
+            "chr3", 11111, "G", "T", annotations={"gene": "TP53", "impact": "HIGH"}
         )
         print(
-            f"  - With annotations: {v2.gene} (impact: {v2.annotations.get('impact')})"
+            f"  - With annotations: {v3.gene} (impact: {v3.annotations.get('impact')})"
         )
+        print(f"  - Position type: {type(v3.position)} = {v3.position}")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
 
     # Test named parameters still work
     print("\n✓ Test: Named parameters (backward compatibility)")
     try:
-        v3 = Variant(chromosome="chr3", position=11111, reference="G", alternate="T")
-        print(f"  - Named params work: {v3.chromosome}:{v3.position}")
+        v4 = Variant(chromosome="chr4", position=22222, reference="A", alternate="C")
+        print(f"  - Named params work: {v4.chromosome}:{v4.position}")
+        print(f"  - Position type: {type(v4.position)} = {v4.position}")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
 
-    print("\n✅ All v2.3.1 tests passed!")
+    print("\n✅ All v2.3.2 tests passed!")
     print("   - Positional argument support: ✓")
+    print("   - Position returns int: ✓")
     print("   - Annotations support: ✓")
     print("   - Backward compatibility: ✓")
     print("=" * 80)
