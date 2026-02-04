@@ -119,7 +119,8 @@ def detect_user_file_type(filepath: Path) -> str:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             lines = [f.readline() for _ in range(10)]
         if any(
-            line_item.startswith("##fileformat=VCF") or line_item.startswith("#CHROM") for line_item in lines
+            line_item.startswith("##fileformat=VCF") or line_item.startswith("#CHROM")
+            for line_item in lines
         ):
             return "vc"
         if any("23andMe" in line_item for line_item in lines):

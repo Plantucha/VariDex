@@ -143,9 +143,7 @@ class GnomADLoader:
                         except Exception as e:
                             logger.warning(f"   ✗ Failed to index chr{chrom}: {e}")
                     else:
-                        logger.warning(
-                            f"⚠️  Missing index for chr{chrom}: {index_path}"
-                        )
+                        logger.warning(f"⚠️  Missing index for chr{chrom}: {index_path}")
 
         return available
 
@@ -221,7 +219,7 @@ class GnomADLoader:
         self, fields: List[str], chromosome: str
     ) -> GnomADFrequency:
         """Parse VCF record fields into GnomADFrequency."""
-        chrom = fields[0]
+        fields[0]
         pos = int(fields[1])
         ref = fields[3]
         alt = fields[4]
