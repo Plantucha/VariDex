@@ -1,0 +1,82 @@
+name: Generate Badges
+
+on:
+  workflow_run:
+    workflows: ["Enhanced CI/CD Pipeline"]
+    types:
+      - completed
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  badges:
+    name: Generate Status Badges
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install coverage pytest pytest-cov
+          pip install -e .
+          
+      - name: Run coverage
+        run: |
+          pytest tests/ --cov=varidex --cov-report=json --cov-report=term
+          
+      - name: Extract coverage percentage
+        id: coverage
+        run: |
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])")
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Coverage: $COVERAGE%"
+          
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: YOUR_GIST_ID_HERE
+          filename: varidex-coverage.json
+          label: Coverage
+          message: ${{ steps.coverage.outputs.coverage }}%
+          color: ${{ steps.coverage.outputs.coverage > 90 && 'brightgreen' || steps.coverage.outputs.coverage > 80 && 'green' || steps.coverage.outputs.coverage > 70 && 'yellow' || 'orange' }}
+        continue-on-error: true
+          
+      - name: Count tests
+        id: tests
+        run: |
+          TEST_COUNT=$(pytest tests/ --collect-only -q | tail -1 | awk '{print $1}')
+          echo "count=$TEST_COUNT" >> $GITHUB_OUTPUT
+          echo "Total tests: $TEST_COUNT"
+          
+      - name: Generate badge data
+        run: |
+          cat > badge-data.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "tests",
+            "message": "${{ steps.tests.outputs.count }} passing",
+            "color": "brightgreen"
+          }
+          EOF
+          
+      - name: Create badge summary
+        run: |
+          echo "## 🏆 Badge Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Coverage**: ${{ steps.coverage.outputs.coverage }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tests**: ${{ steps.tests.outputs.count }} passing" >> $GITHUB_STEP_SUMMARY
+          echo "- **Python**: 3.10, 3.11, 3.12" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Development" >> $GITHUB_STEP_SUMMARY
