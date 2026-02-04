@@ -17,3 +17,37 @@ mypy-report/
 __pycache__/
 *.pyc
 .venv/
+# Test/Debug artifacts
+.coverage
+.hypothesis/
+.cache/
+*.log
+matcher_debug.log
+test.json
+test_*.py
+fix_*.py
+debug_*.py
+analyze_*.py
+benchmark_*.py
+audit_*.py
+run_*.py
+diagnostic_*.py
+implement_*.py
+integrate_*.py
+
+# Data files
+clinvar/
+gnomad/
+data/
+results_*/
+*.vcf
+*.tsv
+*.fa
+
+# Backups
+*.backup
+*.bak
+*.swp
+
+# Build
+varidex.egg-info/
