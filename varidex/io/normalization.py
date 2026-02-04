@@ -35,3 +35,12 @@ def normalize_alleles(df: pd.DataFrame) -> pd.DataFrame:
 def create_coord_key(chrom: str, pos: int, ref: str, alt: str) -> str:
     """Create standardized coordinate key for variant matching."""
     return f"{chrom}:{pos}:{ref}:{alt}"
+
+
+def normalize_dataframe_coordinates(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize coordinate columns in DataFrame for consistent matching."""
+    if "chrom" in df.columns:
+        df["chrom"] = df["chrom"].str.upper()
+    if "pos" in df.columns:
+        df["pos"] = pd.to_numeric(df["pos"], errors="coerce")
+    return df
