@@ -1,115 +1,176 @@
-# Data files (protected)
-data/
-*.vcf
-*.vcf.gz
-*rawM*.txt
-*rawM*.tsv
-
-# Output directories
-results/
-liftover_output/
-varidex/utils/liftover_output/
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Test outputs and results
+test_results*.txt
+e2e_results.txt
+final_results.txt
+pipeline_summary.txt
+coverage.txt
+tests.txt
+test_log.txt
+output
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
 venv/
 ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Archived files
+.archive/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Development artifacts
+FINAL.txt
+RESULTS.txt
+victory.txt
+VICTORY.txt
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Development and testing
-*.backup
-*.bak
-*_backup/
-*.log
-analysis_log.txt
-mypy-report/
-mypy_report.txt
+# Data files (large genomics files)
+*.vcf.gz
+*.bam
+*.bam.bai
+*.cram
+*.bed.gz
+*.tbi
 
-# Test and benchmark scripts
-analyze_*.py
-audit_*.py
-benchmark_*.py
-check_*.py
-debug_*.py
-diagnostic_*.py
-fix_*.py
-test_*.py
-implement_*.py
-integrate_*.py
-show_*.py
-apply_*.py
-report_*.py
-run_*.py
-update_*.py
-*_test.py
-normalization_*.py
-phase1_*.py
-
-# Pipeline variations
-pipeline_*.py
-*_pipeline.py
-
-# Temporary directories
-.cache/
-.checkpoint/
-.varidex_cache/
-.backup_*/
-temp_*/
-
-# Results and output
-results*/
-resultsFINAL/
-output/
-gnomad/
-clinvar/
-
-# Build and coverage
-.hypothesis/
-.coverage
-varidex.egg-info/
-
-# Documentation drafts
-CHANGELOG.md
-WORKING_PIPELINE_*.md
-docs/LIFTOVER_GUIDE.md
-
-# Scripts
-commit_*.sh
-enable_*.patch
-start_*.sh
-audit_*.sh
-analyze_*.sh
-
-# Data files
-data.tsv
-GRCh37.fa
-report.html
-
-# Orphaned files
-=5.0.0
-coverage.txt
-
-# Coverage reports
-coverage.txt
-htmlcov/
-htmlcov-full/
-.coverage
-.pytest_cache/
-
-# Results (patient data)
-results*/
-*_results/
-CLINICAL_REPORT.txt
-URGENT_CLINICAL_REPORT.txt
+# Downloaded databases (recreatable)
+data/downloads/
+data/cache/
