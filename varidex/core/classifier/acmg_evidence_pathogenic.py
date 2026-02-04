@@ -178,7 +178,7 @@ class PathogenicEvidenceAssigner:
 
         try:
             aa_change = variant.get("aa_change", "")
-            nt_change = variant.get("nt_change", "")
+            variant.get("nt_change", "")
 
             if not aa_change:
                 return False

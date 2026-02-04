@@ -139,7 +139,7 @@ def main(clinvar_path: str, user_data_path: str, **kwargs) -> bool:
 
     # ==================== STAGE 6: CLASSIFICATION ====================
     print("\n🏆 STAGE 6: CLINVAR CLASSIFICATION ✓")
-    class_counts = matches["clinvar_class"].value_counts()
+    matches["clinvar_class"].value_counts()
     pathogenic = len(matches[matches["clinvar_class"] == "Pathogenic"])
     vus = len(matches[matches["clinvar_class"] == "VUS"])
     print(f"  Pathogenic:        {pathogenic:,}")

@@ -443,7 +443,7 @@ class TestStageDataFlow:
             reference_genome="GRCh38",
         )
 
-        annotation_stage = AnnotationStage(config)
+        AnnotationStage(config)
         filtering_stage = FilteringStage(config)
 
         annotated_data = [Variant("chr1", 12345, "A", "G", annotations={"af": 0.001})]

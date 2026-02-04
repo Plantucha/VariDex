@@ -22,8 +22,8 @@ def query_gnomad_batch(args):
     for idx, row in variants_batch.iterrows():
         chrom = str(row.get("chromosome", row.get("chromosome_user", row.get("CHROM"))))
         pos = int(row.get("position", row.get("position_user", row.get("POS"))))
-        ref = str(row.get("ref", row.get("ref_allele", row.get("REF", ""))))
-        alt = str(row.get("alt", row.get("alt_allele", row.get("ALT", ""))))
+        str(row.get("ref", row.get("ref_allele", row.get("REF", ""))))
+        str(row.get("alt", row.get("alt_allele", row.get("ALT", ""))))
 
         # Format chromosome
         chrom = chrom.replace("chr", "")

@@ -96,13 +96,13 @@ try:
         UserWarning,
         stacklevel=2,
     )
-except ImportError:
+except ImportError as err:
     # V7 requires gnomAD dependencies
     def ACMGClassifierV7(*args, **kwargs):
         raise ImportError(
             "ACMGClassifierV7 requires gnomAD integration. "
             "Install with: pip install varidex[gnomad]\n"
-            f"Original error: {{str(err)}}"
+            f"Original error: {err}"
         )
 
 
@@ -118,13 +118,13 @@ try:
         UserWarning,
         stacklevel=2,
     )
-except ImportError:
+except ImportError as err:
     # V8 requires gnomAD + SpliceAI + dbNSFP dependencies
     def ACMGClassifierV8(*args, **kwargs):
         raise ImportError(
             "ACMGClassifierV8 requires gnomAD, SpliceAI, and dbNSFP integration. "
             "Install with: pip install varidex[predictions]\n"
-            f"Original error: {{str(err)}}"
+            f"Original error: {err}"
         )
 
 

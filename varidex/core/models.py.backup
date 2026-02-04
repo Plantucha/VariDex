@@ -636,7 +636,7 @@ class Variant(VariantData):
 
     Which is equivalent to:
         VariantData(chromosome="chr1", position=12345, reference="A", alternate="G", annotations={...})
-
+    
     FIX v2.3.2: Added __getattribute__ to return position as int for test compatibility.
     """
 
@@ -684,11 +684,11 @@ class Variant(VariantData):
     def __getattribute__(self, name):
         """
         Intercept attribute access to convert position to int when needed.
-
+        
         FIX v2.3.2: For test compatibility, .position returns int instead of string
         when the value is numeric. This allows tests to do comparisons like:
             assert 10000 <= variant.position <= 20000
-
+        
         Returns:
             For 'position': int when value is numeric, otherwise string
             For all other attributes: normal attribute value
@@ -976,3 +976,4 @@ if __name__ == "__main__":
     print("=" * 80)
     print("MODELS MODULE v2.3.2 - POSITION INT COMPATIBILITY")
     print("=" * 80)
+

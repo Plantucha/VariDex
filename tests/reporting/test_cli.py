@@ -34,5 +34,5 @@ class TestReportingCLI:
         assert result.exit_code == 0
 
     def test_no_formats(self, runner):
-        result = runner.invoke(reporting, ["generate", "test.vcf"])
+        runner.invoke(reporting, ["generate", "test.vcf"])
         # CLI allows no-output mode  # Should fail without output spec

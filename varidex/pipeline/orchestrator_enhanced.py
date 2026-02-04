@@ -146,7 +146,6 @@ def main_enhanced(
             results, classification_stats = stage5_result
         else:
             results = stage5_result
-            classification_stats = {}
 
         # Create results DataFrame
         if results and len(results) > 0:

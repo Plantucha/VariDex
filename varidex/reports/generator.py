@@ -515,7 +515,7 @@ def generate_all_reports(
 
     # CSV Report
     if generate_csv:
-        csv_file = output_dir / f"classified_variants_{timestamp}.csv"
+        output_dir / f"classified_variants_{timestamp}.csv"
         try:
             result = generate_csv_report(results_df, output_dir, timestamp)
             generated["csv"] = result
@@ -529,7 +529,7 @@ def generate_all_reports(
 
     # JSON Report
     if generate_json:
-        json_file = output_dir / f"classified_variants_{timestamp}.json"
+        output_dir / f"classified_variants_{timestamp}.json"
         try:
             result = generate_json_report(results_df, stats, output_dir, timestamp)
             generated["json"] = result
@@ -543,7 +543,7 @@ def generate_all_reports(
 
     # HTML Report
     if generate_html:
-        html_file = output_dir / f"classified_variants_{timestamp}.html"
+        output_dir / f"classified_variants_{timestamp}.html"
         try:
             result = generate_html_report(results_df, stats, output_dir, timestamp)
             generated["html"] = result
@@ -557,7 +557,7 @@ def generate_all_reports(
 
     # Conflicts Report
     if generate_conflicts:
-        conflicts_file = output_dir / f"conflicts_{timestamp}.csv"
+        output_dir / f"conflicts_{timestamp}.csv"
         try:
             result = generate_conflict_report(results_df, output_dir, timestamp)
             if result:
@@ -782,7 +782,7 @@ class ReportGenerator:
         if filename is None:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
             filename = f"classified_variants_{timestamp}.csv"
-        output_file = self.output_dir / filename
+        self.output_dir / filename
         return generate_csv_report(
             results_df, self.output_dir, datetime.now().strftime("%Y%m%d_%H%M%S")
         )
@@ -794,7 +794,7 @@ class ReportGenerator:
         if filename is None:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
             filename = f"classified_variants_{timestamp}.json"
-        output_file = self.output_dir / filename
+        self.output_dir / filename
         return generate_json_report(results_df, {}, self.output_dir)
 
     def generate_html(
@@ -804,7 +804,7 @@ class ReportGenerator:
         if filename is None:
             timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
             filename = f"classified_variants_{timestamp}.html"
-        output_file = self.output_dir / filename
+        self.output_dir / filename
         return generate_html_report(
             results_df, {}, self.output_dir, datetime.now().strftime("%Y%m%d_%H%M%S")
         )
