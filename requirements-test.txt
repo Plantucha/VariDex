@@ -24,3 +24,4 @@ requests-mock>=1.11.0
 # Code Quality
 black>=24.0.0
 flake8>=7.0.0
+pytest==7.4.0\npytest-cov==4.1.0
