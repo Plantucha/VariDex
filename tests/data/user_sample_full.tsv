@@ -1,0 +1,3 @@
+chrom	pos	ref	alt	qual	filter	info
+chr1	100	A	G	99	PASS	.
+chr2	200	C	T	98	PASS	RS123
