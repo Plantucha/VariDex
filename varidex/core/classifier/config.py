@@ -26,12 +26,12 @@ Usage:
     classifier = ACMGClassifier(config)
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
 from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
-from varidex.version import __version__
 from varidex.exceptions import ACMGConfigurationError
+from varidex.version import __version__
 
 
 @dataclass

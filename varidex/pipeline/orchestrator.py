@@ -5,13 +5,14 @@ varidex/pipeline/orchestrator.py - v8.2.5 DEVELOPMENT
 ✅ 601K 23andMe → 400K matches → Reports SAVED!
 """
 
-import sys
 import argparse
 import logging
+import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
-import pandas as pd
+from typing import List
+
 import numpy as np
+import pandas as pd
 
 # Logging setup
 logging.basicConfig(

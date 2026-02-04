@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 
 
 def convert_to_1based(df: pd.DataFrame) -> pd.DataFrame:

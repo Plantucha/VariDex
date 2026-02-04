@@ -4,8 +4,8 @@ VariDex Import Manager
 Complete import management utilities with all aliases.
 """
 
-from typing import Any, Optional, Dict
 import importlib
+from typing import Any, Dict, Optional
 
 
 def get_module(module_name: str) -> Any:

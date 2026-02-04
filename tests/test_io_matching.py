@@ -3,21 +3,18 @@
 Black formatted with 88-char line limit.
 """
 
-from pathlib import Path
-from unittest.mock import Mock, patch
-
 import pandas as pd
 import pytest
 
 from varidex.core.models import GenomicVariant
 from varidex.exceptions import MatchingError
 from varidex.io.matching import (
-    match_by_coordinates,
-    match_by_variant_id,
-    match_variants,
     create_variant_key,
     find_exact_matches,
     find_fuzzy_matches,
+    match_by_coordinates,
+    match_by_variant_id,
+    match_variants,
 )
 
 

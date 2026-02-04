@@ -11,14 +11,15 @@ Functions:
 - check_lof: Detect loss-of-function variants
 """
 
-from typing import Tuple, List, Set
-from functools import lru_cache
-import pandas as pd
 import logging
+from functools import lru_cache
+from typing import List, Set, Tuple
 
-from varidex.core.models import VariantData
-from varidex.core.config import CLINVAR_STAR_RATINGS
+import pandas as pd
+
 from varidex.core.classifier.text_utils import normalize_text, split_delimited_value
+from varidex.core.config import CLINVAR_STAR_RATINGS
+from varidex.core.models import VariantData
 
 logger = logging.getLogger(__name__)
 

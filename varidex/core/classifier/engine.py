@@ -18,15 +18,15 @@ Refactoring v6.4.0:
   - All files now under 500 lines
 """
 
-from typing import Tuple, Dict, Optional, Any
 import logging
 import time
+from typing import Any, Dict, Optional, Tuple
 
-from varidex.version import __version__
-from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
 from varidex.core.classifier.config import ACMGConfig, ACMGMetrics
 from varidex.core.classifier.evidence_assignment import assign_evidence_codes
+from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
+from varidex.core.models import ACMGEvidenceSet, VariantData
+from varidex.version import __version__
 
 logger = logging.getLogger(__name__)
 

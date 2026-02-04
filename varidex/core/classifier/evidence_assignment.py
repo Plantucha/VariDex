@@ -10,18 +10,18 @@ Functions:
 - assign_evidence_codes: Main wrapper coordinating evidence assignment
 """
 
-from typing import Set, Optional
 import logging
+from typing import Optional, Set
 
-from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
-from varidex.core.classifier.text_utils import normalize_text
-from varidex.core.classifier.evidence_utils import (
-    validate_variant,
-    extract_genes,
-    check_lof,
-)
 from varidex.core.classifier.config import ACMGConfig
+from varidex.core.classifier.evidence_utils import (
+    check_lof,
+    extract_genes,
+    validate_variant,
+)
+from varidex.core.classifier.text_utils import normalize_text
+from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
+from varidex.core.models import ACMGEvidenceSet, VariantData
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 import sys
+
 from varidex.pipeline.stages_core import validate_stage_dependencies
-from varidex.pipeline.stages import execute_stage3_load_user_data
 
 #!/usr/bin/env python3
 sys.path.insert(0, "/media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex")

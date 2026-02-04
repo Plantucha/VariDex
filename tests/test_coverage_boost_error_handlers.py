@@ -12,21 +12,20 @@ Black formatted with 88-char line limit.
 """
 
 import pytest
-from typing import Optional
 
-from varidex.exceptions import (
-    VaridexError,
-    ValidationError,
-    DataLoadError,
-    ClassificationError,
-    ReportError,
-    FileProcessingError,
-    ErrorCode,
-)
 from varidex.core.exceptions import (
     ConfigurationError,
     DataProcessingError,
     PipelineError,
+)
+from varidex.exceptions import (
+    ClassificationError,
+    DataLoadError,
+    ErrorCode,
+    FileProcessingError,
+    ReportError,
+    ValidationError,
+    VaridexError,
 )
 
 pytestmark = pytest.mark.unit

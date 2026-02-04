@@ -9,9 +9,9 @@ Tests the actual functions that exist in helpers.py:
 Black formatted with 88-char line limit.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from typing import Dict, List, Any
-from unittest.mock import Mock, MagicMock
 
 from varidex.utils.helpers import (
     DataValidator,

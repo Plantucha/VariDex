@@ -9,20 +9,20 @@ from typing import List
 
 # Import all exceptions from core.exceptions
 from varidex.core.exceptions import (
-    VaridexError,
-    ValidationError,
-    DataLoadError,
-    DataProcessingError,
-    ClassificationError,
-    ReportError,
-    FileProcessingError,
-    ACMGValidationError,
     ACMGClassificationError,
     ACMGConfigurationError,
+    ACMGValidationError,
+    ClassificationError,
     ConfigurationError,
+    DataLoadError,
+    DataProcessingError,
     ErrorCode,
-    validate_not_none,
+    FileProcessingError,
+    ReportError,
+    ValidationError,
+    VaridexError,
     validate_not_empty,
+    validate_not_none,
     validate_type,
 )
 
@@ -31,31 +31,21 @@ from varidex.core.exceptions import (
 class VariDexError(VaridexError):
     """Alias for VaridexError (backward compatibility)."""
 
-    pass
-
 
 class DownloadError(VaridexError):
     """Raised when download operations fail."""
-
-    pass
 
 
 class DataIntegrityError(VaridexError):
     """Raised when data integrity checks fail."""
 
-    pass
-
 
 class MatchingError(VaridexError):
     """Raised when variant matching fails."""
 
-    pass
-
 
 class PipelineError(VaridexError):
     """Raised when pipeline execution fails."""
-
-    pass
 
 
 # Backward compatibility aliases
@@ -66,7 +56,7 @@ __version__: str = "6.0.0"
 __all__: List[str] = [
     "ConfigurationError",
     "VaridexError",
-    "VariDExError",
+    "VariDexError",
     "ValidationError",
     "DataLoadError",
     "DownloadError",

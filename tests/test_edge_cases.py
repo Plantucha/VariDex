@@ -4,17 +4,10 @@ Tests extreme scenarios, unusual inputs, and boundary conditions
 that might not be covered in standard unit tests.
 """
 
-import pytest
-import pandas as pd
-import tempfile
 from pathlib import Path
-from varidex.core.models import Variant
-from varidex.core.config import VariDexConfig
-from varidex.exceptions import (
-    ValidationError,
-    DataIntegrityError,
-    ConfigurationError,
-)
+
+import pandas as pd
+import pytest
 
 
 class TestEmptyInputHandling:

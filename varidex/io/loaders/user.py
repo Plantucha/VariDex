@@ -10,12 +10,12 @@ Changelog:
   - v6.0.0: Initial unified release
 """
 
-import pandas as pd
 import logging
 import re
 from pathlib import Path
 from typing import Optional, Tuple
-from pathlib import Path
+
+import pandas as pd
 
 # Version is managed centrally - do NOT hardcode
 try:
@@ -119,10 +119,10 @@ def detect_user_file_type(filepath: Path) -> str:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             lines = [f.readline() for _ in range(10)]
         if any(
-            l.startswith("##fileformat=VCF") or l.startswith("#CHROM") for l in lines
+            line_item.startswith("##fileformat=VCF") or line_item.startswith("#CHROM") for line_item in lines
         ):
             return "vc"
-        if any("23andMe" in l for l in lines):
+        if any("23andMe" in line_item for line_item in lines):
             return "23andme"
         return "tsv"
     except Exception as e:
@@ -284,23 +284,24 @@ def load_user_file(filepath: Path, file_format: Optional[str] = None) -> pd.Data
 
     return loaders[file_format](filepath)
 
+
 def load_23andme(filepath: str, assembly: str = "GRCh38") -> pd.DataFrame:
     """Load 23andMe raw data format."""
     import pandas as pd
-    
+
     # Read TSV skipping comments
     df = pd.read_csv(
         filepath,
         sep="\t",
         comment="#",
-        names=["rsid", "chromosome", "position", "genotype"]
+        names=["rsid", "chromosome", "position", "genotype"],
     )
-    
+
     # Clean and format
     df = df[df["chromosome"].notna()].copy()
     df["chromosome"] = df["chromosome"].astype(str)
     df["position"] = pd.to_numeric(df["position"], errors="coerce")
     df = df.dropna(subset=["position"])
     df["position"] = df["position"].astype(int)
-    
+
     return df

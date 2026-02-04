@@ -3,18 +3,19 @@
 Tests PP3 and BP4 evidence codes with mocked prediction responses.
 """
 
-from typing import List, Tuple
-import pytest
+from typing import List
 from unittest.mock import Mock, patch
 
-from varidex.integrations.dbnsfp_client import DbNSFPClient, PredictionScore
-from varidex.core.services.computational_prediction import (
-    ComputationalPredictionService,
-    ComputationalEvidence,
-)
+import pytest
+
 from varidex.core.classifier.engine_v8 import ACMGClassifierV8
-from varidex.core.models import VariantData
 from varidex.core.exceptions import ValidationError
+from varidex.core.models import VariantData
+from varidex.core.services.computational_prediction import (
+    ComputationalEvidence,
+    ComputationalPredictionService,
+)
+from varidex.integrations.dbnsfp_client import DbNSFPClient, PredictionScore
 
 pytestmark = pytest.mark.unit
 

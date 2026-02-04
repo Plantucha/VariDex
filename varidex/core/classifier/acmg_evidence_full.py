@@ -41,10 +41,10 @@ Reference: Richards et al. 2015, PMID 25741868
 Version: 1.2.0 (critical bugfix - PS3/BS3 enum support)
 """
 
-from typing import Dict, Optional, Set, Union
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
+from typing import Dict, Optional, Set, Union
 
 logger = logging.getLogger(__name__)
 

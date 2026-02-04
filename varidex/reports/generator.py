@@ -18,34 +18,34 @@ Changes v6.0.3:
 - Use calculate_report_stats() consistently for all reports
 """
 
-import pandas as pd
-from pathlib import Path
-from typing import List, Dict, Union, Optional, Any
-from datetime import datetime
 import logging
 import time
-from varidex.core.models import VariantData, Variant
-from varidex.exceptions import ValidationError, ReportError
-from varidex.core.config import ACMG_TIERS
-from varidex.core.models import ACMGEvidenceSet
-from varidex.reports.formatters import (
-    format_file_size,
-    generate_csv_report,
-    generate_json_report,
-    generate_html_report,
-    generate_conflicts_report as generate_conflict_report,
-    HTMLFormatter,
-    JSONFormatter,
-    TSVFormatter,
-)
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import pandas as pd
 from tqdm import tqdm
+
+from varidex.core.config import ACMG_TIERS
+from varidex.core.models import ACMGEvidenceSet, Variant, VariantData
+from varidex.exceptions import ReportError, ValidationError
+from varidex.reports.formatters import HTMLFormatter, JSONFormatter, TSVFormatter
+from varidex.reports.formatters import (
+    generate_conflicts_report as generate_conflict_report,
+)
+from varidex.reports.formatters import (
+    generate_csv_report,
+    generate_html_report,
+    generate_json_report,
+)
 
 # Global constant for formatter availability
 FORMATTERS_AVAILABLE = True
 
 # Import exceptions with fallback
 try:
-    from varidex.exceptions import ValidationError, ReportError
+    from varidex.exceptions import ReportError, ValidationError
 except ImportError:
 
     class ValidationError(Exception):

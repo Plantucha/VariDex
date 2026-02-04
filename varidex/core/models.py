@@ -33,11 +33,11 @@ Previous changes v2.2.0 (2026-01-24):
 - FIX 4E: AnnotatedVariant convenience constructor for direct creation
 """
 
+import re
 from dataclasses import dataclass, field
-from typing import Set, List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
-import re
+from typing import Any, Dict, List, Optional, Set, Union
 
 # Import ValidationError for proper exception handling
 from varidex.core.exceptions import ValidationError

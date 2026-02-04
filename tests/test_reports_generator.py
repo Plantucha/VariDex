@@ -4,20 +4,15 @@ Tests report generators, formatters, and templates for various
 output formats including HTML, PDF, and summary statistics.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import pandas as pd
 import json
+from pathlib import Path
 
-from varidex.reports.generator import ReportGenerator
-from varidex.reports.formatters import (
-    HTMLFormatter,
-    JSONFormatter,
-    TSVFormatter,
-)
+import pytest
+
 from varidex.core.models import Variant
 from varidex.exceptions import ReportError
+from varidex.reports.formatters import HTMLFormatter, JSONFormatter, TSVFormatter
+from varidex.reports.generator import ReportGenerator
 
 
 class TestReportGenerator:

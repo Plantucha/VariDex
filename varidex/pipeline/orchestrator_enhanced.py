@@ -4,22 +4,24 @@ Enhanced orchestrator with gnomAD and full ACMG criteria.
 Extends existing pipeline with stages 4b and 4c.
 """
 
-import sys
 import logging
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional
+
 import pandas as pd
+
+from varidex.pipeline.cli_helpers import print_pipeline_header, print_stage_header
 
 # Import existing orchestrator functions
 from varidex.pipeline.orchestrator import (
-    configure_logging,
-    PipelineState,
     _IMPORT_MODE,
+    configure_logging,
     loader,
     reports,
 )
-
+from varidex.pipeline.pipeline_config import get_safeguard_config, load_yaml_config
 from varidex.pipeline.stages import (
     execute_stage2_load_clinvar,
     execute_stage3_load_user_data,
@@ -27,17 +29,8 @@ from varidex.pipeline.stages import (
     execute_stage4b_gnomad_annotation,
     execute_stage4c_consequence_criteria,
     execute_stage5_acmg_classification,
-    execute_stage6_create_results,
     execute_stage7_generate_reports,
 )
-
-from varidex.pipeline.cli_helpers import (
-    print_pipeline_header,
-    print_stage_header,
-    print_completion_summary,
-)
-
-from varidex.pipeline.pipeline_config import get_safeguard_config, load_yaml_config
 
 logger = logging.getLogger(__name__)
 

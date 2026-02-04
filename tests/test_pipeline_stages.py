@@ -1,5 +1,6 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch
 
 """Comprehensive tests for pipeline stages.
 
@@ -7,22 +8,18 @@ Tests individual pipeline stages including validation, annotation,
 filtering, and output generation.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import pandas as pd
+from unittest.mock import patch
 
+import pytest
+
+from varidex.core.config import PipelineConfig
+from varidex.core.models import Variant
+from varidex.exceptions import ValidationError
 from varidex.pipeline.stages import (
-    ValidationStage,
     AnnotationStage,
     FilteringStage,
     OutputStage,
-)
-from varidex.core.config import PipelineConfig
-from varidex.core.models import Variant
-from varidex.exceptions import (
-    ValidationError,
-    DataProcessingError,
+    ValidationStage,
 )
 
 

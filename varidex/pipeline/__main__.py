@@ -14,6 +14,7 @@ FINAL CORRECT ORDER:
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+
 import pandas as pd
 
 from varidex import __version__

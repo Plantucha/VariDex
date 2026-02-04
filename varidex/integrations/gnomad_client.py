@@ -14,9 +14,10 @@ Fixes: Chromosome normalization, error handling
 
 import logging
 import time
-from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
 import requests
 
 logger = logging.getLogger(__name__)

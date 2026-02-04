@@ -26,11 +26,12 @@ Reference:
   - https://sites.google.com/site/jpopgen/dbNSFP
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime, timedelta
 import logging
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
 import requests
 
 logger: logging.Logger = logging.getLogger(__name__)

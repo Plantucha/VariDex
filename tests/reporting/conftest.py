@@ -1,4 +1,5 @@
 import pytest
+
 from src.reporting.models import AnnotatedVariant
 
 

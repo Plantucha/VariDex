@@ -27,10 +27,10 @@ Algorithm Availability:
 Reference: Richards et al. 2015, PMID 25741868
 """
 
-from dataclasses import dataclass
-from typing import Optional, Dict, Any, Tuple, List
-from enum import Enum
 import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 from varidex.integrations.dbnsfp_client import DbNSFPClient, PredictionScore
 

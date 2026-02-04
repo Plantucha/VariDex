@@ -1,8 +1,9 @@
 """VariDex Schema Standardizer - Eliminates naming inconsistencies"""
 
-import pandas as pd
-from typing import List, Tuple
 import logging
+from typing import List, Tuple
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 

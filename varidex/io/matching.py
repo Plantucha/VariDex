@@ -14,7 +14,8 @@ Changes from v3.0.3:
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import Any, Dict, List, Tuple, Union
+
 import pandas as pd
 
 from varidex.core.models import Variant

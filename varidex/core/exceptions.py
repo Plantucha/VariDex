@@ -5,7 +5,7 @@ Custom exceptions for variant analysis pipeline.
 """
 
 from enum import Enum
-from typing import Any, Optional, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 __all__: List[str] = [
     "VaridexError",

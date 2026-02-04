@@ -13,19 +13,19 @@ CRITICAL FIXES APPLIED:
 ✓ Black-formatted, mypy-ready
 """
 
-import pandas as pd
-from pathlib import Path
-from typing import Dict, List, Tuple, Any, Optional, Set
+import gc
+import json
 import logging
 import time
-import psutil
-import json
-import gc
-from dataclasses import dataclass, asdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import Lock
+from dataclasses import asdict, dataclass
 from enum import Enum
-from tqdm import tqdm
+from pathlib import Path
+from threading import Lock
+from typing import Dict, List, Optional, Set, Tuple
+
+import pandas as pd
+import psutil
+
 from varidex.utils.helpers import DataValidator
 
 logger = logging.getLogger(__name__)

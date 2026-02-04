@@ -21,15 +21,14 @@ Changes v6.6.0 (2026-01-24) - FIX 4B/4C COMPREHENSIVE:
 - All previous features preserved (validation, persistence, management)
 """
 
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-from pathlib import Path
-import warnings
-import sys
+import copy
 import json
 import os
-import copy
 import tempfile
+import warnings
+from dataclasses import asdict, dataclass
+from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 # ===================================================================
@@ -756,9 +755,10 @@ if __name__ == "__main__":
     print("   - Security: B108 fixed (secure temp directory) ✓")
     print("=" * 80)
 
-from pydantic import Field, BaseModel
 from pathlib import Path
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class VariDexConfig(BaseModel):

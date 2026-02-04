@@ -6,10 +6,10 @@ Centralized configuration, safeguards, and YAML loading.
 Development version - not for production use.
 """
 
-import os
 import logging
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
 logger: logging.Logger = logging.getLogger(__name__)
 

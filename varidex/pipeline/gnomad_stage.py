@@ -6,9 +6,12 @@ Black-formatted, production-ready, no raw data changes.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Optional
+
 import pandas as pd
+
 from varidex.pipeline.gnomad_annotator import (
     annotate_with_gnomad,
     apply_frequency_acmg_criteria,

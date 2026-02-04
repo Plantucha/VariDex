@@ -9,8 +9,8 @@ Components: Summary cards, variant table, classification legend, report footer.
 """
 
 import html
-from typing import Dict, Optional
 from datetime import datetime
+from typing import Dict, Optional
 
 try:
     from varidex.version import __version__

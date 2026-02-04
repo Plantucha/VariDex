@@ -1,11 +1,10 @@
 """Comprehensive tests for CLI interface."""
 
-import pytest
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from io import StringIO
+from unittest.mock import patch
+
+import pytest
 
 
 class TestCLIArguments:

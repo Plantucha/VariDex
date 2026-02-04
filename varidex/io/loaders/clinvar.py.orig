@@ -11,15 +11,17 @@ v6.1.0 Changes:
 - Optimized multiallelic splitting
 """
 
-import pandas as pd
 import gzip
-import re
 import logging
+import re
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Callable
+from typing import Any, Callable, Dict, List, Optional
+
+import pandas as pd
 from tqdm import tqdm
-from varidex.version import __version__
-from varidex.exceptions import DataLoadError, ValidationError, FileProcessingError
+
+from varidex.exceptions import (DataLoadError, FileProcessingError,
+                                ValidationError)
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 logger: logging.Logger = logging.getLogger(__name__)

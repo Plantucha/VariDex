@@ -3,7 +3,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator
 
 import pandas as pd
 

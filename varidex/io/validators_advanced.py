@@ -10,10 +10,10 @@ Features: virus scanning, custom rules, validation reports, batch processing
 
 import datetime
 import logging
-from pathlib import Path
-from typing import Optional, Dict, List, Callable, Any, Tuple
-from functools import lru_cache
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from varidex.io.validators import ValidationResult
 
@@ -257,8 +257,8 @@ def generate_validation_report(
     from varidex.io.validators import (
         validate_content_type,
         validate_encoding,
-        validate_permissions,
         validate_parent_symlinks,
+        validate_permissions,
     )
 
     results = []

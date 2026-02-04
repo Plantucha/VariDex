@@ -52,30 +52,32 @@ Consolidation Plan:
     - v7.1+: Remove engine_v7.py and engine_v8.py
 """
 
-from typing import List
 import warnings
+from typing import List
+
 from varidex.version import get_version
 
 __version__: str = get_version("core.classifier")
 
-# Core classifier engines
-from .engine import ACMGClassifier
 from .config import ACMGConfig, ACMGMetrics
 
-# Utility functions
-from .evidence_utils import (
-    get_star_rating,
-    validate_variant,
-    extract_genes,
-    check_lof,
-    LOF_INDICATORS,
-)
+# Core classifier engines
+from .engine import ACMGClassifier
 
 # Evidence assignment
 from .evidence_assignment import (
+    assign_benign_evidence,
     assign_evidence_codes,
     assign_pathogenic_evidence,
-    assign_benign_evidence,
+)
+
+# Utility functions
+from .evidence_utils import (
+    LOF_INDICATORS,
+    check_lof,
+    extract_genes,
+    get_star_rating,
+    validate_variant,
 )
 
 # Advanced classifiers (optional imports with graceful degradation)
@@ -94,13 +96,13 @@ try:
         UserWarning,
         stacklevel=2,
     )
-except ImportError as e:
+except ImportError as err:
     # V7 requires gnomAD dependencies
     def ACMGClassifierV7(*args, **kwargs):
         raise ImportError(
             "ACMGClassifierV7 requires gnomAD integration. "
             "Install with: pip install varidex[gnomad]\n"
-            f"Original error: {e}"
+            f"Original error: {{str(err)}}"
         )
 
 
@@ -116,13 +118,13 @@ try:
         UserWarning,
         stacklevel=2,
     )
-except ImportError as e:
+except ImportError as err:
     # V8 requires gnomAD + SpliceAI + dbNSFP dependencies
     def ACMGClassifierV8(*args, **kwargs):
         raise ImportError(
             "ACMGClassifierV8 requires gnomAD, SpliceAI, and dbNSFP integration. "
             "Install with: pip install varidex[predictions]\n"
-            f"Original error: {e}"
+            f"Original error: {{str(err)}}"
         )
 
 

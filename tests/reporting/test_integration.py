@@ -1,12 +1,13 @@
 import pandas as pd
+
 from src.reporting.models import AnnotatedVariant
-import pandas as pd
 
 """Reporting integration tests (15 tests)."""
-from src.reporting.models import AnnotatedVariant
+
 import pytest
-from pathlib import Path
+
 from src.reporting.core import ReportGenerator
+from src.reporting.models import AnnotatedVariant
 
 
 @pytest.mark.integration

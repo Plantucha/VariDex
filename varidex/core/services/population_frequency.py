@@ -9,11 +9,11 @@ References:
 """
 
 import logging
-from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, Optional, Tuple
 
-from varidex.integrations.gnomad_client import GnomadVariantFrequency, GnomadClient
+from varidex.integrations.gnomad_client import GnomadClient, GnomadVariantFrequency
 
 logger: logging.Logger = logging.getLogger(__name__)
 

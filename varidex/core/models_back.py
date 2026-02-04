@@ -1,9 +1,10 @@
-from dataclasses import dataclass, field
-from typing import Set, List, Optional, Dict, Any
-from datetime import datetime
 import re
-from varidex.exceptions import ValidationError
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
+
+from varidex.exceptions import ValidationError
 
 #!/usr/bin/env python3
 """

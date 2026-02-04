@@ -8,9 +8,8 @@ Development version - not for production use.
 
 import gzip
 import logging
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
 
 logger: logging.Logger = logging.getLogger(__name__)
 

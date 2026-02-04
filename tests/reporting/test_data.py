@@ -1,7 +1,5 @@
 """Test fixtures and mock data (mock imports)."""
 
-from src.reporting.models import AnnotatedVariant
-
 
 # Mock imports for test isolation
 class MockAnnotatedVariant:

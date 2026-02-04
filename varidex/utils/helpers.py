@@ -9,8 +9,8 @@ Changes v7.0.3:
 - Maps ClinVar classifications to ACMG codes (P, LP, VUS, LB, B, CONFLICT)
 """
 
-from typing import Any, Dict, List
 import logging
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 

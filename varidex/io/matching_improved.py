@@ -12,14 +12,12 @@ Enhancements over matching.py:
 BUGFIX v6.5.5: Fixed review_status type mismatch (string vs int)
 """
 
-import pandas as pd
 import logging
-from typing import Tuple, Dict, Any, List, Set, Optional
-import re
-from varidex.io.normalization import (
-    normalize_dataframe_coordinates,
-    create_coord_key,
-)
+from typing import Any, List, Optional, Set, Tuple
+
+import pandas as pd
+
+from varidex.io.normalization import create_coord_key
 
 logger = logging.getLogger(__name__)
 

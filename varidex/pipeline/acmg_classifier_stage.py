@@ -8,11 +8,13 @@ Version: 1.0.3-dev
 """
 
 import logging
+from typing import Any, Dict, Tuple
+
 import pandas as pd
-from typing import Dict, Any, Tuple
+
 from varidex.core.classifier.config import ACMGConfig
-from varidex.core.models import VariantData, ACMGEvidenceSet
 from varidex.core.classifier.evidence_assignment_pm2 import assign_evidence_codes
+from varidex.core.models import ACMGEvidenceSet, VariantData
 
 logger = logging.getLogger(__name__)
 

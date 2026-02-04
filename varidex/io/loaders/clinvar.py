@@ -32,23 +32,24 @@ v6.2.0 Changes:
 - Better user feedback during processing
 """
 
-import pandas as pd
 import gzip
-import re
-import logging
 import json
+import logging
+import re
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Callable, Set
+from typing import Any, Callable, Dict, List, Optional, Set
+
+import pandas as pd
 from tqdm import tqdm
-from varidex.version import __version__
-from varidex.exceptions import DataLoadError, ValidationError, FileProcessingError
-# Normalization handled elsewhere
+
+from varidex.exceptions import DataLoadError, FileProcessingError, ValidationError
 
 # Import parallel validators
-from varidex.io.validators_parallel import (
-    validate_position_ranges_parallel,
-    filter_valid_chromosomes_parallel,
-)
+from varidex.io.validators_parallel import validate_position_ranges_parallel
+from varidex.version import __version__
+
+# Normalization handled elsewhere
+
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -97,10 +98,7 @@ CLINVAR_COLUMNS: Dict[str, List[str]] = {
     "position": ["Start", "PositionVCF", "position", "pos"],
 }
 
-from varidex.io.validators_parallel import (
-    validate_position_ranges_parallel,
-    filter_valid_chromosomes_parallel,
-)
+from varidex.io.validators_parallel import validate_position_ranges_parallel
 
 
 def count_file_lines(filepath: Path) -> int:

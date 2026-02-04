@@ -13,14 +13,14 @@ Author: VariDex Team
 License: MIT
 """
 
-from varidex.version import version, get_version
 from varidex.exceptions import (
-    VaridexError,
-    ValidationError,
-    DataLoadError,
     ClassificationError,
+    DataLoadError,
     ReportError,
+    ValidationError,
+    VaridexError,
 )
+from varidex.version import get_version, version
 
 __version__ = version
 __all__ = [

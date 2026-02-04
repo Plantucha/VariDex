@@ -11,11 +11,12 @@ Fixes:
 - Better error handling
 """
 
-import pysam
-from pathlib import Path
-from typing import Optional, Dict, Tuple, Union, List
 import logging
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional, Tuple, Union
+
+import pysam
 
 logger = logging.getLogger(__name__)
 

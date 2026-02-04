@@ -11,14 +11,12 @@ Target: Increase coverage by testing uncovered integration paths.
 Black formatted with 88-char line limit.
 """
 
-import pytest
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import List, Dict, Any, Optional
-import pandas as pd
 
-from varidex.exceptions import DataLoadError, FileProcessingError, ValidationError
+import pandas as pd
+import pytest
+
+from varidex.exceptions import DataLoadError, ValidationError
 
 pytestmark = pytest.mark.unit
 

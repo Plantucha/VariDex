@@ -9,14 +9,16 @@ Development version - not for production use.
 """
 
 import csv
-import json
 import html
+import json
+import logging
 import re
 from pathlib import Path
-from typing import Dict, Optional, List, Union
+from typing import Dict, List, Optional, Union
+
 import pandas as pd
+
 from varidex.version import __version__
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ from varidex.version import __version__
 
 try:
     from varidex.integrations.gnomad_annotator import (
-        GnomADAnnotator,
         AnnotationConfig,
+        GnomADAnnotator,
         annotate_variants,
     )
 
@@ -17,10 +17,7 @@ except ImportError:
     GNOMAD_ANNOTATOR_AVAILABLE = False
 
 try:
-    from varidex.integrations.gnomad_client import (
-        GnomadClient,
-        GnomadVariantFrequency,
-    )
+    from varidex.integrations.gnomad_client import GnomadClient, GnomadVariantFrequency
 
     GNOMAD_CLIENT_AVAILABLE = True
 except ImportError:

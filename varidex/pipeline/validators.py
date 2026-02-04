@@ -2,9 +2,8 @@
 Pipeline validation functions for genomic variant data.
 """
 
-from typing import Optional
-from pathlib import Path
 import gzip
+from pathlib import Path
 
 from varidex.exceptions import ValidationError
 

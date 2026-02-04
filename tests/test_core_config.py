@@ -7,11 +7,11 @@ Tests cover:
 - Error conditions
 """
 
-import pytest
-import tempfile
 import os
+import tempfile
 from pathlib import Path
-from typing import Any, Dict
+
+import pytest
 
 from varidex.core.config import VariDexConfig
 from varidex.core.exceptions import ConfigurationError

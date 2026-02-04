@@ -28,8 +28,8 @@ Version: 6.5.0-dev
 Fixes: PM2 typo, gnomAD integration, column naming standardization
 """
 
-from typing import Set, Optional, Dict, Any
 import logging
+from typing import Any, Dict, Optional, Set
 
 logger = logging.getLogger(__name__)
 

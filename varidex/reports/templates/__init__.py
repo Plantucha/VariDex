@@ -1,4 +1,3 @@
-from varidex.reports.templates import generate_html_template
 from varidex.version import get_version
 
 """

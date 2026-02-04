@@ -15,10 +15,9 @@ Author: VariDex Team
 Version: 6.5.0-dev
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-import pandas as pd
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 
 
 class TestPM2EvidenceCode:
@@ -157,8 +156,9 @@ class TestVCFInfoFieldParsing:
 
     def test_safe_get_info_value_list(self):
         """Test parsing list-valued INFO fields."""
-        from varidex.integrations.gnomad.query import GnomADQuerier
         from pathlib import Path
+
+        from varidex.integrations.gnomad.query import GnomADQuerier
 
         querier = GnomADQuerier(Path("/tmp/gnomad"))
 
@@ -179,8 +179,9 @@ class TestVCFInfoFieldParsing:
 
     def test_safe_get_info_value_scalar(self):
         """Test parsing scalar-valued INFO fields."""
-        from varidex.integrations.gnomad.query import GnomADQuerier
         from pathlib import Path
+
+        from varidex.integrations.gnomad.query import GnomADQuerier
 
         querier = GnomADQuerier(Path("/tmp/gnomad"))
 
@@ -198,8 +199,9 @@ class TestVCFInfoFieldParsing:
 
     def test_safe_get_info_value_missing(self):
         """Test handling missing INFO fields."""
-        from varidex.integrations.gnomad.query import GnomADQuerier
         from pathlib import Path
+
+        from varidex.integrations.gnomad.query import GnomADQuerier
 
         querier = GnomADQuerier(Path("/tmp/gnomad"))
 
@@ -300,8 +302,9 @@ class TestGnomADClient:
 
     def test_client_rate_limiting(self):
         """Test client rate limiting."""
-        from varidex.integrations.gnomad_client import RateLimiter
         import time
+
+        from varidex.integrations.gnomad_client import RateLimiter
 
         limiter = RateLimiter(max_requests=2, time_window=1)
 

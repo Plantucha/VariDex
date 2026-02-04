@@ -5,7 +5,6 @@ Development version - not marked as production
 
 import logging
 from typing import Dict, Optional
-import numpy as np
 
 logger = logging.getLogger(__name__)
 

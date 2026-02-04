@@ -4,19 +4,20 @@ Tests system behavior under error conditions, recovery mechanisms,
 and graceful degradation.
 """
 
-import pytest
-import pandas as pd
-import tempfile
 import os
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+import tempfile
+from unittest.mock import Mock, patch
+
+import pandas as pd
+import pytest
+
 from varidex.exceptions import (
-    VariDexError,
-    ValidationError,
-    DataIntegrityError,
     ConfigurationError,
+    DataIntegrityError,
     DownloadError,
     ProcessingError,
+    ValidationError,
+    VariDexError,
 )
 
 

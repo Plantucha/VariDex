@@ -4,12 +4,12 @@ Parallel gnomAD annotator using multiprocessing
 """
 
 import logging
-from pathlib import Path
-from typing import Optional
-import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from tqdm import tqdm
+from pathlib import Path
+
+import pandas as pd
 import pysam
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 

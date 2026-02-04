@@ -4,9 +4,7 @@ Black formatted with 88-char line limit.
 """
 
 from pathlib import Path
-from unittest.mock import Mock, patch
 
-import pandas as pd
 import pytest
 
 from varidex.core.models import GenomicVariant

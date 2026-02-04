@@ -3,9 +3,10 @@ gnomAD annotator - Auto-optimized for any system
 """
 
 import logging
-import pandas as pd
 import multiprocessing as mp
 from pathlib import Path
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +92,9 @@ def annotate_with_gnomad(
     except ImportError:
         # Fall back to sequential (old method)
         logger.warning("Parallel module not available, using sequential method")
-        from varidex.integrations.gnomad import GnomADQuerier
         from tqdm import tqdm
+
+        from varidex.integrations.gnomad import GnomADQuerier
 
         frequencies = []
         with GnomADQuerier(gnomad_dir) as querier:

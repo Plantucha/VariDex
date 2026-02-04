@@ -4,16 +4,13 @@ Black formatted with 88-char line limit.
 """
 
 import gzip
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
 
 from varidex.core.config import Config
-from varidex.core.models import GenomicVariant, VariantAnnotation
-from varidex.exceptions import PipelineError, ValidationError
+from varidex.exceptions import ValidationError
 
 
 @pytest.mark.integration

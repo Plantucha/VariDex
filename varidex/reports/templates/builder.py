@@ -6,10 +6,10 @@ Generates secure HTML reports with CSP Level 3 and XSS protection.
 VERSION: 6.0.0 | AUTHOR: VariDex Team
 """
 
+import html
+import logging
 import os
 import secrets
-import logging
-import html
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -19,8 +19,8 @@ except ImportError:
     __version__ = "6.0.0"
 
 from varidex.reports.templates.components import (
-    build_stats_dashboard,
     build_classification_legend,
+    build_stats_dashboard,
     build_truncation_warning,
 )
 

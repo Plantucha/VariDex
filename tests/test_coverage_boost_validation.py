@@ -11,9 +11,8 @@ Target: Increase coverage by testing uncovered validation branches.
 Black formatted with 88-char line limit.
 """
 
-import pytest
-from typing import Optional, Dict, Any
 import pandas as pd
+import pytest
 
 from varidex.core.models import Variant, VariantData
 from varidex.exceptions import ValidationError

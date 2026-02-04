@@ -6,9 +6,9 @@ Population frequency-based ACMG criteria (PM2, BA1, BS1).
 Development version - not for production use.
 """
 
-from typing import Optional, Dict
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 

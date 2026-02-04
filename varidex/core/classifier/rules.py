@@ -7,11 +7,11 @@ ACMG 2015 evidence combination and conflict resolution logic.
 Reference: Richards et al. 2015, PMID 25741868, Table 5
 """
 
-from typing import Tuple, List
 import logging
+from typing import List, Tuple
 
-from varidex.core.models import ACMGEvidenceSet
 from varidex.core.classifier.config import ACMGConfig
+from varidex.core.models import ACMGEvidenceSet
 
 logger = logging.getLogger(__name__)
 

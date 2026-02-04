@@ -15,6 +15,7 @@ Notes:
 from __future__ import annotations
 
 from typing import Dict, Optional, Sequence
+
 import pandas as pd
 
 from varidex.exceptions import ValidationError

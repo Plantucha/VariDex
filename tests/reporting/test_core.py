@@ -1,10 +1,9 @@
 """Core reporting tests - 45 tests (self-contained)."""
 
-from src.reporting.models import AnnotatedVariant
-import pytest
 import pandas as pd
-from pathlib import Path
-from src.reporting.core import ReportGenerator, QCDashboard
+import pytest
+
+from src.reporting.core import QCDashboard, ReportGenerator
 from src.reporting.models import AnnotatedVariant
 
 

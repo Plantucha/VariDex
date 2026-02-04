@@ -9,9 +9,10 @@ Version: 1.0.1-dev
 
 import logging
 from typing import Set
-from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
+
 from varidex.core.classifier.config import ACMGConfig
+from varidex.core.config import LOF_GENES, MISSENSE_RARE_GENES
+from varidex.core.models import ACMGEvidenceSet, VariantData
 
 logger = logging.getLogger(__name__)
 

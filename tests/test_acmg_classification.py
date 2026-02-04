@@ -1,8 +1,8 @@
 """Comprehensive tests for ACMG variant classification."""
 
 import pytest
-from typing import Dict, Any
-from varidex.core.models import Variant, ACMGCriteria, PathogenicityClass
+
+from varidex.core.models import ACMGCriteria, PathogenicityClass, Variant
 
 
 class TestACMGCriteriaBasics:

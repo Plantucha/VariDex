@@ -8,14 +8,9 @@ Tests cover:
 """
 
 import pytest
-from typing import Dict, Any, Optional
 
-from varidex.core.models import (
-    Variant,
-    AnnotatedVariant,
-    VariantClassification,
-)
 from varidex.core.exceptions import ValidationError
+from varidex.core.models import AnnotatedVariant, Variant, VariantClassification
 
 
 class TestVariantCreation:

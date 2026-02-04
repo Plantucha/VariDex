@@ -1,5 +1,4 @@
 import pytest
-from src.pipeline.variant_processor import *
 
 
 def test_pipeline():

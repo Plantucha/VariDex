@@ -5,13 +5,12 @@ Updates: First Thursday of each month
 Version: 2026-01-24-v2 (Bandit B310 security fix + ResourceDownloader class)
 """
 
-import os
-import sys
 import datetime
 import shutil
+import sys
 import urllib.request
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 
 # Configuration

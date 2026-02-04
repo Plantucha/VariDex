@@ -1,8 +1,8 @@
 """CLI reporting tests (20 tests)."""
 
-from src.reporting.models import AnnotatedVariant
 import pytest
 from click.testing import CliRunner
+
 from src.reporting.cli import reporting
 
 

@@ -7,18 +7,19 @@ Complete pipeline orchestrator with 13-code ACMG classification.
 Version: 2.0.0-dev
 """
 
-import logging
 import argparse
-from pathlib import Path
+import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 import pandas as pd
 
 from varidex.io.loaders.clinvar import load_clinvar_vcf
 from varidex.io.loaders.user import load_user_file
-from varidex.pipeline.matcher import match_variants
-from varidex.pipeline.gnomad_annotator_local import annotate_with_gnomad_local
 from varidex.pipeline.acmg_classifier_stage import apply_full_acmg_classification
+from varidex.pipeline.gnomad_annotator_local import annotate_with_gnomad_local
+from varidex.pipeline.matcher import match_variants
 
 logger = logging.getLogger(__name__)
 

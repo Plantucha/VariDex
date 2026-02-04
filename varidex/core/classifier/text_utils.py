@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Text processing utilities for ACMG classifier."""
 
-from typing import Optional, List
 from functools import lru_cache
+from typing import List, Optional
+
 import pandas as pd
 
 

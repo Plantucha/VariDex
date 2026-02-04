@@ -4,16 +4,17 @@ Target: 100% coverage of varidex/exceptions.py
 """
 
 import pytest
+
 from varidex.exceptions import (
-    VaridexError,
-    ValidationError,
-    DataLoadError,
     ClassificationError,
-    ReportError,
-    FileProcessingError,
+    DataLoadError,
     ErrorCode,
-    validate_not_none,
+    FileProcessingError,
+    ReportError,
+    ValidationError,
+    VaridexError,
     validate_not_empty,
+    validate_not_none,
 )
 
 pytestmark = pytest.mark.unit

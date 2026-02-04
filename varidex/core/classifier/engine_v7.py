@@ -22,17 +22,17 @@ Disabled Evidence (18 codes):
 Reference: Richards et al. 2015, PMID 25741868
 """
 
-from typing import Tuple, Optional, Dict, Any
 import logging
 import time
+from typing import Any, Dict, Optional, Tuple
 
-from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.classifier.engine import ACMGClassifier
 from varidex.core.classifier.config import ACMGConfig
+from varidex.core.classifier.engine import ACMGClassifier
+from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.services.population_frequency import (
-    PopulationFrequencyService,
-    InheritanceMode,
     FrequencyThresholds,
+    InheritanceMode,
+    PopulationFrequencyService,
 )
 from varidex.integrations.gnomad_client import GnomadClient
 

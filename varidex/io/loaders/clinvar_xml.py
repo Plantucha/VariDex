@@ -12,7 +12,7 @@ Performance:
 import gzip
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 import pandas as pd
 from lxml import etree
@@ -204,8 +204,8 @@ def load_clinvar_xml_indexed(
     """
     from varidex.io.indexers.clinvar_xml_index import (
         build_xml_index,
-        get_offsets_for_chromosomes,
         extract_variants_at_offsets,
+        get_offsets_for_chromosomes,
     )
 
     logger.info(f"Loading ClinVar XML (indexed): {filepath.name}")

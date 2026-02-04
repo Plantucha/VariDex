@@ -1,9 +1,9 @@
 """Comprehensive tests for data validation and sanitization."""
 
-import pytest
+from typing import List, Optional
+
 import pandas as pd
-from typing import Optional, List
-from pathlib import Path
+import pytest
 
 
 class TestVariantDataValidation:

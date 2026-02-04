@@ -24,17 +24,15 @@ Disabled Evidence (16 codes):
 Reference: Richards et al. 2015, PMID 25741868
 """
 
-from typing import Tuple, Optional, Dict, Any
 import logging
 import time
+from typing import Any, Dict, Optional, Tuple
 
-from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.classifier.engine_v7 import ACMGClassifierV7
 from varidex.core.classifier.config import ACMGConfig
+from varidex.core.classifier.engine_v7 import ACMGClassifierV7
+from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.services.computational_prediction import (
-    ComputationalPredictionService,
-    PredictionThresholds,
-)
+    ComputationalPredictionService, PredictionThresholds)
 from varidex.integrations.dbnsfp_client import DbNSFPClient
 
 logger = logging.getLogger(__name__)

@@ -17,13 +17,12 @@ Strategy:
 - Test format variations and fallbacks
 """
 
-import pytest
-import pandas as pd
-import tempfile
 import os
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import sys
+import tempfile
+from unittest.mock import patch
+
+import pandas as pd
+import pytest
 
 # ============================================================================
 # PIPELINE STAGES COVERAGE GAPS
@@ -321,6 +320,7 @@ class TestIntegrationsCoverage:
         """Test gnomAD timeout handling."""
         try:
             import requests
+
             from varidex.integrations.gnomad import GnomADClient
 
             mock_get.side_effect = requests.exceptions.Timeout()
@@ -358,9 +358,9 @@ class TestExceptionsCoverage:
         """Test that custom exceptions are defined."""
         try:
             from varidex.exceptions import (
-                VariDexException,
-                ValidationError,
                 ConfigurationError,
+                ValidationError,
+                VariDexException,
             )
 
             # Verify exceptions can be raised
@@ -378,7 +378,7 @@ class TestExceptionsCoverage:
     def test_exception_hierarchy(self):
         """Test exception inheritance."""
         try:
-            from varidex.exceptions import VariDexException, ValidationError
+            from varidex.exceptions import ValidationError, VariDexException
 
             # ValidationError should inherit from VariDexException
             assert issubclass(ValidationError, (VariDexException, Exception))
@@ -409,6 +409,7 @@ class TestDownloaderCoverage:
         """Test download timeout handling."""
         try:
             import requests
+
             from varidex.downloader import download_file
 
             mock_get.side_effect = requests.exceptions.Timeout()

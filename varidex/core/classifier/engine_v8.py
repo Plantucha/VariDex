@@ -24,13 +24,13 @@ Disabled Evidence (16 codes):
 Reference: Richards et al. 2015, PMID 25741868
 """
 
-from typing import Tuple, Optional, Dict, Any
 import logging
 import time
+from typing import Any, Dict, Optional, Tuple
 
-from varidex.core.models import ACMGEvidenceSet, VariantData
-from varidex.core.classifier.engine_v7 import ACMGClassifierV7
 from varidex.core.classifier.config import ACMGConfig
+from varidex.core.classifier.engine_v7 import ACMGClassifierV7
+from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.services.computational_prediction import (
     ComputationalPredictionService,
     PredictionThresholds,
@@ -124,11 +124,11 @@ class ACMGClassifierV8(ACMGClassifierV7):
 
         # V8 TRIPLE MATCHING ENGINE (ClinVar + dbNSFP + gnomAD)
         try:
-            from varidex.io.matching import VariantMatcherV8
             from pathlib import Path
 
             # PM1 SpliceAI (ACMG Phase 1)
             from varidex.acmg.splice import SpliceACMG
+            from varidex.io.matching import VariantMatcherV8
 
             splice = SpliceACMG()
             result = splice.score(variant.chrom, variant.pos, variant.ref, variant.alt)
