@@ -143,7 +143,9 @@ class GnomADLoader:
                         except Exception as e:
                             logger.warning(f"   ✗ Failed to index chr{chrom}: {e}")
                     else:
-                        logger.warning("⚠️  Missing index for chr%s: %s", chrom, index_path))
+                        logger.warning(
+                            "⚠️  Missing index for chr%s: %s", chrom, index_path
+                        )
 
         return available
 
