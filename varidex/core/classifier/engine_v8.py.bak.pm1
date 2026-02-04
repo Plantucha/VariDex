@@ -32,9 +32,7 @@ from varidex.core.classifier.config import ACMGConfig
 from varidex.core.classifier.engine_v7 import ACMGClassifierV7
 from varidex.core.models import ACMGEvidenceSet, VariantData
 from varidex.core.services.computational_prediction import (
-    ComputationalPredictionService,
-    PredictionThresholds,
-)
+    ComputationalPredictionService, PredictionThresholds)
 from varidex.integrations.dbnsfp_client import DbNSFPClient
 
 logger = logging.getLogger(__name__)

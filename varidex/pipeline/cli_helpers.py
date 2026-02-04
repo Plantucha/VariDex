@@ -63,8 +63,7 @@ def print_completion_summary(
 
 def print_usage() -> None:
     """Print CLI usage information."""
-    print(
-        """
+    print("""
 CLINVAR-WGS PIPELINE v7.0.0-dev
 
 USAGE:
@@ -97,5 +96,4 @@ OUTPUT:
 
 ⚠️ RESEARCH USE ONLY
    Reference: Richards et al. 2015, PMID 25741868
-"""
-    )
+""")

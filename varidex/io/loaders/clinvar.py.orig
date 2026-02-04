@@ -20,7 +20,8 @@ from typing import Any, Callable, Dict, List, Optional
 import pandas as pd
 from tqdm import tqdm
 
-from varidex.exceptions import DataLoadError, FileProcessingError, ValidationError
+from varidex.exceptions import (DataLoadError, FileProcessingError,
+                                ValidationError)
 from varidex.io.normalization import normalize_dataframe_coordinates
 
 logger: logging.Logger = logging.getLogger(__name__)
