@@ -1,9 +1,17 @@
 from dataclasses import dataclass, field
 from typing import *
+
+
 @dataclass
-class Variant: pass
+class Variant:
+    pass
+
+
 @dataclass
-class NormalizedVariant: pass
+class NormalizedVariant:
+    pass
+
+
 @dataclass
 class ProcessingStats:
     parsed_success: int = 1

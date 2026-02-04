@@ -1,0 +1,103 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0 -- /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex
+configfile: pytest.ini
+plugins: typeguard-4.4.4, hypothesis-6.151.3, cov-7.0.0
+collecting ... collected 16 items
+
+tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_single_variant_annotation FAILED [  6%]
+tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_variant_matching_workflow PASSED [ 12%]
+tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_multi_source_integration FAILED [ 18%]
+tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_pipeline_with_filtering PASSED [ 25%]
+tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_report_generation PASSED [ 31%]
+tests/test_integration_e2e.py::TestPerformanceIntegration::test_large_vcf_processing FAILED [ 37%]
+tests/test_integration_e2e.py::TestPerformanceIntegration::test_concurrent_matching_performance PASSED [ 43%]
+tests/test_integration_e2e.py::TestPerformanceIntegration::test_memory_efficient_processing FAILED [ 50%]
+tests/test_integration_e2e.py::TestDataIntegrity::test_roundtrip_vcf_to_dataframe FAILED [ 56%]
+tests/test_integration_e2e.py::TestDataIntegrity::test_coordinate_system_consistency PASSED [ 62%]
+tests/test_integration_e2e.py::TestDataIntegrity::test_allele_normalization_integrity FAILED [ 68%]
+tests/test_integration_e2e.py::TestErrorRecovery::test_pipeline_handles_malformed_input FAILED [ 75%]
+tests/test_integration_e2e.py::TestErrorRecovery::test_pipeline_handles_missing_files PASSED [ 81%]
+tests/test_integration_e2e.py::TestErrorRecovery::test_pipeline_partial_failure_recovery PASSED [ 87%]
+tests/test_integration_e2e.py::TestConfigurationIntegration::test_config_affects_pipeline_behavior PASSED [ 93%]
+tests/test_integration_e2e.py::TestConfigurationIntegration::test_config_persistence PASSED [100%]
+
+=================================== FAILURES ===================================
+___________ TestEndToEndPipeline.test_e2e_single_variant_annotation ____________
+tests/test_integration_e2e.py:32: in test_e2e_single_variant_annotation
+    vcf_file.write_text(vcf_content)
+/usr/lib/python3.13/pathlib/_local.py:557: in write_text
+    return PathBase.write_text(self, data, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.13/pathlib/_abc.py:651: in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'MockFile' object does not support the context manager protocol
+____________ TestEndToEndPipeline.test_e2e_multi_source_integration ____________
+tests/test_integration_e2e.py:84: in test_e2e_multi_source_integration
+    vcf_file.write_text(vcf_content)
+/usr/lib/python3.13/pathlib/_local.py:557: in write_text
+    return PathBase.write_text(self, data, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.13/pathlib/_abc.py:651: in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'MockFile' object does not support the context manager protocol
+_____________ TestPerformanceIntegration.test_large_vcf_processing _____________
+tests/test_integration_e2e.py:186: in test_large_vcf_processing
+    with vcf_file.open("w") as f:
+         ^^^^^^^^^^^^^^^^^^
+E   TypeError: 'MockFile' object does not support the context manager protocol
+_________ TestPerformanceIntegration.test_memory_efficient_processing __________
+tests/test_integration_e2e.py:252: in test_memory_efficient_processing
+    assert total_variants == n_variants
+E   assert 10000 == 100000
+______________ TestDataIntegrity.test_roundtrip_vcf_to_dataframe _______________
+tests/test_integration_e2e.py:267: in test_roundtrip_vcf_to_dataframe
+    original_vcf.write_text(vcf_content)
+/usr/lib/python3.13/pathlib/_local.py:557: in write_text
+    return PathBase.write_text(self, data, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.13/pathlib/_abc.py:651: in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'MockFile' object does not support the context manager protocol
+____________ TestDataIntegrity.test_allele_normalization_integrity _____________
+tests/test_integration_e2e.py:327: in test_allele_normalization_integrity
+    assert (
+E   AssertionError: assert ('' == 'T'
+E     
+E     - T or 'T' == ''
+E     
+E     + T)
+___________ TestErrorRecovery.test_pipeline_handles_malformed_input ____________
+tests/test_integration_e2e.py:340: in test_pipeline_handles_malformed_input
+    malformed_vcf.write_text("This is not a valid VCF file")
+/usr/lib/python3.13/pathlib/_local.py:557: in write_text
+    return PathBase.write_text(self, data, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.13/pathlib/_abc.py:651: in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'MockFile' object does not support the context manager protocol
+=============================== warnings summary ===============================
+varidex/core/config.py:764
+  /media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/core/config.py:764: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class VariDexConfig(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_single_variant_annotation - TypeError: 'MockFile' object does not support the context manager protocol
+FAILED tests/test_integration_e2e.py::TestEndToEndPipeline::test_e2e_multi_source_integration - TypeError: 'MockFile' object does not support the context manager protocol
+FAILED tests/test_integration_e2e.py::TestPerformanceIntegration::test_large_vcf_processing - TypeError: 'MockFile' object does not support the context manager protocol
+FAILED tests/test_integration_e2e.py::TestPerformanceIntegration::test_memory_efficient_processing - assert 10000 == 100000
+FAILED tests/test_integration_e2e.py::TestDataIntegrity::test_roundtrip_vcf_to_dataframe - TypeError: 'MockFile' object does not support the context manager protocol
+FAILED tests/test_integration_e2e.py::TestDataIntegrity::test_allele_normalization_integrity - AssertionError: assert ('' == 'T'
+  
+  - T or 'T' == ''
+  
+  + T)
+FAILED tests/test_integration_e2e.py::TestErrorRecovery::test_pipeline_handles_malformed_input - TypeError: 'MockFile' object does not support the context manager protocol
+==================== 7 failed, 9 passed, 1 warning in 0.47s ====================

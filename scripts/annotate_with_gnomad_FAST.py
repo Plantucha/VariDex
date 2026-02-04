@@ -6,13 +6,19 @@ Uses the commit c11e7e4 implementation
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Patch tqdm
 import tqdm.std as tqdm_std
+
 original_tqdm_init = tqdm_std.tqdm.__init__
+
+
 def patched_tqdm_init(self, *args, **kwargs):
     original_tqdm_init(self, *args, **kwargs)
+
+
 tqdm_std.tqdm.__init__ = patched_tqdm_init
 
 import pandas as pd
@@ -57,9 +63,7 @@ start_annot = time.time()
 
 # Use the FAST parallel version with 6 workers
 matched_annotated = annotate_with_gnomad_parallel(
-    matched,
-    Path("gnomad"),
-    n_workers=6  # Same as original fast version
+    matched, Path("gnomad"), n_workers=6  # Same as original fast version
 )
 
 elapsed_annot = time.time() - start_annot
@@ -97,8 +101,8 @@ print(f"  🟢 BS1 (1-5%):   {bs1:,} variants")
 print(f"  🔴 PM2 (<0.01%): {pm2:,} variants")
 
 pathogenic_pm2 = result[
-    (result['PM2'] == True) & 
-    (result['clinical_sig'].str.contains('athogenic', na=False, case=False))
+    (result["PM2"] == True)
+    & (result["clinical_sig"].str.contains("athogenic", na=False, case=False))
 ]
 print(f"\n⭐ Pathogenic + PM2: {len(pathogenic_pm2):,} variants")
 

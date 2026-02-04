@@ -41,25 +41,25 @@ class SecuritySanitizer:
     """
 
     # Dangerous CSV formula prefixes per OWASP guidelines
-    CSV_FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+    CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
     # Gene name pattern: alphanumeric, hyphen, underscore only
-    GENE_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
+    GENE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
     # rsID pattern: rs followed by digits
-    RSID_PATTERN = re.compile(r'^rs\d+$')
+    RSID_PATTERN = re.compile(r"^rs\d+$")
 
     # ACMG evidence code pattern (NEW)
-    ACMG_CODE_PATTERN = re.compile(r'^(PVS|PS|PM|PP|BA|BS|BP)\d+$')
+    ACMG_CODE_PATTERN = re.compile(r"^(PVS|PS|PM|PP|BA|BS|BP)\d+$")
 
     # Valid ACMG classifications (NEW)
     VALID_CLASSIFICATIONS = {
-        'Pathogenic',
-        'Likely pathogenic',
-        'Uncertain significance',
-        'VUS',  # Alias for Uncertain significance
-        'Likely benign',
-        'Benign'
+        "Pathogenic",
+        "Likely pathogenic",
+        "Uncertain significance",
+        "VUS",  # Alias for Uncertain significance
+        "Likely benign",
+        "Benign",
     }
 
     @staticmethod
@@ -300,14 +300,14 @@ class SecuritySanitizer:
 
         # Basic HGVS patterns
         patterns = [
-            r'^[cgmnpr]\.',  # Prefix (c., g., m., n., p., r.)
-            r'\d+',          # Position
-            r'[A-Z]',        # Base or amino acid
+            r"^[cgmnpr]\.",  # Prefix (c., g., m., n., p., r.)
+            r"\d+",  # Position
+            r"[A-Z]",  # Base or amino acid
         ]
 
         # Check for basic structure
-        has_prefix = bool(re.match(r'^[cgmnpr]\.', hgvs_str))
-        has_number = bool(re.search(r'\d+', hgvs_str))
+        has_prefix = bool(re.match(r"^[cgmnpr]\.", hgvs_str))
+        has_number = bool(re.search(r"\d+", hgvs_str))
 
         return has_prefix and has_number
 
@@ -324,7 +324,7 @@ class SecuritySanitizer:
         """
         df_safe = df.copy()
 
-        for col in df_safe.select_dtypes(include=['object']).columns:
+        for col in df_safe.select_dtypes(include=["object"]).columns:
             df_safe[col] = df_safe[col].apply(SecuritySanitizer.sanitize_csv_value)
 
         logger.info(f"Sanitized {len(df_safe.columns)} columns for CSV export")
@@ -343,7 +343,7 @@ class SecuritySanitizer:
         """
         df_safe = df.copy()
 
-        for col in df_safe.select_dtypes(include=['object']).columns:
+        for col in df_safe.select_dtypes(include=["object"]).columns:
             df_safe[col] = df_safe[col].apply(SecuritySanitizer.sanitize_html)
 
         logger.info(f"Sanitized {len(df_safe.columns)} columns for HTML export")
@@ -366,7 +366,7 @@ class PerformanceOptimizer:
         items: List[Any],
         process_func: Callable[[List[Any]], Any],
         batch_size: int = 1000,
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> List[Any]:
         """
         Process items in batches with optional progress reporting.
@@ -398,7 +398,7 @@ class PerformanceOptimizer:
         total = len(items)
 
         for i in range(0, total, batch_size):
-            batch = items[i:i + batch_size]
+            batch = items[i : i + batch_size]
             batch_results = process_func(batch)
 
             # Handle both list and single returns
@@ -443,18 +443,21 @@ class PerformanceOptimizer:
             return df
 
         # Check for required columns
-        required = ['chromosome', 'position', 'ref_allele', 'alt_allele']
+        required = ["chromosome", "position", "ref_allele", "alt_allele"]
         missing = set(required) - set(df.columns)
         if missing:
             logger.warning(f"Missing columns for coordinate key: {missing}")
             return df
 
         # Vectorized string concatenation (much faster than apply)
-        df['coord_key'] = (
-            df['chromosome'].astype(str) + ':' +
-            df['position'].astype(str) + ':' +
-            df['ref_allele'].astype(str) + ':' +
-            df['alt_allele'].astype(str)
+        df["coord_key"] = (
+            df["chromosome"].astype(str)
+            + ":"
+            + df["position"].astype(str)
+            + ":"
+            + df["ref_allele"].astype(str)
+            + ":"
+            + df["alt_allele"].astype(str)
         )
 
         logger.info(f"Generated {len(df)} coordinate keys (vectorized)")
@@ -487,24 +490,24 @@ class PerformanceOptimizer:
         original_mem = df.memory_usage(deep=True).sum() / 1024**2
 
         # Downcast integers
-        int_cols = df_optimized.select_dtypes(include=['int']).columns
+        int_cols = df_optimized.select_dtypes(include=["int"]).columns
         for col in int_cols:
-            df_optimized[col] = pd.to_numeric(df_optimized[col], downcast='integer')
+            df_optimized[col] = pd.to_numeric(df_optimized[col], downcast="integer")
 
         # Downcast floats
-        float_cols = df_optimized.select_dtypes(include=['float']).columns
+        float_cols = df_optimized.select_dtypes(include=["float"]).columns
         for col in float_cols:
-            df_optimized[col] = pd.to_numeric(df_optimized[col], downcast='float')
+            df_optimized[col] = pd.to_numeric(df_optimized[col], downcast="float")
 
         # Convert low-cardinality object columns to category
-        obj_cols = df_optimized.select_dtypes(include=['object']).columns
+        obj_cols = df_optimized.select_dtypes(include=["object"]).columns
         for col in obj_cols:
             num_unique = df_optimized[col].nunique()
             num_total = len(df_optimized[col])
 
             # If less than 50% unique values, use category dtype
             if num_total > 0 and (num_unique / num_total) < 0.5:
-                df_optimized[col] = df_optimized[col].astype('category')
+                df_optimized[col] = df_optimized[col].astype("category")
 
         optimized_mem = df_optimized.memory_usage(deep=True).sum() / 1024**2
         savings_pct = ((original_mem - optimized_mem) / original_mem) * 100
@@ -522,7 +525,7 @@ class PerformanceOptimizer:
         output_dir: Path,
         base_name: str,
         max_variants: int = 10000,
-        stratify_by: str = 'classification'
+        stratify_by: str = "classification",
     ) -> List[Path]:
         """
         Split large datasets into stratified files to prevent memory issues.
@@ -552,7 +555,7 @@ class PerformanceOptimizer:
         # Small dataset - single file is fine
         if len(df) <= max_variants:
             output_path = output_dir / f"{base_name}.json"
-            df.to_json(output_path, orient='records', indent=2)
+            df.to_json(output_path, orient="records", indent=2)
             logger.info(f"Exported {len(df)} variants to {output_path.name}")
             return [output_path]
 
@@ -564,11 +567,12 @@ class PerformanceOptimizer:
                 category_df = df[df[stratify_by] == category]
 
                 # Sanitize category name for filename
-                safe_category = re.sub(r'[^a-z0-9_]', '', 
-                                      str(category).lower().replace(' ', '_'))
+                safe_category = re.sub(
+                    r"[^a-z0-9_]", "", str(category).lower().replace(" ", "_")
+                )
                 output_path = output_dir / f"{base_name}_{safe_category}.json"
 
-                category_df.to_json(output_path, orient='records', indent=2)
+                category_df.to_json(output_path, orient="records", indent=2)
                 output_files.append(output_path)
 
                 logger.info(
@@ -580,10 +584,10 @@ class PerformanceOptimizer:
             logger.warning(f"Column '{stratify_by}' not found, splitting by chunks")
 
             for i, chunk_start in enumerate(range(0, len(df), max_variants)):
-                chunk = df.iloc[chunk_start:chunk_start + max_variants]
+                chunk = df.iloc[chunk_start : chunk_start + max_variants]
                 output_path = output_dir / f"{base_name}_part{i+1}.json"
 
-                chunk.to_json(output_path, orient='records', indent=2)
+                chunk.to_json(output_path, orient="records", indent=2)
                 output_files.append(output_path)
 
                 logger.info(f"Exported chunk {i+1}: {len(chunk)} variants")
@@ -596,10 +600,7 @@ class ProgressReporter:
 
     @staticmethod
     def print_progress(
-        current: int,
-        total: int,
-        prefix: str = "Progress",
-        bar_length: int = 50
+        current: int, total: int, prefix: str = "Progress", bar_length: int = 50
     ):
         """
         Print progress bar to console.
@@ -618,12 +619,12 @@ class ProgressReporter:
 
         percent = (current / total) * 100
         filled = int(bar_length * current / total)
-        bar = '█' * filled + '-' * (bar_length - filled)
+        bar = "█" * filled + "-" * (bar_length - filled)
 
         print(
-            f'\r{prefix}: |{bar}| {percent:.1f}% ({current}/{total})',
-            end='',
-            flush=True
+            f"\r{prefix}: |{bar}| {percent:.1f}% ({current}/{total})",
+            end="",
+            flush=True,
         )
 
         if current >= total:
@@ -645,20 +646,22 @@ def benchmark_vectorization(num_variants: int = 10000) -> Dict[str, float]:
     import time
 
     # Create test data
-    df_test = pd.DataFrame({
-        'chromosome': ['1'] * num_variants,
-        'position': range(num_variants),
-        'ref_allele': ['A'] * num_variants,
-        'alt_allele': ['G'] * num_variants
-    })
+    df_test = pd.DataFrame(
+        {
+            "chromosome": ["1"] * num_variants,
+            "position": range(num_variants),
+            "ref_allele": ["A"] * num_variants,
+            "alt_allele": ["G"] * num_variants,
+        }
+    )
 
     # Method 1: Row-by-row (slow)
     df1 = df_test.copy()
     start = time.time()
-    df1['coord_key'] = df1.apply(
+    df1["coord_key"] = df1.apply(
         lambda row: f"{row['chromosome']}:{row['position']}:"
-                   f"{row['ref_allele']}:{row['alt_allele']}",
-        axis=1
+        f"{row['ref_allele']}:{row['alt_allele']}",
+        axis=1,
     )
     time_rowwise = time.time() - start
 
@@ -671,24 +674,24 @@ def benchmark_vectorization(num_variants: int = 10000) -> Dict[str, float]:
     speedup = time_rowwise / time_vectorized if time_vectorized > 0 else 0
 
     return {
-        'num_variants': num_variants,
-        'time_rowwise_sec': time_rowwise,
-        'time_vectorized_sec': time_vectorized,
-        'speedup_factor': speedup
+        "num_variants": num_variants,
+        "time_rowwise_sec": time_rowwise,
+        "time_vectorized_sec": time_vectorized,
+        "speedup_factor": speedup,
     }
 
 
 def main():
     """Self-test and demonstration."""
-    print("="*70)
+    print("=" * 70)
     print(f"VariDex Security & Performance Utilities v{__version__}")
     print("INTEGRATED with ACMG validation")
-    print("="*70)
+    print("=" * 70)
     print()
 
     # Test 1: Security (including ACMG)
     print("TEST 1: Security Sanitization (including ACMG)")
-    print("-"*70)
+    print("-" * 70)
 
     xss_test = "<script>alert('XSS')</script>BRCA1"
     xss_safe = SecuritySanitizer.sanitize_html(xss_test)
@@ -709,7 +712,7 @@ def main():
 
     # Test 2: Performance
     print("TEST 2: Performance Benchmarking")
-    print("-"*70)
+    print("-" * 70)
 
     print("Benchmarking coordinate key generation...")
     results = benchmark_vectorization(num_variants=5000)
@@ -723,13 +726,15 @@ def main():
 
     # Test 3: Memory optimization
     print("TEST 3: Memory Optimization")
-    print("-"*70)
+    print("-" * 70)
 
-    df_test = pd.DataFrame({
-        'position': [100, 200, 300] * 100,  # Repeating values
-        'score': [1.5, 2.3, 3.7] * 100,
-        'classification': ['Pathogenic', 'Benign', 'VUS'] * 100
-    })
+    df_test = pd.DataFrame(
+        {
+            "position": [100, 200, 300] * 100,  # Repeating values
+            "score": [1.5, 2.3, 3.7] * 100,
+            "classification": ["Pathogenic", "Benign", "VUS"] * 100,
+        }
+    )
 
     df_optimized = PerformanceOptimizer.optimize_dataframe_memory(df_test)
 
@@ -742,7 +747,7 @@ def main():
     print(f"✓ Savings: {savings:.1f}%")
 
     print()
-    print("="*70)
+    print("=" * 70)
     print("All tests passed! Ready for production use.")
     print()
     print("INTEGRATION NOTES:")
@@ -750,7 +755,7 @@ def main():
     print("  • Use sanitize_classification() for all variant reports")
     print("  • Use validate_hgvs() in user file loaders (Script 2)")
     print("  • Security features work with split file structure (Script 2)")
-    print("="*70)
+    print("=" * 70)
 
 
 if __name__ == "__main__":

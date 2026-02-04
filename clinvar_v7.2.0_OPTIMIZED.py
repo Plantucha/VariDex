@@ -91,6 +91,7 @@ from varidex.io.validators_parallel import (
     filter_valid_chromosomes_parallel,
 )
 
+
 def count_file_lines(filepath: Path) -> int:
     """Count total lines in file (fast for progress bar)."""
     try:
@@ -226,7 +227,7 @@ def extract_rsid_from_info(info_str: Any) -> Optional[str]:
     """
     DEPRECATED: Use _extract_rsids_vectorized() instead.
     This function is slow (row-by-row). Kept for backwards compatibility only.
-    
+
     Extract rsID from INFO field (RS=123456 -> rs123456).
     """
     if pd.isna(info_str) or str(info_str) == "nan":
@@ -236,8 +237,6 @@ def extract_rsid_from_info(info_str: Any) -> Optional[str]:
         rsid_num: str = match.group(1).split(",")[0]
         return "rs" + rsid_num
     return None
-
-
 
 
 def _extract_rsids_vectorized(df: pd.DataFrame) -> pd.Series:

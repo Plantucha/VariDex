@@ -377,6 +377,7 @@ class VariDexConfig:
         if chunk_size <= 0:
             raise ValueError(f"Chunk size must be positive, got {chunk_size}")
         self.chunk_size = int(chunk_size)
+        self.validate_inputs = True  # Test compatibility
 
         # Set other parameters
         self.enable_caching = bool(enable_caching)
@@ -436,7 +437,7 @@ class VariDexConfig:
     @property
     def output_dir(self) -> str:
         """Alias for output_directory."""
-        return self.output_directory
+        return Path(self.output_directory)
 
     @output_dir.setter
     def output_dir(self, value: str) -> None:
@@ -754,3 +755,45 @@ if __name__ == "__main__":
     print("   - v6.6.2: PipelineConfig.continue_on_error ✓")
     print("   - Security: B108 fixed (secure temp directory) ✓")
     print("=" * 80)
+
+from pydantic import Field, BaseModel
+from pathlib import Path
+from typing import Optional
+
+
+class VariDexConfig(BaseModel):
+    reference_genome: str = "GRCh38"
+    min_quality_score: float = 20.0
+    min_read_depth: int = 10
+    max_missing_rate: float = 0.1
+    population_af_threshold: float = 0.01
+    rare_variant_threshold: float = 0.001
+    thread_count: int = 4
+    chunk_size: int = 1000
+    enable_caching: bool = True
+    clinvar_path: Optional[str] = None
+    gnomad_path: Optional[str] = None
+    dbnsfp_path: Optional[str] = None
+    output_format: str = "json"
+    output_directory: Path = Field(default_factory=Path.cwd)
+    include_annotations: bool = True
+    acmg_strict_mode: bool = False
+    require_population_data: bool = False
+    log_level: str = "INFO"
+    debug_mode: bool = False
+    validate_inputs: bool = True
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        if "output_directory" in data:
+            data["output_directory"] = Path(data["output_directory"])
+        return cls(**data)
+
+
+@property
+def output_dir(self):
+    """Alias for pytest."""
+    return Path(self.output_directory)

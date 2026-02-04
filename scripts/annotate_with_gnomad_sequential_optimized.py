@@ -6,6 +6,7 @@ Sometimes sequential is faster for I/O-bound tasks!
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
@@ -14,9 +15,14 @@ from tqdm import tqdm
 
 # Patch tqdm
 import tqdm.std as tqdm_std
+
 original_tqdm_init = tqdm_std.tqdm.__init__
+
+
 def patched_tqdm_init(self, *args, **kwargs):
     original_tqdm_init(self, *args, **kwargs)
+
+
 tqdm_std.tqdm.__init__ = patched_tqdm_init
 
 from varidex.io.loaders.clinvar import load_clinvar_file
@@ -47,8 +53,9 @@ start_time = time.time()
 frequencies = []
 
 with GnomADQuerier(Path("gnomad")) as querier:
-    for idx, row in tqdm(matched.iterrows(), total=len(matched), 
-                         desc="Querying gnomAD", unit="var"):
+    for idx, row in tqdm(
+        matched.iterrows(), total=len(matched), desc="Querying gnomAD", unit="var"
+    ):
         try:
             result = querier.query(
                 str(row["chromosome"]),

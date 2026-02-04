@@ -1,18 +1,3 @@
-"""
-VariDex Utilities
-=================
+"""Coordinate utils."""
 
-Shared utility functions and helpers.
-
-Components:
-    - helpers: DataValidator, OptimizedProgressTracker
-    - security: Security validators
-
-Usage:
-    from varidex.utils.helpers import DataValidator
-"""
-
-from varidex.version import get_version
-
-__version__ = get_version("utils.helpers")
-__all__: list[str] = []
+from .coordinates import convert_to_1based, convert_to_0based

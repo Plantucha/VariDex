@@ -28,6 +28,7 @@ __version__ = "2.0.0"
 @dataclass
 class FunctionInfo:
     """Information about a function in the source file."""
+
     name: str
     start_line: int
     end_line: int
@@ -40,6 +41,7 @@ class FunctionInfo:
 @dataclass
 class ClassInfo:
     """Information about a class in the source file."""
+
     name: str
     start_line: int
     end_line: int
@@ -51,6 +53,7 @@ class ClassInfo:
 @dataclass
 class SplitPlan:
     """Plan for splitting a file into multiple files."""
+
     source_file: Path
     target_files: List[Dict[str, Any]]
     imports: List[str]
@@ -68,7 +71,7 @@ class PythonFileAnalyzer:
         self.filepath = Path(filepath)
         self.source = self.filepath.read_text()
         self.tree = ast.parse(self.source)
-        self.lines = self.source.split('\n')
+        self.lines = self.source.split("\n")
 
     def get_line_count(self) -> int:
         """Get total line count."""
@@ -135,7 +138,7 @@ class PythonFileAnalyzer:
             decorators=decorators,
             docstring=docstring,
             calls=list(set(calls)),
-            dependencies=set()
+            dependencies=set(),
         )
 
     def _analyze_class(self, node: ast.ClassDef) -> ClassInfo:
@@ -158,12 +161,12 @@ class PythonFileAnalyzer:
             end_line=node.end_lineno or node.lineno,
             methods=methods,
             base_classes=base_classes,
-            docstring=docstring
+            docstring=docstring,
         )
 
     def get_code_section(self, start_line: int, end_line: int) -> str:
         """Extract code section by line numbers."""
-        return '\n'.join(self.lines[start_line-1:end_line])
+        return "\n".join(self.lines[start_line - 1 : end_line])
 
 
 class FileSplitter:
@@ -184,7 +187,10 @@ class FileSplitter:
 
     def backup_file(self, filepath: Path) -> Path:
         """Create backup of file before modification."""
-        backup_path = self.backup_dir / f"{filepath.name}.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        backup_path = (
+            self.backup_dir
+            / f"{filepath.name}.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
         shutil.copy2(filepath, backup_path)
         print(f"✓ Backed up: {filepath.name} → {backup_path.name}")
         return backup_path
@@ -223,10 +229,24 @@ class FileSplitter:
         print(f"Imports: {len(imports)}")
 
         # Group functions by name pattern
-        validation_funcs = [f for f in functions if 'validat' in f.name.lower() or 'check' in f.name.lower()]
-        clinvar_funcs = [f for f in functions if 'clinvar' in f.name.lower()]
-        user_funcs = [f for f in functions if 'user' in f.name.lower() or 'vcf' in f.name.lower() or 'tsv' in f.name.lower()]
-        other_funcs = [f for f in functions if f not in validation_funcs + clinvar_funcs + user_funcs]
+        validation_funcs = [
+            f
+            for f in functions
+            if "validat" in f.name.lower() or "check" in f.name.lower()
+        ]
+        clinvar_funcs = [f for f in functions if "clinvar" in f.name.lower()]
+        user_funcs = [
+            f
+            for f in functions
+            if "user" in f.name.lower()
+            or "vcf" in f.name.lower()
+            or "tsv" in f.name.lower()
+        ]
+        other_funcs = [
+            f
+            for f in functions
+            if f not in validation_funcs + clinvar_funcs + user_funcs
+        ]
 
         print(f"\nGrouping:")
         print(f"  Validation functions: {len(validation_funcs)}")
@@ -241,26 +261,26 @@ class FileSplitter:
             "base.py": {
                 "path": loaders_dir / "base.py",
                 "functions": validation_funcs + other_funcs,
-                "description": "Validation utilities and base functions"
+                "description": "Validation utilities and base functions",
             },
             "clinvar.py": {
                 "path": loaders_dir / "clinvar.py",
                 "functions": clinvar_funcs,
-                "description": "ClinVar file loading"
+                "description": "ClinVar file loading",
             },
             "user.py": {
                 "path": loaders_dir / "user.py",
                 "functions": user_funcs,
-                "description": "User VCF/TSV loading"
-            }
+                "description": "User VCF/TSV loading",
+            },
         }
 
         if dry_run:
             print(f"\n[DRY RUN] Would create:")
             for filename, info in split_plan.items():
-                func_count = len(info['functions'])
+                func_count = len(info["functions"])
                 print(f"  {loaders_dir / filename} ({func_count} functions)")
-                for func in info['functions']:
+                for func in info["functions"]:
                     lines = func.end_line - func.start_line + 1
                     print(f"    - {func.name}() [{lines} lines]")
             return {"status": "dry_run", "plan": split_plan}
@@ -276,12 +296,9 @@ class FileSplitter:
         # Create each split file
         for filename, info in split_plan.items():
             content = self._generate_split_file(
-                info['functions'],
-                imports,
-                info['description'],
-                analyzer
+                info["functions"], imports, info["description"], analyzer
             )
-            info['path'].write_text(content)
+            info["path"].write_text(content)
             print(f"✓ Created: {info['path']}")
 
         return {"status": "success", "files_created": len(split_plan)}
@@ -290,17 +307,17 @@ class FileSplitter:
         """Generate __init__.py for loaders package."""
         content = []
         content.append('"""')
-        content.append('VariDex file loaders package.')
-        content.append('')
-        content.append('Split from io/loader.py to enforce 500-line limit.')
+        content.append("VariDex file loaders package.")
+        content.append("")
+        content.append("Split from io/loader.py to enforce 500-line limit.")
         content.append(f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
         content.append('"""')
-        content.append('')
+        content.append("")
 
         # Import from each module
         for filename, info in split_plan.items():
-            module_name = filename.replace('.py', '')
-            func_names = [f.name for f in info['functions']]
+            module_name = filename.replace(".py", "")
+            func_names = [f.name for f in info["functions"]]
             if func_names:
                 content.append(f"from .{module_name} import (")
                 for func_name in func_names:
@@ -311,21 +328,21 @@ class FileSplitter:
         # __all__
         all_funcs = []
         for info in split_plan.values():
-            all_funcs.extend([f.name for f in info['functions']])
+            all_funcs.extend([f.name for f in info["functions"]])
 
         content.append("__all__ = [")
         for func_name in all_funcs:
             content.append(f'    "{func_name}",')
         content.append("]")
 
-        return '\n'.join(content)
+        return "\n".join(content)
 
     def _generate_split_file(
         self,
         functions: List[FunctionInfo],
         imports: List[str],
         description: str,
-        analyzer: PythonFileAnalyzer
+        analyzer: PythonFileAnalyzer,
     ) -> str:
         """Generate content for a split file."""
         content = []
@@ -333,24 +350,24 @@ class FileSplitter:
         # Header
         content.append('"""')
         content.append(description)
-        content.append('')
+        content.append("")
         content.append(f'Split from loader.py - {datetime.now().strftime("%Y-%m-%d")}')
         content.append('"""')
-        content.append('')
+        content.append("")
 
         # Imports
         content.extend(imports)
-        content.append('')
-        content.append('')
+        content.append("")
+        content.append("")
 
         # Functions
         for func in functions:
             func_code = analyzer.get_code_section(func.start_line, func.end_line)
             content.append(func_code)
-            content.append('')
-            content.append('')
+            content.append("")
+            content.append("")
 
-        return '\n'.join(content)
+        return "\n".join(content)
 
     def analyze_all_large_files(self) -> List[Dict[str, Any]]:
         """Find all Python files over 500 lines."""
@@ -362,13 +379,15 @@ class FileSplitter:
             return large_files
 
         for py_file in varidex_dir.rglob("*.py"):
-            lines = py_file.read_text().split('\n')
+            lines = py_file.read_text().split("\n")
             if len(lines) > 500:
-                large_files.append({
-                    "path": py_file,
-                    "lines": len(lines),
-                    "relative": py_file.relative_to(self.repo_root)
-                })
+                large_files.append(
+                    {
+                        "path": py_file,
+                        "lines": len(lines),
+                        "relative": py_file.relative_to(self.repo_root),
+                    }
+                )
 
         return large_files
 
@@ -388,32 +407,28 @@ Examples:
 
   # Analyze only (find large files)
   python varidex_file_splitting.py /path/to/varidex --analyze-only
-        """
+        """,
     )
 
-    parser.add_argument(
-        "repo_root",
-        type=Path,
-        help="Path to VariDex repository root"
-    )
+    parser.add_argument("repo_root", type=Path, help="Path to VariDex repository root")
 
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be done without making changes"
+        help="Show what would be done without making changes",
     )
 
     parser.add_argument(
         "--analyze-only",
         action="store_true",
-        help="Only analyze and report large files"
+        help="Only analyze and report large files",
     )
 
     parser.add_argument(
         "--file",
         type=str,
         choices=["loader", "generator", "templates", "orchestrator"],
-        help="Split specific file only"
+        help="Split specific file only",
     )
 
     args = parser.parse_args()
@@ -441,7 +456,7 @@ Examples:
 
         print(f"Found {len(large_files)} files over 500 lines:")
         print()
-        for file_info in sorted(large_files, key=lambda x: x['lines'], reverse=True):
+        for file_info in sorted(large_files, key=lambda x: x["lines"], reverse=True):
             print(f"  {file_info['lines']:4d} lines: {file_info['relative']}")
 
         print()
@@ -462,7 +477,9 @@ Examples:
         result = splitter.split_loader_file(dry_run=args.dry_run)
 
         if result.get("status") == "success":
-            print(f"\n✓ Successfully split loader.py into {result['files_created']} files")
+            print(
+                f"\n✓ Successfully split loader.py into {result['files_created']} files"
+            )
         elif result.get("status") == "skip":
             print(f"\n✓ Skipped: {result['reason']}")
 

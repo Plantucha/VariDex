@@ -43,10 +43,34 @@ class GnomadAnnotationStage:
 
         # Map of canonical name -> possible column names
         column_mappings = {
-            'chromosome': ['chromosome', 'chrom', 'chr', 'chromosome_user', 'chromosome_clinvar'],
-            'position': ['position', 'pos', 'start', 'position_user', 'position_clinvar'],
-            'ref_allele': ['ref_allele', 'ref', 'reference', 'ref_allele_user', 'ref_allele_clinvar'],
-            'alt_allele': ['alt_allele', 'alt', 'alternate', 'alt_allele_user', 'alt_allele_clinvar'],
+            "chromosome": [
+                "chromosome",
+                "chrom",
+                "chr",
+                "chromosome_user",
+                "chromosome_clinvar",
+            ],
+            "position": [
+                "position",
+                "pos",
+                "start",
+                "position_user",
+                "position_clinvar",
+            ],
+            "ref_allele": [
+                "ref_allele",
+                "ref",
+                "reference",
+                "ref_allele_user",
+                "ref_allele_clinvar",
+            ],
+            "alt_allele": [
+                "alt_allele",
+                "alt",
+                "alternate",
+                "alt_allele_user",
+                "alt_allele_clinvar",
+            ],
         }
 
         for canonical, candidates in column_mappings.items():
@@ -59,7 +83,7 @@ class GnomadAnnotationStage:
                     break
 
         # Check if we have all required columns
-        required = ['chromosome', 'position', 'ref_allele', 'alt_allele']
+        required = ["chromosome", "position", "ref_allele", "alt_allele"]
         missing = [col for col in required if col not in result.columns]
 
         if missing:
@@ -90,7 +114,7 @@ class GnomadAnnotationStage:
         df = self._normalize_columns(df)
 
         # Check if normalization was successful
-        required = ['chromosome', 'position', 'ref_allele', 'alt_allele']
+        required = ["chromosome", "position", "ref_allele", "alt_allele"]
         missing = [col for col in required if col not in df.columns]
 
         if missing:

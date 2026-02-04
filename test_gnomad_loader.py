@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 import pandas as pd
 
-print("="*70)
+print("=" * 70)
 print("🧬 gnomAD Loader Test Script")
-print("="*70)
+print("=" * 70)
 
 # Add VariDex to path
 varidex_root = Path(__file__).parent
@@ -19,6 +19,7 @@ sys.path.insert(0, str(varidex_root))
 
 try:
     from varidex.io.loaders.gnomad import GnomADLoader, GnomADFrequency
+
     print("✅ Successfully imported GnomADLoader\n")
 except ImportError as e:
     print(f"❌ Import failed: {e}")
@@ -63,10 +64,7 @@ print()
 print("🚀 Initializing GnomADLoader...")
 try:
     loader = GnomADLoader(
-        gnomad_dir=GNOMAD_DIR,
-        dataset=DATASET,
-        version=VERSION,
-        auto_index=True
+        gnomad_dir=GNOMAD_DIR, dataset=DATASET, version=VERSION, auto_index=True
     )
     print("✅ Loader initialized successfully\n")
 except Exception as e:
@@ -97,14 +95,14 @@ test_chroms = stats["chromosomes"][:1]  # Test first available chromosome
 if test_chroms:
     test_chr = test_chroms[0]
     print(f"   Testing chromosome {test_chr}...")
-    
+
     # Try a few common positions
     test_variants = [
         (test_chr, 100000, "A", "G"),
         (test_chr, 200000, "C", "T"),
         (test_chr, 500000, "G", "A"),
     ]
-    
+
     found_count = 0
     for chrom, pos, ref, alt in test_variants:
         result = loader.lookup_variant(chrom, pos, ref, alt)
@@ -115,7 +113,7 @@ if test_chroms:
             if result.af_nfe:
                 print(f"      European AF={result.af_nfe}")
             break
-    
+
     if found_count == 0:
         print("   ⚠️  Test variants not found (this is normal for test positions)")
 else:
@@ -127,14 +125,11 @@ print()
 print("🔍 Test 2: Batch Lookup")
 if test_chroms:
     test_chr = test_chroms[0]
-    batch_variants = [
-        (test_chr, pos, "A", "G") 
-        for pos in range(100000, 100100, 10)
-    ]
-    
+    batch_variants = [(test_chr, pos, "A", "G") for pos in range(100000, 100100, 10)]
+
     print(f"   Looking up {len(batch_variants)} variants on chr{test_chr}...")
     results = loader.lookup_variants_batch(batch_variants, show_progress=False)
-    
+
     found = sum(1 for r in results if r is not None)
     print(f"   ✓ Found {found}/{len(results)} variants in gnomAD")
 else:
@@ -146,24 +141,26 @@ print()
 print("🔍 Test 3: DataFrame Annotation")
 if test_chroms:
     test_chr = test_chroms[0]
-    
+
     # Create test DataFrame
-    test_df = pd.DataFrame({
-        'chromosome': [test_chr] * 5,
-        'position': [100000, 200000, 300000, 400000, 500000],
-        'ref_allele': ['A', 'C', 'G', 'T', 'A'],
-        'alt_allele': ['G', 'T', 'A', 'C', 'G']
-    })
-    
+    test_df = pd.DataFrame(
+        {
+            "chromosome": [test_chr] * 5,
+            "position": [100000, 200000, 300000, 400000, 500000],
+            "ref_allele": ["A", "C", "G", "T", "A"],
+            "alt_allele": ["G", "T", "A", "C", "G"],
+        }
+    )
+
     print(f"   Annotating {len(test_df)} test variants...")
     annotated = loader.annotate_dataframe(test_df, show_progress=False)
-    
-    found = annotated['gnomad_af'].notna().sum()
+
+    found = annotated["gnomad_af"].notna().sum()
     print(f"   ✓ Annotated {found}/{len(test_df)} variants with gnomAD data")
-    
+
     if found > 0:
         print("\n   Sample annotated variant:")
-        sample = annotated[annotated['gnomad_af'].notna()].iloc[0]
+        sample = annotated[annotated["gnomad_af"].notna()].iloc[0]
         print(f"      {sample['chromosome']}:{sample['position']}")
         print(f"      {sample['ref_allele']}>{sample['alt_allele']}")
         print(f"      AF={sample['gnomad_af']}")
@@ -178,9 +175,9 @@ loader.close()
 print("✅ File handles closed\n")
 
 # Summary
-print("="*70)
+print("=" * 70)
 print("🎉 Testing Complete!")
-print("="*70)
+print("=" * 70)
 
 if stats["available_chromosomes"] > 0:
     print("\n✅ gnomAD loader is working correctly!")

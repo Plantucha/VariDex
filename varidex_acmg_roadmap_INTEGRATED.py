@@ -31,6 +31,7 @@ class ACMGEvidenceCode:
 
     Based on Richards et al. (2015) ACMG/AMP guidelines.
     """
+
     code: str
     strength: str  # Very Strong, Strong, Moderate, Supporting
     category: str  # Pathogenic, Benign
@@ -70,9 +71,8 @@ class ACMGImplementationPlanner:
             implementation_priority=1,
             effort_days=0,  # Already implemented
             dependencies=[],
-            current_status="Enabled"
+            current_status="Enabled",
         ),
-
         # PATHOGENIC - Strong (PS1-PS4)
         ACMGEvidenceCode(
             code="PS1",
@@ -84,7 +84,7 @@ class ACMGImplementationPlanner:
             implementation_priority=1,
             effort_days=5,  # ±1 day
             dependencies=["ClinVar database"],
-            current_status="Missing"
+            current_status="Missing",
         ),
         # ... (remaining 26 codes - same as corrected version)
     ]
@@ -114,15 +114,15 @@ class ACMGImplementationPlanner:
                     "SecuritySanitizer.validate_acmg_code()",
                     "SecuritySanitizer.sanitize_classification()",
                     "SecuritySanitizer.validate_hgvs()",
-                    "PerformanceOptimizer utilities"
+                    "PerformanceOptimizer utilities",
                 ],
                 "integration_points": [
                     "Validate ACMG codes before storing",
                     "Sanitize classifications in reports",
-                    "Validate HGVS in user input"
+                    "Validate HGVS in user input",
                 ],
                 "estimated_integration": "2 days",
-                "benefit": "Security validation, data integrity"
+                "benefit": "Security validation, data integrity",
             },
             "script_2_file_structure": {
                 "name": "File Structure Optimization (Script 2)",
@@ -130,21 +130,21 @@ class ACMGImplementationPlanner:
                 "components": [
                     "All files under 500 lines",
                     "Clean module organization",
-                    "Proper separation of concerns"
+                    "Proper separation of concerns",
                 ],
                 "integration_points": [
                     "Easier to add new ACMG evidence functions",
                     "Better code navigation",
-                    "Reduced merge conflicts"
+                    "Reduced merge conflicts",
                 ],
                 "estimated_benefit": "~10% faster development",
-                "time_savings": "2-3 weeks over full ACMG implementation"
+                "time_savings": "2-3 weeks over full ACMG implementation",
             },
             "recommendation": {
                 "order": "Complete Script 1 → Script 2 → Script 3",
                 "rationale": "Security foundation + clean structure = faster ACMG development",
-                "total_setup_time": "4 weeks (1 week Script 1 + 3 weeks Script 2)"
-            }
+                "total_setup_time": "4 weeks (1 week Script 1 + 3 weeks Script 2)",
+            },
         }
 
     def generate_phase_1_plan(self) -> Dict[str, Any]:
@@ -159,7 +159,8 @@ class ACMGImplementationPlanner:
         Focus: High-priority codes with existing data sources
         """
         phase_1_codes = [
-            c for c in self.codes
+            c
+            for c in self.codes
             if c.implementation_priority == 1
             and c.current_status == "Missing"
             and c.automation_level == "Full"
@@ -185,19 +186,19 @@ class ACMGImplementationPlanner:
             "prerequisites_required": [
                 "Script 1: SecuritySanitizer integrated (REQUIRED)",
                 "Script 2: File structure optimized (RECOMMENDED)",
-                "All existing tests passing"
+                "All existing tests passing",
             ],
             "integration_tasks": [
                 {
                     "task": "Verify security utilities available",
                     "effort_days": 0.5,
-                    "description": "Test SecuritySanitizer.validate_acmg_code() etc."
+                    "description": "Test SecuritySanitizer.validate_acmg_code() etc.",
                 },
                 {
                     "task": "Set up ACMG validation framework",
                     "effort_days": 1,
-                    "description": "Create base classes using clean structure from Script 2"
-                }
+                    "description": "Create base classes using clean structure from Script 2",
+                },
             ],
             "codes": [
                 {
@@ -206,7 +207,7 @@ class ACMGImplementationPlanner:
                     "effort_days": int(c.effort_days * 0.9),  # 10% reduction
                     "original_effort": c.effort_days,
                     "data_sources": c.data_sources,
-                    "uses_security": True  # All use SecuritySanitizer
+                    "uses_security": True,  # All use SecuritySanitizer
                 }
                 for c in phase_1_codes
             ],
@@ -216,13 +217,13 @@ class ACMGImplementationPlanner:
                 "BP6 implementation (benign from sources)",
                 "Unit tests for all new codes",
                 "Integration with SecuritySanitizer",
-                "Documentation updates"
+                "Documentation updates",
             ],
             "dependencies": [
                 "ClinVar database already available",
                 "SecuritySanitizer.validate_acmg_code() (Script 1)",
-                "No new external data sources required"
-            ]
+                "No new external data sources required",
+            ],
         }
 
     def generate_full_roadmap(self) -> Dict[str, Any]:
@@ -242,7 +243,8 @@ class ACMGImplementationPlanner:
 
         # Calculate totals with integration benefits
         total_automated_days = sum(
-            c.effort_days for c in self.codes
+            c.effort_days
+            for c in self.codes
             if c.automation_level in ["Full", "Semi-auto"]
             and c.current_status == "Missing"
         )
@@ -255,7 +257,7 @@ class ACMGImplementationPlanner:
                 "generated": self.timestamp,
                 "version": __version__,
                 "integration_note": "Adjusted for Scripts 1-2 completion",
-                "confidence_note": "All estimates ±25% based on typical project variance"
+                "confidence_note": "All estimates ±25% based on typical project variance",
             },
             "prerequisites": prerequisites,
             "setup_phase": {
@@ -268,8 +270,8 @@ class ACMGImplementationPlanner:
                         "deliverables": [
                             "SecuritySanitizer integrated",
                             "ACMG validators available",
-                            "Performance utilities ready"
-                        ]
+                            "Performance utilities ready",
+                        ],
                     },
                     {
                         "name": "Script 2: File Structure",
@@ -277,11 +279,11 @@ class ACMGImplementationPlanner:
                         "deliverables": [
                             "All files under 500 lines",
                             "Clean module organization",
-                            "All tests passing"
-                        ]
-                    }
+                            "All tests passing",
+                        ],
+                    },
                 ],
-                "benefit_to_acmg": "~10% faster development, better code quality"
+                "benefit_to_acmg": "~10% faster development, better code quality",
             },
             "phases": [
                 phase_1,
@@ -297,7 +299,7 @@ class ACMGImplementationPlanner:
                     "integration_benefits": [
                         "Clean file structure speeds implementation",
                         "Security validation already in place",
-                        "Better separation of concerns"
+                        "Better separation of concerns",
                     ],
                     "deliverables": [
                         "gnomAD v4.1 integration (150GB local DB)",
@@ -306,8 +308,8 @@ class ACMGImplementationPlanner:
                         "PP3, BP4 (in silico predictions)",
                         "PP4 (phenotype matching with HPO)",
                         "PM6 (assumed de novo)",
-                        "All outputs use SecuritySanitizer"
-                    ]
+                        "All outputs use SecuritySanitizer",
+                    ],
                 },
                 {
                     "phase": 3,
@@ -320,20 +322,20 @@ class ACMGImplementationPlanner:
                     "target_coverage": "71%",
                     "integration_benefits": [
                         "Modular structure simplifies VEP integration",
-                        "Security framework handles VEP output validation"
+                        "Security framework handles VEP output validation",
                     ],
                     "deliverables": [
                         "Ensembl VEP v110 installation",
                         "SpliceAI integration",
                         "PM1 (functional domains via VEP)",
                         "BP7 (splice impact prediction)",
-                        "HGVS validation using Script 1"
+                        "HGVS validation using Script 1",
                     ],
                     "risks": [
                         "VEP installation can be complex",
                         "SpliceAI compute requirements high",
-                        "May need GPU for batch processing"
-                    ]
+                        "May need GPU for batch processing",
+                    ],
                 },
                 {
                     "phase": 4,
@@ -345,7 +347,7 @@ class ACMGImplementationPlanner:
                     "target_coverage": "100%",
                     "integration_benefits": [
                         "SecuritySanitizer validates manual entries",
-                        "Clean structure makes curation interface easier"
+                        "Clean structure makes curation interface easier",
                     ],
                     "deliverables": [
                         "Manual evidence entry system",
@@ -353,14 +355,14 @@ class ACMGImplementationPlanner:
                         "Integration with clinical workflow",
                         "Evidence provenance tracking",
                         "Clinical geneticist training",
-                        "All inputs validated with Script 1"
+                        "All inputs validated with Script 1",
                     ],
                     "notes": [
                         "These codes require expert judgment",
                         "Cannot be fully automated",
-                        "System enables curators to enter evidence"
-                    ]
-                }
+                        "System enables curators to enter evidence",
+                    ],
+                },
             ],
             "total_investment": {
                 "setup_weeks": "4 weeks (Scripts 1-2)",
@@ -376,8 +378,8 @@ class ACMGImplementationPlanner:
                     "Developer rate: $800/day",
                     "Includes implementation + testing + documentation",
                     "Does NOT include clinical geneticist time (Phase 4)",
-                    "Assumes Scripts 1-2 completed before ACMG work"
-                ]
+                    "Assumes Scripts 1-2 completed before ACMG work",
+                ],
             },
             "pilot_recommendation": {
                 "description": "2-week pilot to validate Phase 1 estimates",
@@ -385,7 +387,7 @@ class ACMGImplementationPlanner:
                 "expected_outcome": "3-5 days actual",
                 "decision_point": "If >6 days, re-estimate all phases +50%",
                 "benefit": "Reduces risk of large-scale overruns",
-                "note": "Faster due to clean structure from Script 2"
+                "note": "Faster due to clean structure from Script 2",
             },
             "integration_checklist": {
                 "before_starting": [
@@ -394,19 +396,19 @@ class ACMGImplementationPlanner:
                     "✓ SecuritySanitizer.sanitize_classification() working",
                     "✓ Script 2 file splitting complete",
                     "✓ All files under 500 lines",
-                    "✓ All existing tests passing"
+                    "✓ All existing tests passing",
                 ],
                 "during_phase_1": [
                     "Use SecuritySanitizer for all ACMG code validation",
                     "Use sanitize_classification() for all outputs",
                     "Leverage clean file structure for new modules",
-                    "Follow 500-line limit for new files"
+                    "Follow 500-line limit for new files",
                 ],
                 "during_phases_2_3": [
                     "Validate all external data with SecuritySanitizer",
                     "Use PerformanceOptimizer for large datasets",
-                    "Maintain clean module structure from Script 2"
-                ]
+                    "Maintain clean module structure from Script 2",
+                ],
             },
             "validation_note": (
                 "These estimates are based on analysis of similar bioinformatics "
@@ -416,7 +418,7 @@ class ACMGImplementationPlanner:
                 "Actual effort depends on team experience, code quality, and unforeseen "
                 "integration challenges. STRONGLY RECOMMEND completing Scripts 1-2 "
                 "before beginning ACMG implementation to realize these time savings."
-            )
+            ),
         }
 
     def export_to_json(self, output_path: Path):
@@ -426,7 +428,7 @@ class ACMGImplementationPlanner:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(roadmap, f, indent=2)
 
         print(f"✓ Exported integrated roadmap to: {output_path}")
@@ -435,10 +437,10 @@ class ACMGImplementationPlanner:
 
 def main():
     """Generate integrated ACMG implementation roadmap."""
-    print("="*70)
+    print("=" * 70)
     print(f"VariDex ACMG Implementation Roadmap v{__version__}")
     print("INTEGRATED with Scripts 1 (Security) and 2 (File Structure)")
-    print("="*70)
+    print("=" * 70)
     print()
 
     planner = ACMGImplementationPlanner()
@@ -446,7 +448,7 @@ def main():
     # Show prerequisites
     prereqs = planner.get_prerequisites()
     print("PREREQUISITES:")
-    print("-"*70)
+    print("-" * 70)
     print()
     print(f"1. {prereqs['script_1_security']['name']}")
     print(f"   Status: {prereqs['script_1_security']['status'].upper()}")
@@ -470,27 +472,29 @@ def main():
 
     print()
     print("Roadmap Summary (INTEGRATED):")
-    print("-"*70)
+    print("-" * 70)
 
     print(f"\nSetup Phase: {roadmap['setup_phase']['duration']}")
     print(f"  Benefit: {roadmap['setup_phase']['benefit_to_acmg']}")
     print()
 
-    for phase in roadmap['phases']:
+    for phase in roadmap["phases"]:
         print(f"Phase {phase['phase']}: {phase['name']}")
         print(f"  Duration: {phase['duration_weeks']}")
         print(f"  Effort: {phase['effort_days']}")
-        if 'time_saved' in phase:
+        if "time_saved" in phase:
             print(f"  Time saved: {phase['time_saved']} days (vs. no integration)")
         print(f"  Coverage: {phase['target_coverage']}")
         print()
 
-    print("="*70)
+    print("=" * 70)
     print("INTEGRATION BENEFITS:")
     print()
     print(f"Original estimate (no integration): 18-30 weeks, $47K-$78K")
-    print(f"Integrated estimate: {roadmap['total_investment']['total_timeline']}, "
-          f"{roadmap['total_investment']['estimated_cost_range']}")
+    print(
+        f"Integrated estimate: {roadmap['total_investment']['total_timeline']}, "
+        f"{roadmap['total_investment']['estimated_cost_range']}"
+    )
     print()
     print(f"Time saved: ~{roadmap['total_investment']['time_saved_total']} days")
     print(f"Cost saved: {roadmap['total_investment']['cost_savings']}")
@@ -501,14 +505,14 @@ def main():
     print("  • Better separation of concerns")
     print("  • Reduced debugging and refactoring time")
     print()
-    print("="*70)
+    print("=" * 70)
     print("NEXT STEPS:")
     print()
     print("1. Complete Script 1 (Security) - 1 week")
     print("2. Complete Script 2 (File Splitting) - 3 weeks")
     print("3. Run 2-week pilot (PS1 implementation)")
     print("4. Begin full ACMG roadmap if pilot successful")
-    print("="*70)
+    print("=" * 70)
 
 
 if __name__ == "__main__":
