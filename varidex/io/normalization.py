@@ -30,3 +30,8 @@ def normalize_alleles(df: pd.DataFrame) -> pd.DataFrame:
     df[ref_col] = norm_df[ref_col]
     df[alt_col] = norm_df[alt_col]
     return df
+
+
+def create_coord_key(chrom: str, pos: int, ref: str, alt: str) -> str:
+    """Create standardized coordinate key for variant matching."""
+    return f"{chrom}:{pos}:{ref}:{alt}"
