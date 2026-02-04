@@ -283,3 +283,24 @@ def load_user_file(filepath: Path, file_format: Optional[str] = None) -> pd.Data
         raise ValueError("Unknown format: {file_format}. Must be {USER_FILE_FORMATS}")
 
     return loaders[file_format](filepath)
+
+def load_23andme(filepath: str, assembly: str = "GRCh38") -> pd.DataFrame:
+    """Load 23andMe raw data format."""
+    import pandas as pd
+    
+    # Read TSV skipping comments
+    df = pd.read_csv(
+        filepath,
+        sep="\t",
+        comment="#",
+        names=["rsid", "chromosome", "position", "genotype"]
+    )
+    
+    # Clean and format
+    df = df[df["chromosome"].notna()].copy()
+    df["chromosome"] = df["chromosome"].astype(str)
+    df["position"] = pd.to_numeric(df["position"], errors="coerce")
+    df = df.dropna(subset=["position"])
+    df["position"] = df["position"].astype(int)
+    
+    return df

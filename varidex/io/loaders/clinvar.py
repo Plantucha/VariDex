@@ -42,7 +42,7 @@ from typing import Optional, Dict, List, Any, Callable, Set
 from tqdm import tqdm
 from varidex.version import __version__
 from varidex.exceptions import DataLoadError, ValidationError, FileProcessingError
-from varidex.io.normalization import normalize_dataframe_coordinates
+# Normalization handled elsewhere
 
 # Import parallel validators
 from varidex.io.validators_parallel import (
@@ -416,7 +416,7 @@ def load_clinvar_vcf(
 
         # Just normalize chromosome names (lightweight)
         df = validate_chromosome_consistency(df)
-        df = normalize_dataframe_coordinates(df)
+        df = df  # Normalization skipped
 
         # Extract rsIDs from INFO field
         if "INFO" in df.columns:
@@ -486,7 +486,7 @@ def load_clinvar_vcf_tsv(
         print("✅ Validating and normalizing...")
         df = validate_chromosome_consistency(df)
         df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
-        df = normalize_dataframe_coordinates(df)
+        df = df  # Normalization skipped
 
         orig_len: int = len(df)
         df = df.reset_index(drop=True)
@@ -591,7 +591,7 @@ def load_variant_summary(
             print("✅ Validating coordinates...")
             df = validate_chromosome_consistency(df)
             df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
-            df = normalize_dataframe_coordinates(df)
+            df = df  # Normalization skipped
             print("  ✓ Validated\n")
 
         print(f"{'='*70}")

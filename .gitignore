@@ -99,3 +99,17 @@ report.html
 
 # Orphaned files
 =5.0.0
+coverage.txt
+
+# Coverage reports
+coverage.txt
+htmlcov/
+htmlcov-full/
+.coverage
+.pytest_cache/
+
+# Results (patient data)
+results*/
+*_results/
+CLINICAL_REPORT.txt
+URGENT_CLINICAL_REPORT.txt
