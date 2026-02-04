@@ -445,3 +445,4 @@ A: Open an [issue](https://github.com/Plantucha/VariDex/issues) or start a [disc
 *Not for clinical or diagnostic use.*
 
 </div>
+# CI test
