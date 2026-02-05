@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-varidex/io/loaders/gnomad.py - gnomAD Multi-Chromosome Loader v1.0.0 DEVELOPMENT
+varidex/io/loaders/gnomad.py - gnomAD Multi-Chromosome Loader v1.1.0 DEVELOPMENT
 
 Load gnomAD population frequency data from per-chromosome VCF files.
 Supports both exomes and genomes datasets with tabix indexing for fast lookups.
+Now with parallel processing support for batch operations.
 
 Author: VariDex Team
-Version: 1.0.0 DEVELOPMENT
-Date: 2026-01-28
+Version: 1.1.0 DEVELOPMENT
+Date: 2026-02-04
 """
 
 import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -75,12 +78,136 @@ class GnomADFrequency:
         }
 
 
+def _lookup_variant_worker(
+    variant_data: Tuple[str, int, str, str],
+    gnomad_dir: Path,
+    dataset: str,
+    version: str,
+    file_pattern: str,
+) -> Optional[GnomADFrequency]:
+    """
+    Worker function for parallel variant lookup.
+
+    This function is separate to allow pickling for multiprocessing.
+
+    Args:
+        variant_data: Tuple of (chromosome, position, ref, alt)
+        gnomad_dir: Path to gnomAD directory
+        dataset: Dataset name
+        version: Version string
+        file_pattern: File pattern for chromosome files
+
+    Returns:
+        GnomADFrequency object or None if not found
+    """
+    chromosome, position, ref, alt = variant_data
+
+    # Normalize chromosome name
+    chrom = chromosome.replace("chr", "").upper().replace("M", "MT")
+
+    # Get file path
+    filepath = gnomad_dir / file_pattern.format(chr=chrom)
+    if not filepath.exists():
+        return None
+
+    try:
+        # Open VCF file for this worker
+        vcf = pysam.TabixFile(str(filepath))
+
+        # Query region (tabix uses 1-based coordinates)
+        records = list(vcf.fetch(chrom, position - 1, position))
+
+        for record_str in records:
+            fields = record_str.split("\t")
+            if len(fields) < 8:
+                continue
+
+            rec_pos = int(fields[1])
+            rec_ref = fields[3]
+            rec_alt = fields[4]
+
+            # Check if this is our variant
+            if rec_pos == position and rec_ref == ref and rec_alt == alt:
+                result = _parse_variant_record_worker(fields, chromosome)
+                vcf.close()
+                return result
+
+        vcf.close()
+        return None
+
+    except Exception as e:
+        logger.debug(f"Lookup failed for {chromosome}:{position}: {e}")
+        return None
+
+
+def _parse_variant_record_worker(
+    fields: List[str], chromosome: str
+) -> GnomADFrequency:
+    """Parse VCF record fields into GnomADFrequency (worker function)."""
+    pos = int(fields[1])
+    ref = fields[3]
+    alt = fields[4]
+    info = fields[7]
+
+    # Parse INFO field
+    info_dict = {}
+    for item in info.split(";"):
+        if "=" in item:
+            key, value = item.split("=", 1)
+            info_dict[key] = value
+        else:
+            info_dict[item] = "True"
+
+    def safe_float(value: Optional[str]) -> Optional[float]:
+        if value is None or value == ".":
+            return None
+        try:
+            if "," in value:
+                value = value.split(",")[0]
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+
+    def safe_int(value: Optional[str]) -> Optional[int]:
+        if value is None or value == ".":
+            return None
+        try:
+            if "," in value:
+                value = value.split(",")[0]
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+
+    # Extract frequencies
+    freq = GnomADFrequency(
+        chromosome=chromosome,
+        position=pos,
+        ref_allele=ref,
+        alt_allele=alt,
+        af=safe_float(info_dict.get("AF")),
+        ac=safe_int(info_dict.get("AC")),
+        an=safe_int(info_dict.get("AN")),
+        nhomalt=safe_int(info_dict.get("nhomalt")),
+        af_afr=safe_float(info_dict.get("AF_afr")),
+        af_amr=safe_float(info_dict.get("AF_amr")),
+        af_asj=safe_float(info_dict.get("AF_asj")),
+        af_eas=safe_float(info_dict.get("AF_eas")),
+        af_fin=safe_float(info_dict.get("AF_fin")),
+        af_nfe=safe_float(info_dict.get("AF_nfe")),
+        af_sas=safe_float(info_dict.get("AF_sas")),
+        filters=fields[6] if len(fields) > 6 else "PASS",
+    )
+
+    return freq
+
+
 class GnomADLoader:
     """
-    Multi-chromosome gnomAD data loader with tabix indexing.
+    Multi-chromosome gnomAD data loader with tabix indexing and parallel processing.
 
     Handles per-chromosome VCF files (e.g., gnomad.exomes.r2.1.1.sites.1.vcf.bgz)
     Uses tabix for fast random access by genomic coordinates.
+    Supports parallel batch lookups with configurable worker processes.
     """
 
     def __init__(
@@ -89,6 +216,7 @@ class GnomADLoader:
         dataset: str = "exomes",
         version: str = "r2.1.1",
         auto_index: bool = True,
+        max_workers: Optional[int] = None,
     ):
         """
         Initialize gnomAD loader.
@@ -98,16 +226,19 @@ class GnomADLoader:
             dataset: "exomes" or "genomes"
             version: gnomAD version (e.g., "r2.1.1", "v3.1.2")
             auto_index: Automatically create tabix indexes if missing
+            max_workers: Maximum number of parallel workers for batch operations
+                        (None = use CPU count, 1 = sequential processing)
         """
         self.gnomad_dir = Path(gnomad_dir)
         self.dataset = dataset
         self.version = version
         self.auto_index = auto_index
+        self.max_workers = max_workers
 
         # Pattern for chromosome files
         self.file_pattern = f"gnomad.{dataset}.{version}.sites.{{chr}}.vcf.bgz"
 
-        # Cache for open file handles
+        # Cache for open file handles (single-threaded mode only)
         self.vcf_handles: Dict[str, pysam.TabixFile] = {}
 
         # Validate directory
@@ -116,6 +247,12 @@ class GnomADLoader:
 
         logger.info(f"📂 gnomAD Loader initialized: {self.gnomad_dir}")
         logger.info(f"   Dataset: {dataset} | Version: {version}")
+        if max_workers is not None and max_workers > 1:
+            logger.info(f"   Parallel processing: {max_workers} workers")
+        elif max_workers == 1:
+            logger.info("   Parallel processing: disabled (sequential mode)")
+        else:
+            logger.info("   Parallel processing: auto (CPU count)")
 
         # Scan for available chromosome files
         self.available_chroms = self._scan_chromosome_files()
@@ -221,7 +358,6 @@ class GnomADLoader:
         self, fields: List[str], chromosome: str
     ) -> GnomADFrequency:
         """Parse VCF record fields into GnomADFrequency."""
-        fields[0]
         pos = int(fields[1])
         ref = fields[3]
         alt = fields[4]
@@ -291,7 +427,7 @@ class GnomADLoader:
         self, variants: List[Tuple[str, int, str, str]], show_progress: bool = True
     ) -> List[Optional[GnomADFrequency]]:
         """
-        Batch lookup of variants.
+        Batch lookup of variants with optional parallel processing.
 
         Args:
             variants: List of (chromosome, position, ref, alt) tuples
@@ -300,17 +436,79 @@ class GnomADLoader:
         Returns:
             List of GnomADFrequency objects (None for not found)
         """
-        results = []
+        if not variants:
+            return []
 
-        iterator = (
-            tqdm(variants, desc="🧬 gnomAD lookup", unit="var")
-            if show_progress
-            else variants
+        # Determine if we should use parallel processing
+        use_parallel = (
+            self.max_workers is None or self.max_workers > 1
+        ) and len(variants) > 100
+
+        if not use_parallel:
+            # Sequential processing (original implementation)
+            results = []
+            iterator = (
+                tqdm(variants, desc="🧬 gnomAD lookup", unit="var")
+                if show_progress
+                else variants
+            )
+
+            for chrom, pos, ref, alt in iterator:
+                result = self.lookup_variant(chrom, pos, ref, alt)
+                results.append(result)
+
+            return results
+
+        # Parallel processing
+        logger.info(
+            f"🚀 Processing {len(variants)} variants with "
+            f"{self.max_workers or 'auto'} workers"
         )
 
-        for chrom, pos, ref, alt in iterator:
-            result = self.lookup_variant(chrom, pos, ref, alt)
-            results.append(result)
+        # Create partial function with fixed parameters
+        worker_func = partial(
+            _lookup_variant_worker,
+            gnomad_dir=self.gnomad_dir,
+            dataset=self.dataset,
+            version=self.version,
+            file_pattern=self.file_pattern,
+        )
+
+        # Process in parallel
+        results = [None] * len(variants)
+
+        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all tasks
+            future_to_idx = {
+                executor.submit(worker_func, variant): idx
+                for idx, variant in enumerate(variants)
+            }
+
+            # Collect results with progress bar
+            if show_progress:
+                with tqdm(
+                    total=len(variants), desc="🧬 gnomAD lookup (parallel)", unit="var"
+                ) as pbar:
+                    for future in as_completed(future_to_idx):
+                        idx = future_to_idx[future]
+                        try:
+                            results[idx] = future.result()
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to process variant {variants[idx]}: {e}"
+                            )
+                            results[idx] = None
+                        pbar.update(1)
+            else:
+                for future in as_completed(future_to_idx):
+                    idx = future_to_idx[future]
+                    try:
+                        results[idx] = future.result()
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to process variant {variants[idx]}: {e}"
+                        )
+                        results[idx] = None
 
         return results
 
@@ -392,6 +590,8 @@ class GnomADLoader:
                 self.available_chroms, key=lambda x: (not x.isdigit(), x)
             ),
             "open_handles": len(self.vcf_handles),
+            "max_workers": self.max_workers,
+            "parallel_enabled": self.max_workers is None or self.max_workers > 1,
         }
 
     def close(self):
@@ -415,6 +615,7 @@ def load_gnomad_frequencies(
     gnomad_dir: Path,
     dataset: str = "exomes",
     version: str = "r2.1.1",
+    max_workers: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Convenience function to annotate variants with gnomAD frequencies.
@@ -424,24 +625,29 @@ def load_gnomad_frequencies(
         gnomad_dir: Directory with gnomAD chromosome files
         dataset: "exomes" or "genomes"
         version: gnomAD version
+        max_workers: Number of parallel workers (None = auto, 1 = sequential)
 
     Returns:
         Annotated DataFrame
     """
-    with GnomADLoader(gnomad_dir, dataset, version) as loader:
+    with GnomADLoader(
+        gnomad_dir, dataset, version, max_workers=max_workers
+    ) as loader:
         return loader.annotate_dataframe(variants_df)
 
 
 if __name__ == "__main__":
     # Example usage
     print("=" * 70)
-    print("gnomAD Multi-Chromosome Loader v1.0.0 DEVELOPMENT")
+    print("gnomAD Multi-Chromosome Loader v1.1.0 DEVELOPMENT")
     print("=" * 70)
 
     # Test initialization
     gnomad_dir = Path("./gnomad")
     if gnomad_dir.exists():
-        loader = GnomADLoader(gnomad_dir, dataset="exomes", version="r2.1.1")
+        loader = GnomADLoader(
+            gnomad_dir, dataset="exomes", version="r2.1.1", max_workers=4
+        )
         print(f"\n📊 Statistics:")
         stats = loader.get_statistics()
         for key, value in stats.items():
