@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-varidex/io/loaders/clinvar.py - ClinVar Data Loader v8.0.1 DEVELOPMENT
+varidex/io/loaders/clinvar.py - ClinVar Data Loader v8.1.0 DEVELOPMENT
 Load ClinVar VCF, TSV, variant_summary, XML with auto-detection and intelligent caching.
 Returns DataFrame: rsid, chromosome, position, ref/alt_allele, gene, clinical_sig, coord_key
+
+v8.1.0 Changes (CRITICAL FIX):
+- ✨ Extract GENE from VCF INFO field (GENEINFO=BRCA1:672)
+- ✨ Extract MOLECULAR_CONSEQUENCE from INFO field (MC=SO:0001587|nonsense)
+- Vectorized extraction for performance
+- Fixes PVS1=0 issue (requires molecular_consequence for LOF detection)
 
 v8.0.1 Changes:
 - Memory optimizations: Skip non-critical validation steps
@@ -236,15 +242,6 @@ def split_multiallelic_vcf(df: pd.DataFrame) -> pd.DataFrame:
     )
     return df
 
-    # Original implementation commented out (OOM on large files)
-    # try:
-    #     multiallelic: pd.DataFrame = df[df["ALT"].str.contains(",", na=False)]
-    #     if len(multiallelic) == 0:
-    #         return df
-    #
-    #     print(f"  📊 Splitting {len(multiallelic):,} multiallelic variants...")
-    #     ... (rest of original code)
-
 
 def extract_rsid_from_info(info_str: Any) -> Optional[str]:
     """
@@ -275,54 +272,122 @@ def _extract_rsids_vectorized(df: pd.DataFrame) -> pd.Series:
 
     Returns:
         Series of rsIDs in format 'rs123456' or None for missing
-
-    Example:
-        >>> info = pd.Series(['CLNSIG=Path;RS=123456', 'CLNSIG=Benign', None])
-        >>> df = pd.DataFrame({'INFO': info})
-        >>> _extract_rsids_vectorized(df)
-        0    rs123456
-        1        None
-        2        None
-        dtype: object
-
-    Notes:
-        - Extracts first RS= value if multiple present (ClinVar standard)
-        - Handles None/NaN/empty INFO fields gracefully
-        - Fully vectorized - no Python loops
-        - Memory efficient - minimal intermediate copies
-
-    Edge Cases Tested:
-        ✅ Normal: 'RS=123456' → 'rs123456'
-        ✅ Missing: No RS field → None
-        ✅ None: None value → None
-        ✅ Empty: '' → None
-        ✅ NaN: np.nan → None
-        ✅ Multiple: 'RS=111,222' → 'rs111' (first)
     """
     if "INFO" not in df.columns:
         return pd.Series([None] * len(df), index=df.index)
 
     # Handle None/NaN efficiently by filling with empty string first
-    # Avoids 'None' string from astype(str)
     info_clean = df["INFO"].fillna("")
 
-    # Vectorized regex extraction - extracts ONLY the number part
-    # Pattern: RS=<digits> -> captures just the digits
-    # Takes first number if multiple (e.g., RS=111,222 -> 111)
+    # Vectorized regex extraction
     rsids = info_clean.astype(str).str.extract(r"RS=([0-9,]+)", expand=False)
 
     # Handle multiple rsIDs (RS=111,222) - take first
     rsids = rsids.str.split(",").str[0]
 
     # Vectorized string concatenation - prepends 'rs'
-    # NaN values become 'rsnan' temporarily
     rsids = "rs" + rsids
 
     # Replace 'rsnan' with None (from NaN concatenation)
-    # This handles cases where no RS= was found
     rsids = rsids.replace("rsnan", None)
 
     return rsids
+
+
+def _extract_gene_vectorized(df: pd.DataFrame) -> pd.Series:
+    """
+    Extract gene names from INFO field GENEINFO tag using vectorized operations.
+
+    ClinVar VCF INFO format:
+        GENEINFO=BRCA1:672 → gene = "BRCA1"
+        GENEINFO=BRCA1:672|BRCA2:675 → gene = "BRCA1" (first gene)
+
+    Performance: Vectorized - no row-by-row loops
+
+    Args:
+        df: DataFrame with 'INFO' column containing VCF INFO fields
+
+    Returns:
+        Series of gene names or None for missing
+
+    Example:
+        >>> info = pd.Series(['CLNSIG=Path;GENEINFO=BRCA1:672', 'CLNSIG=Benign', None])
+        >>> df = pd.DataFrame({'INFO': info})
+        >>> _extract_gene_vectorized(df)
+        0    BRCA1
+        1     None
+        2     None
+        dtype: object
+    """
+    if "INFO" not in df.columns:
+        return pd.Series([None] * len(df), index=df.index)
+
+    # Handle None/NaN
+    info_clean = df["INFO"].fillna("")
+
+    # Extract GENEINFO value: GENEINFO=BRCA1:672 → BRCA1:672
+    gene_info = info_clean.astype(str).str.extract(
+        r"GENEINFO=([^;]+)", expand=False
+    )
+
+    # Extract gene name before colon: BRCA1:672 → BRCA1
+    # Handle multiple genes: BRCA1:672|BRCA2:675 → BRCA1
+    genes = gene_info.str.split("|").str[0]  # Take first gene if multiple
+    genes = genes.str.split(":").str[0]  # Take name before colon
+
+    # Clean up NaN values
+    genes = genes.replace("", None)
+    genes = genes.replace("nan", None)
+
+    return genes
+
+
+def _extract_molecular_consequence_vectorized(df: pd.DataFrame) -> pd.Series:
+    """
+    Extract molecular consequence from INFO field MC tag using vectorized operations.
+
+    ClinVar VCF INFO format:
+        MC=SO:0001587|nonsense → molecular_consequence = "nonsense"
+        MC=SO:0001583|missense_variant → molecular_consequence = "missense_variant"
+
+    Critical for PVS1 (loss-of-function) classification!
+
+    Performance: Vectorized - no row-by-row loops
+
+    Args:
+        df: DataFrame with 'INFO' column containing VCF INFO fields
+
+    Returns:
+        Series of molecular consequences or None for missing
+
+    Example:
+        >>> info = pd.Series(['MC=SO:0001587|nonsense', 'CLNSIG=Benign', None])
+        >>> df = pd.DataFrame({'INFO': info})
+        >>> _extract_molecular_consequence_vectorized(df)
+        0    nonsense
+        1        None
+        2        None
+        dtype: object
+    """
+    if "INFO" not in df.columns:
+        return pd.Series([None] * len(df), index=df.index)
+
+    # Handle None/NaN
+    info_clean = df["INFO"].fillna("")
+
+    # Extract MC value: MC=SO:0001587|nonsense → SO:0001587|nonsense
+    mc_info = info_clean.astype(str).str.extract(r"MC=([^;]+)", expand=False)
+
+    # Extract consequence after pipe: SO:0001587|nonsense → nonsense
+    # Handle multiple: SO:0001587|nonsense,SO:0001582|missense → nonsense
+    consequences = mc_info.str.split(",").str[0]  # Take first if multiple
+    consequences = consequences.str.split("|").str[1]  # Take part after pipe
+
+    # Clean up NaN values
+    consequences = consequences.replace("", None)
+    consequences = consequences.replace("nan", None)
+
+    return consequences
 
 
 def load_clinvar_vcf(
@@ -330,7 +395,7 @@ def load_clinvar_vcf(
     user_chromosomes: Optional[Set[str]] = None,
     checkpoint_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
-    """Load full ClinVar VCF with minimal validation (memory-optimized)."""
+    """Load full ClinVar VCF with gene and molecular_consequence extraction."""
     print(f"\n{'='*70}")
     print(f"📁 LOADING VCF: {filepath.name}")
     print(f"{'='*70}")
@@ -402,30 +467,67 @@ def load_clinvar_vcf(
         df["alt_allele"] = df["ALT"].str.upper()
         print("  ✓ Extracted\n")
 
+        # Extract rsIDs from INFO field (vectorized)
+        if "INFO" in df.columns:
+            print("🆔 Extracting rsIDs from INFO field...")
+            df["rsid"] = _extract_rsids_vectorized(df)
+            rsid_count: int = df["rsid"].notna().sum()
+            print(
+                f"  ✓ Extracted {rsid_count:,} rsIDs "
+                f"({100*rsid_count/len(df):.1f}%)\n"
+            )
+
+        # ✨ NEW: Extract GENE from INFO field (vectorized)
+        if "INFO" in df.columns:
+            print("🧬 Extracting gene names from INFO field...")
+            df["gene"] = _extract_gene_vectorized(df)
+            gene_count: int = df["gene"].notna().sum()
+            print(
+                f"  ✓ Extracted {gene_count:,} gene names "
+                f"({100*gene_count/len(df):.1f}%)\n"
+            )
+
+        # ✨ NEW: Extract MOLECULAR_CONSEQUENCE from INFO field (vectorized)
+        if "INFO" in df.columns:
+            print("🧬 Extracting molecular consequences from INFO field...")
+            df["molecular_consequence"] = _extract_molecular_consequence_vectorized(df)
+            cons_count: int = df["molecular_consequence"].notna().sum()
+            print(
+                f"  ✓ Extracted {cons_count:,} consequences "
+                f"({100*cons_count/len(df):.1f}%)\n"
+            )
+
+            # Show top consequences
+            if cons_count > 0:
+                print("  Top 10 molecular consequences:")
+                top_cons = df["molecular_consequence"].value_counts().head(10)
+                for cons, count in top_cons.items():
+                    # Mark LOF variants
+                    is_lof = any(
+                        kw in str(cons).lower()
+                        for kw in [
+                            "frameshift",
+                            "nonsense",
+                            "stop_gain",
+                            "splice_donor",
+                            "splice_acceptor",
+                        ]
+                    )
+                    marker = " 🔴 LOF" if is_lof else ""
+                    print(f"    {cons}: {count:,}{marker}")
+                print()
+
         # Split multiallelic variants (DISABLED - OOM prevention)
         df = split_multiallelic_vcf(df)
         print()
 
         # SKIP VALIDATION - OOM prevention
-        # Matching engine naturally handles invalid positions
         print("⚠️  Skipping validation (memory optimization)")
         print("   Matching engine will filter invalid data\n")
         logger.info("Validation skipped (memory optimization)")
 
         # Just normalize chromosome names (lightweight)
         df = validate_chromosome_consistency(df)
-        df = df  # Normalization skipped
-
-        # Extract rsIDs from INFO field
-        if "INFO" in df.columns:
-            print("🆔 Extracting rsIDs from INFO field...")
-            tqdm.pandas(desc="  Extracting", leave=False)
-            df["rsid"] = df["INFO"].apply(extract_rsid_from_info)
-            rsid_count: int = df["rsid"].notna().sum()
-            print(
-                f"  ✓ Extracted {rsid_count:,} rsIDs "
-                f"({100*rsid_count/len(df):.1f}%)\n"
-            )
 
         print(f"{'='*70}")
         print(f"✅ COMPLETE: {len(df):,} variants loaded")
@@ -471,6 +573,11 @@ def load_clinvar_vcf_tsv(
                 "clin_sig",
                 "significance",
             ],
+            "molecular_consequence": [
+                "molecular_consequence",
+                "consequence",
+                "variant_consequence",
+            ],
         }
         for target, candidates in target_candidates.items():
             for col in df.columns:
@@ -483,8 +590,7 @@ def load_clinvar_vcf_tsv(
 
         print("✅ Validating and normalizing...")
         df = validate_chromosome_consistency(df)
-        df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
-        df = df  # Normalization skipped
+        df = validate_position_ranges_parallel(df)
 
         orig_len: int = len(df)
         df = df.reset_index(drop=True)
@@ -588,8 +694,7 @@ def load_variant_summary(
         if all(col in df.columns for col in REQUIRED_COORD_COLUMNS):
             print("✅ Validating coordinates...")
             df = validate_chromosome_consistency(df)
-            df = validate_position_ranges_parallel(df)  # ⚡ PARALLEL
-            df = df  # Normalization skipped
+            df = validate_position_ranges_parallel(df)
             print("  ✓ Validated\n")
 
         print(f"{'='*70}")
@@ -610,7 +715,12 @@ def load_clinvar_file(
     **kwargs: Any,
 ) -> pd.DataFrame:
     """
-    Auto-detect and load ClinVar file with intelligent caching v8.0.1.
+    Auto-detect and load ClinVar file with intelligent caching v8.1.0.
+
+    NEW in v8.1.0: Extract gene and molecular_consequence (CRITICAL for PVS1)
+    - Extracts GENEINFO field → gene column
+    - Extracts MC (Molecular Consequence) → molecular_consequence column
+    - Enables proper LOF variant detection for PVS1 classification
 
     NEW in v8.0.1: Memory optimizations for systems with limited RAM
     - Skips non-critical validation steps
@@ -637,7 +747,7 @@ def load_clinvar_file(
         **kwargs: Additional arguments (checkpoint_dir for cache location)
 
     Returns:
-        DataFrame with processed ClinVar data
+        DataFrame with processed ClinVar data including gene and molecular_consequence
     """
     filepath = Path(filepath)
 
@@ -674,13 +784,22 @@ def load_clinvar_file(
             current_size = filepath.stat().st_size
             current_mtime = filepath.stat().st_mtime
 
+            # IMPORTANT: Invalidate cache if version changed (new gene/consequence extraction)
+            cache_version = meta.get("cache_version", "0.0.0")
             if (
                 meta.get("source_size") == current_size
                 and abs(meta.get("source_mtime", 0) - current_mtime) < 1.0
+                and cache_version == __version__
             ):
                 use_cache = True
                 logger.info(f"💾 Using cached ClinVar data from {cache_file.name}")
                 print(f"\n💾 Loading from cache: {cache_file.name}")
+            else:
+                if cache_version != __version__:
+                    logger.info(
+                        f"Cache version mismatch ({cache_version} != {__version__}), reloading"
+                    )
+                    print(f"\n⚠️  Cache version outdated, reloading from source...")
         except Exception as e:
             logger.warning(f"Cache validation failed: {e}, will reload from source")
             use_cache = False
