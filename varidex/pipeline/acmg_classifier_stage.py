@@ -66,8 +66,8 @@ def classify_variant_with_acmg(row: pd.Series, config: ACMGConfig) -> Dict[str, 
     """Classify a single variant."""
     try:
         variant = VariantData(
-            chromosome=str(row["chromosome"]),
-            position=str(row["position"]),
+            chromosome=str(row.get("chromosome_clinvar", row.get("chromosome"))),  # Use clinvar column
+            position=str(row.get("position_clinvar", row.get("position"))),  # Use clinvar column
             ref=str(row["ref_allele"]),
             alt=str(row["alt_allele"]),
         )
@@ -128,8 +128,10 @@ def apply_full_acmg_classification(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     result = df.copy()
+    # Only initialize codes that don't exist yet (preserve gnomAD codes)
     for code in ["PVS1", "PM2", "PM4", "PP2", "BA1", "BS1", "BP1", "BP3"]:
-        result[code] = False
+        if code not in result.columns:
+            result[code] = False
 
     result["acmg_classification"] = "Uncertain Significance"
     result["classification_reason"] = ""

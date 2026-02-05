@@ -84,7 +84,7 @@ def annotate_with_gnomad(
             variants=variants,
             gnomad_dir=gnomad_dir,
             n_workers=n_workers,
-            batch_size=batch_size,
+            batch_size=100,
         )
 
         df["gnomad_af"] = frequencies
