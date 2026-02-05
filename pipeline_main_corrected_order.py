@@ -2,19 +2,12 @@
 """
 VariDex v7.2.0_dev COMPLETE Pipeline + 13-Code ACMG + gnomAD
 
-FINAL CORRECT ORDER:
-1. Load user genome (23andMe format - no ref/alt)
-2. Load ClinVar (has ref/alt)
-3. Match → adds ref/alt from ClinVar to user variants
-4. Annotate matched variants with gnomAD (now has ref/alt!)
-5. ACMG classification
-6. Phase 1 enhancements
+Optimized order: gnomAD annotation → ClinVar matching → ACMG classification
 """
 
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-
 import pandas as pd
 
 from varidex import __version__
@@ -23,7 +16,10 @@ from varidex.io.loaders.clinvar import load_clinvar_file
 from varidex.io.loaders.user import load_user_file
 from varidex.io.matching_improved import match_variants_hybrid
 from varidex.pipeline.acmg_classifier_stage import apply_full_acmg_classification
-from varidex.pipeline.gnomad_stage import GnomadAnnotationStage
+from varidex.pipeline.gnomad_annotator import (
+    annotate_with_gnomad,
+    apply_frequency_acmg_criteria,
+)
 
 
 def enhance_with_phase1(results_df: pd.DataFrame) -> pd.DataFrame:
@@ -100,20 +96,16 @@ def print_summary(df: pd.DataFrame) -> None:
 
     pvs1_count = df.get("PVS1", pd.Series([False])).sum()
     pm2_count = df.get("PM2", pd.Series([False])).sum()
-    ba1_count = df.get("BA1", pd.Series([False])).sum()
-    bs1_count = df.get("BS1", pd.Series([False])).sum()
 
-    print("🎯 Priority ACMG Codes:")
-    print(f"  PVS1 (loss of function): {pvs1_count:,}")
-    print(f"  PM2 (rare pathogenic): {pm2_count:,}")
-    print(f"  BA1 (common benign): {ba1_count:,}")
-    print(f"  BS1 (high frequency): {bs1_count:,}")
+    print("🎯 Priority:")
+    print(f"  PVS1: {pvs1_count:,}")
+    print(f"  PM2: {pm2_count:,}")
     print()
 
 
 def main() -> None:
     parser = ArgumentParser(
-        description=f"VariDex v{__version__} - Full Pipeline with 13-Code ACMG + gnomAD"
+        description=f"VariDex v{__version__} - Integrated ACMG + gnomAD Pipeline"
     )
     parser.add_argument(
         "--clinvar",
@@ -135,26 +127,84 @@ def main() -> None:
     args: Namespace = parser.parse_args()
 
     print("=" * 70)
-    print(f"🧬 VariDex v{__version__} - 13-Code ACMG + gnomAD Pipeline")
+    print(f"🧬 VariDex v{__version__} - 13-Code ACMG Pipeline")
     print("=" * 70)
     print()
 
-    cache_file = Path("output/complete_results.csv")
+    cache_file = Path("output/user_with_gnomad.csv")
+    matched_cache = Path("output/complete_results.csv")
 
-    # Check if we can use cache
+    # ==================================================================
+    # STAGE 1-3: Load User Genome + gnomAD Annotation
+    # ==================================================================
     if cache_file.exists() and not args.force_reload and not args.user_genome:
-        print(f"✅ Using cached matched results: {cache_file}")
-        matched_df = pd.read_csv(cache_file)
-        print(f"✅ Loaded {len(matched_df):,} matched variants\n")
+        print(f"✅ Using cached user genome with gnomAD: {cache_file}")
+        user_annotated = pd.read_csv(cache_file)
+        print(f"✅ Loaded {len(user_annotated):,} variants\n")
     else:
-        # Full pipeline from scratch
         if not args.user_genome:
             print("❌ Error: --user-genome required for initial run")
-            print(f"   (Or use cached results in {cache_file})")
+            print(f"   (Or use cached data in {cache_file})")
             sys.exit(1)
 
-        # Step 1: Verify ClinVar exists
-        print("📥 Step 1: Setup genomic data...")
+        # Step 1: Load user genome
+        print("📖 Step 1: Loading your genome...")
+        user_df = load_user_file(args.user_genome)
+        print(f"✅ Loaded {len(user_df):,} variants from your genome\n")
+
+        # Step 2: Annotate with gnomAD (BEFORE matching to ClinVar)
+        if args.gnomad_dir:
+            print("📊 Step 2: gnomAD Population Frequency Annotation")
+            print("=" * 70)
+            print(f"Annotating {len(user_df):,} variants with gnomAD...")
+
+            # Prepare columns for gnomAD
+            user_prep = user_df.copy()
+            if "ref_allele" not in user_prep.columns and "ref" in user_prep.columns:
+                user_prep["ref_allele"] = user_prep["ref"]
+            if "alt_allele" not in user_prep.columns and "alt" in user_prep.columns:
+                user_prep["alt_allele"] = user_prep["alt"]
+
+            try:
+                user_annotated = annotate_with_gnomad(user_prep, Path(args.gnomad_dir))
+                print("Applying BA1, BS1, PM2 frequency criteria...")
+                user_annotated = apply_frequency_acmg_criteria(user_annotated)
+
+                ba1_count = user_annotated.get("BA1", pd.Series([False])).sum()
+                bs1_count = user_annotated.get("BS1", pd.Series([False])).sum()
+                pm2_count = user_annotated.get("PM2", pd.Series([False])).sum()
+
+                print()
+                print(
+                    f"⭐ gnomAD applied to full genome: "
+                    f"BA1={ba1_count:,}, BS1={bs1_count:,}, PM2={pm2_count:,}"
+                )
+                print("✅ Complete\n")
+
+            except Exception as e:
+                print(f"⚠️  gnomAD annotation failed: {e}")
+                print("   Continuing without gnomAD data\n")
+                user_annotated = user_df
+        else:
+            print("⚠️  Skipping gnomAD (no --gnomad-dir provided)")
+            print("   BA1, BS1, PM2 criteria will not be applied\n")
+            user_annotated = user_df
+
+        # Cache the gnomAD-annotated user genome
+        cache_file.parent.mkdir(exist_ok=True)
+        user_annotated.to_csv(cache_file, index=False)
+        print(f"💾 Cached gnomAD-annotated genome: {cache_file}\n")
+
+    # ==================================================================
+    # STAGE 4-5: Load ClinVar + Match
+    # ==================================================================
+    if matched_cache.exists() and not args.force_reload:
+        print(f"✅ Using cached matched results: {matched_cache}")
+        matched_df = pd.read_csv(matched_cache)
+        print(f"✅ Loaded {len(matched_df):,} matched variants\n")
+    else:
+        # Step 3: Verify ClinVar exists
+        print("📥 Step 3: Setup genomic data...")
         clinvar_path = Path(args.clinvar)
 
         if not clinvar_path.exists():
@@ -163,47 +213,32 @@ def main() -> None:
             setup_genomic_data()
             clinvar_path = Path("clinvar/clinvar_GRCh37.vcf.gz")
 
-        print(f"✅ ClinVar: {clinvar_path}")
-        if args.gnomad_dir:
-            print(f"✅ gnomAD: {args.gnomad_dir}")
-        print()
+        print(f"✅ ClinVar: {clinvar_path}\n")
 
-        # Step 2: Load ClinVar
-        print("📖 Step 2: Loading ClinVar...")
+        # Step 4: Load ClinVar
+        print("📖 Step 4: Loading ClinVar...")
         clinvar_df = load_clinvar_file(str(clinvar_path))
         print(f"✅ Loaded {len(clinvar_df):,} ClinVar variants\n")
 
-        # Step 3: Load user genome
-        print("📖 Step 3: Loading your genome...")
-        user_df = load_user_file(args.user_genome)
-        print(f"✅ Loaded {len(user_df):,} variants from your genome\n")
-
-        # Step 4: Match variants (adds ref/alt from ClinVar)
-        print("🔗 Step 4: Matching variants (hybrid: rsID + coordinates)...")
+        # Step 5: Match gnomAD-annotated user genome to ClinVar
+        print("🔗 Step 5: Matching variants (hybrid: rsID + coordinates)...")
         matched_df, rsid_matches, coord_matches = match_variants_hybrid(
-            clinvar_df, user_df, clinvar_type="vcf", user_type="23andme"
+            clinvar_df, user_annotated, clinvar_type="vcf", user_type="23andme"
         )
 
         print(f"✅ Matched {len(matched_df):,} variants:")
         print(f"   • rsID matches: {rsid_matches:,}")
         print(f"   • Coordinate matches: {coord_matches:,}\n")
 
-        # Save cache
-        if cache_file.parent.exists() and cache_file.parent.is_file():
-            cache_file.parent.unlink()  # Remove if it's a file
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        matched_df.to_csv(cache_file, index=False)
+        # Save matched cache
+        matched_cache.parent.mkdir(exist_ok=True)
+        matched_df.to_csv(matched_cache, index=False)
 
-    # Step 5: gnomAD annotation (NOW we have ref/alt from ClinVar!)
-    if args.gnomad_dir:
-        gnomad_stage = GnomadAnnotationStage(Path(args.gnomad_dir))
-        matched_df = gnomad_stage.process(matched_df)
-    else:
-        print("⚠️  Skipping gnomAD (no --gnomad-dir provided)")
-        print("   BA1, BS1, PM2 criteria will not be applied\n")
-
-    # Step 6: ACMG Classification
-    print("Applying ACMG classification (base codes)...")
+    # ==================================================================
+    # STAGE 6-7: ACMG Classification + Phase 1
+    # ==================================================================
+    # Step 6: ACMG Classification (remaining codes)
+    print("Applying ACMG classification (remaining codes)...")
     results_df = apply_full_acmg_classification(matched_df)
     print("✅ Complete\n")
 
@@ -212,7 +247,9 @@ def main() -> None:
     results_df = enhance_with_phase1(results_df)
     print("✅ Complete\n")
 
-    # Step 8: Write outputs
+    # ==================================================================
+    # STAGE 8: Save Results
+    # ==================================================================
     output_path = Path(args.output)
     write_output_files(results_df, output_path)
 

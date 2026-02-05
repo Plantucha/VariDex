@@ -1,0 +1,3 @@
+rsid_user,chromosome,position,genotype,variant_id_type,CHROM,POS,ID,REF,ALT,QUAL,FILTER,INFO,clinical_sig,review_status,ref_allele,alt_allele,rsid_clinvar,match_confidence,PVS1,PM2,PM4,PP2,BA1,BS1,BP1,BP3,acmg_classification,classification_reason,evidence_summary,PP5,BP6,BP7,BS2,BS3
+rs123,1,100,AG,rsid,1,100,rs123,A,G,,,,,,A,G,,0.7,False,False,False,False,False,False,False,False,Uncertain Significance,No evidence,,False,False,False,False,False
+rs456,2,200,CT,rsid,2,200,rs456,C,T,,,,,,C,T,,0.7,False,False,False,False,False,False,False,False,Uncertain Significance,No evidence,,False,False,False,False,False

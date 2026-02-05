@@ -14,7 +14,6 @@ FINAL CORRECT ORDER:
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-
 import pandas as pd
 
 from varidex import __version__
@@ -189,9 +188,7 @@ def main() -> None:
         print(f"   • Coordinate matches: {coord_matches:,}\n")
 
         # Save cache
-        if cache_file.parent.exists() and cache_file.parent.is_file():
-            cache_file.parent.unlink()  # Remove if it's a file
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.parent.mkdir(exist_ok=True)
         matched_df.to_csv(cache_file, index=False)
 
     # Step 5: gnomAD annotation (NOW we have ref/alt from ClinVar!)

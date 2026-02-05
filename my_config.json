@@ -1,0 +1,21 @@
+{
+  "reference_genome": "GRCh38",
+  "min_quality_score": 20.0,
+  "min_read_depth": 10,
+  "max_missing_rate": 0.1,
+  "population_af_threshold": 0.005,
+  "rare_variant_threshold": 0.001,
+  "thread_count": 8,
+  "chunk_size": 1000,
+  "enable_caching": true,
+  "clinvar_path": "",
+  "gnomad_path": "",
+  "dbnsfp_path": "",
+  "output_format": "json",
+  "output_directory": "./my_results",
+  "include_annotations": true,
+  "acmg_strict_mode": false,
+  "require_population_data": false,
+  "log_level": "INFO",
+  "debug_mode": false
+}

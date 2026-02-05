@@ -1,0 +1,72 @@
+2026-01-26 18:40:40,282 - INFO - NumExpr defaulting to 6 threads.
+2026-01-26 18:40:40,328 - INFO - ✓ Centralized imports loaded
+2026-01-26 18:40:40,336 - INFO -   ⚡ Skipping check (--force)
+2026-01-26 18:40:40,337 - INFO -   Detecting: genome_Julia_Planicka_v5_Full_20260118131129.txt
+2026-01-26 18:40:40,337 - WARNING -     → Defaulting to 23andMe (AMBIGUOUS)
+2026-01-26 18:41:03,405 - WARNING - 27 variants on 3 exceed max 198000000
+2026-01-26 18:41:03,571 - WARNING - 566 variants on 5 exceed max 181000000
+2026-01-26 18:41:05,026 - WARNING - 55 variants on X exceed max 156000000
+2026-01-26 18:41:06,095 - INFO - Filtered 648 invalid positions
+2026-01-26 18:41:10,455 - INFO - ✓ Loaded {len(clinvar_df):,} ClinVar variants
+2026-01-26 18:41:10,455 - INFO - ✓ Loaded 4,276,258 ClinVar variants
+2026-01-26 18:41:10,456 - INFO - Loading 23andMe: {Path(filepath).name}
+2026-01-26 18:41:11,353 - INFO - Loaded {len(df):,} variants from {stats['input_rows']:,} rows
+2026-01-26 18:41:11,353 - INFO - Variant types: {stats['type_distribution']}
+2026-01-26 18:41:11,353 - INFO - ✓ Loaded {len(user_df):,} user variants
+2026-01-26 18:41:11,353 - INFO - ✓ Loaded 631,455 user variants
+======================================================================
+CLINVAR-WGS PIPELINE v6.0.0
+======================================================================
+Start: 2026-01-26 18:40:40
+⚡ FORCE MODE
+🤖 NON-INTERACTIVE
+
+======================================================================
+[1/7] 📋 FILE ANALYSIS
+======================================================================
+  ClinVar: vcf
+  User: 23andme
+  Mode: hybrid
+
+======================================================================
+[2/7] 📥 LOADING CLINVAR
+======================================================================
+
+======================================================================
+LOADING VCF: clinvar_GRCh38.vcf.gz
+======================================================================
+
+[VCF] clinvar_GRCh38.vcf.gz
+  Extracted 2,883,164 rsIDs from INFO field (67.4%)
+  Filtered: 4,276,306 → 4,276,258
+  ✓ 4,276,258 variants
+  ✓ Loaded: 4,276,258 variants
+
+======================================================================
+[3/7] 📥 LOADING USER DATA
+======================================================================
+  ✓ Loaded: 631,455 variants
+
+======================================================================
+[4/7] 🔗 HYBRID MATCHING
+======================================================================
+Matching variants:   0%|          | 0/631455 [00:00<?, ?var/s]Matching variants:   0%|          | 0/631455 [00:00<?, ?var/s]
+2026-01-26 18:41:11,354 - ERROR - Pipeline failed: module 'varidex.io.loaders' has no attribute 'match_variants_hybrid'
+Traceback (most recent call last):
+  File "/media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/pipeline/orchestrator.py", line 331, in main
+    matched_df: Any = execute_stage4_hybrid_matching(
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        clinvar_df,
+        ^^^^^^^^^^^
+    ...<4 lines>...
+        SAFEGUARD_CONFIG
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/media/michal/647A504F7A50205A/GENOME/Michal/VariDex10/VariDex/varidex/pipeline/stages.py", line 332, in execute_stage4_hybrid_matching
+    matched_df = loader.match_variants_hybrid(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'varidex.io.loaders' has no attribute 'match_variants_hybrid'
+
+❌ ERROR: module 'varidex.io.loaders' has no attribute 'match_variants_hybrid'
+   Check pipeline.log

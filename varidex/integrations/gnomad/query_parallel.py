@@ -10,7 +10,7 @@ Performance improvements:
 
 import logging
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -163,7 +163,7 @@ class ParallelGnomADQuerier:
             batch_size: Variants per batch (default: 500)
         """
         self.gnomad_dir = Path(gnomad_dir)
-        self.n_workers = n_workers or max(1, mp.cpu_count() - 1)
+        self.n_workers = n_workers or 1  # Single worker for large gnomAD files
         self.batch_size = batch_size
 
         logger.info(
@@ -201,7 +201,7 @@ class ParallelGnomADQuerier:
         # Process batches in parallel
         results = [None] * len(variants)
 
-        with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.n_workers) as executor:
             # Submit all batches
             future_to_idx = {}
             for batch_idx, batch_args in enumerate(batches):
