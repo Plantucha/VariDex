@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-varidex/io/matching_improved.py - Improved Variant Matching v6.6.0
-
+varidex/io/matching_improved.py - Improved Variant Matching v6.7.0
 Enhancements over matching.py:
 1. 23andMe genotype verification (prevents false positives)
 2. Match confidence scoring (0.0-1.0 quality metric)
@@ -9,14 +8,13 @@ Enhancements over matching.py:
 4. More robust error handling
 5. Chromosome extraction for lazy loading (Phase 2)
 
+BUGFIX v6.7.0: Consolidate position/chromosome columns after merge
 BUGFIX v6.5.5: Fixed review_status type mismatch (string vs int)
 """
 
 import logging
 from typing import Any, List, Optional, Set, Tuple
-
 import pandas as pd
-
 from varidex.io.normalization import create_coord_key
 
 logger = logging.getLogger(__name__)
@@ -32,7 +30,6 @@ REQUIRED_COORD_COLUMNS: List[str] = [
 def get_user_chromosomes(user_df: pd.DataFrame) -> Set[str]:
     """
     Extract unique chromosomes from user genome data.
-
     Used for lazy loading: only load ClinVar data for chromosomes
     present in the user's genome.
 
@@ -41,31 +38,20 @@ def get_user_chromosomes(user_df: pd.DataFrame) -> Set[str]:
 
     Returns:
         Set of chromosome names (e.g., {'1', '7', '19', 'X'})
-
-    Example:
-        >>> user_df = load_user_genome('23andme.txt')
-        >>> chromosomes = get_user_chromosomes(user_df)
-        >>> print(chromosomes)  # {'1', '7', '19'}
-        >>> # Now load only these chromosomes from ClinVar
-        >>> clinvar_df = load_clinvar_file(path, user_chromosomes=chromosomes)
     """
     if user_df is None or len(user_df) == 0:
         logger.warning("User DataFrame is empty, returning all chromosomes")
-        # Return all standard chromosomes as fallback
         return set([str(i) for i in range(1, 23)] + ["X", "Y", "MT"])
 
     if "chromosome" not in user_df.columns:
         logger.warning("No 'chromosome' column in user data")
         return set([str(i) for i in range(1, 23)] + ["X", "Y", "MT"])
 
-    # Extract unique chromosomes
     chromosomes = set(user_df["chromosome"].dropna().astype(str).unique())
 
-    # Standardize chromosome names (remove 'chr' prefix if present)
     standardized = set()
     for chrom in chromosomes:
         chrom_clean = str(chrom).replace("chr", "").replace("Chr", "").upper()
-        # Handle MT vs M
         if chrom_clean in ["M", "MT"]:
             chrom_clean = "MT"
         standardized.add(chrom_clean)
@@ -97,56 +83,42 @@ def calculate_match_confidence(
         Confidence score between 0.0 and 1.0
     """
     base_scores = {
-        "rsid_and_coords": 1.0,  # Perfect: rsID + coordinates match
-        "rsid_only": 0.8,  # Good but coordinates not verified
-        "coords_exact": 0.95,  # Excellent: chr:pos:ref:alt match
-        "coords_normalized": 0.9,  # Very good: after left-alignment
-        "position_with_allele": 0.7,  # Fair: 23andMe with genotype check
-        "position_only": 0.3,  # Risky: position match only
+        "rsid_and_coords": 1.0,
+        "rsid_only": 0.8,
+        "coords_exact": 0.95,
+        "coords_normalized": 0.9,
+        "position_with_allele": 0.7,
+        "position_only": 0.3,
     }
 
     confidence = base_scores.get(match_type, 0.5)
 
-    # CRITICAL FIX: Convert review_status to int safely
     review_int = None
     if review_status is not None:
         try:
-            # Handle both int and string inputs
             if isinstance(review_status, (int, float)):
                 review_int = int(review_status)
             elif isinstance(review_status, str):
-                # Try to parse string to int
                 review_int = int(float(review_status))
         except (ValueError, TypeError):
-            # If conversion fails, treat as None (no adjustment)
             logger.debug(f"Could not parse review_status: {review_status}")
             review_int = None
 
-    # Adjust for ClinVar review status
     if review_int is not None:
         if review_int >= 3:
-            confidence *= 1.0  # Trusted, no penalty
+            confidence *= 1.0
         elif review_int == 2:
             confidence *= 0.9
         elif review_int == 1:
             confidence *= 0.8
         else:
-            confidence *= 0.6  # Low confidence data
+            confidence *= 0.6
 
     return min(confidence, 1.0)
 
 
 def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Match variants by rsID only.
-
-    Args:
-        user_df: User genome DataFrame with 'rsid' column
-        clinvar_df: ClinVar DataFrame with 'rsid' column
-
-    Returns:
-        Merged DataFrame with matched variants
-    """
+    """Match variants by rsID only."""
     if "rsid" not in user_df.columns or "rsid" not in clinvar_df.columns:
         logger.warning("rsID column missing")
         return pd.DataFrame()
@@ -155,7 +127,6 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
         clinvar_df, on="rsid", how="inner", suffixes=("_user", "_clinvar")
     )
 
-    # Add confidence score
     matched["match_confidence"] = matched.apply(
         lambda row: calculate_match_confidence(
             "rsid_only",
@@ -171,18 +142,7 @@ def match_by_rsid(user_df: pd.DataFrame, clinvar_df: pd.DataFrame) -> pd.DataFra
 def match_by_coordinates(
     user_df: pd.DataFrame, clinvar_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """
-    Match variants by coordinates (chr:pos:ref:alt).
-
-    Uses improved normalization with coord_key creation.
-
-    Args:
-        user_df: User genome DataFrame
-        clinvar_df: ClinVar DataFrame
-
-    Returns:
-        Merged DataFrame with coordinate-matched variants
-    """
+    """Match variants by coordinates (chr:pos:ref:alt)."""
     if user_df is None or len(user_df) == 0:
         logger.warning("User DataFrame is empty")
         return pd.DataFrame()
@@ -199,19 +159,16 @@ def match_by_coordinates(
         logger.warning(f"ClinVar DataFrame missing: {REQUIRED_COORD_COLUMNS}")
         return pd.DataFrame()
 
-    # Create coord_key using improved normalization
     if "coord_key" not in user_df.columns:
         user_df = create_coord_key(user_df)
 
     if "coord_key" not in clinvar_df.columns:
         clinvar_df = create_coord_key(clinvar_df)
 
-    # Merge on coordinate key
     matched = user_df.merge(
         clinvar_df, on="coord_key", how="inner", suffixes=("_user", "_clinvar")
     )
 
-    # Add confidence score
     matched["match_confidence"] = matched.apply(
         lambda row: calculate_match_confidence(
             "coords_exact",
@@ -227,19 +184,7 @@ def match_by_coordinates(
 def match_by_position_23andme_improved(
     user_df: pd.DataFrame, clinvar_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """
-    Match 23andMe variants by position AND verify genotype matches alleles.
-
-    IMPROVEMENT over original: Checks if genotype is consistent with
-    ClinVar ref/alt alleles to prevent false positives.
-
-    Args:
-        user_df: 23andMe DataFrame with chromosome, position, genotype
-        clinvar_df: ClinVar DataFrame with chromosome, position, ref, alt
-
-    Returns:
-        Merged DataFrame with verified position matches
-    """
+    """Match 23andMe variants by position AND verify genotype matches alleles."""
     if not all(col in user_df.columns for col in ["chromosome", "position"]):
         logger.warning("User DataFrame missing position columns")
         return pd.DataFrame()
@@ -248,7 +193,6 @@ def match_by_position_23andme_improved(
         logger.warning("ClinVar DataFrame missing position columns")
         return pd.DataFrame()
 
-    # Merge on chromosome and position
     merged = user_df.merge(
         clinvar_df,
         on=["chromosome", "position"],
@@ -259,18 +203,14 @@ def match_by_position_23andme_improved(
     if len(merged) == 0:
         return pd.DataFrame()
 
-    # Verify genotype matches ref/alt alleles
     def genotype_matches(row: pd.Series) -> bool:
         """Check if genotype is consistent with ref/alt."""
         try:
-            # CRITICAL FIX: Handle column suffixes after merge
             genotype = str(row.get("genotype", "")).upper()
 
-            # Try different possible column names after merge
             ref = None
             alt = None
 
-            # Check for clinvar columns (preferred)
             if "ref_allele_clinvar" in row.index:
                 ref = str(row.get("ref_allele_clinvar", "")).upper()
             elif "ref_allele" in row.index:
@@ -284,19 +224,15 @@ def match_by_position_23andme_improved(
             if not genotype or not ref or not alt:
                 return False
 
-            # Filter out NaN strings
             if ref in ["NAN", "NONE", ""] or alt in ["NAN", "NONE", ""]:
                 return False
 
-            # 23andMe genotype is 2 characters (e.g., "AG", "AA", "GG")
             if len(genotype) != 2:
                 return False
 
             alleles_in_genotype = set(genotype)
-
-            # CRITICAL FIX: Simplified logic (removed redundant union)
-            # Must contain alt allele AND only use ref or alt
             expected_alleles = {ref, alt}
+
             return alt in alleles_in_genotype and alleles_in_genotype.issubset(
                 expected_alleles
             )
@@ -305,10 +241,8 @@ def match_by_position_23andme_improved(
             logger.debug(f"Genotype check failed: {e}")
             return False
 
-    # Filter to only verified matches
     verified = merged[merged.apply(genotype_matches, axis=1)].copy()
 
-    # Add confidence score
     verified["match_confidence"] = verified.apply(
         lambda row: calculate_match_confidence(
             "position_with_allele",
@@ -322,20 +256,10 @@ def match_by_position_23andme_improved(
 
 
 def deduplicate_matches(df: pd.DataFrame, strategy: str = "best") -> pd.DataFrame:
-    """
-    Deduplicate matched variants, keeping best quality matches.
-
-    Args:
-        df: DataFrame with matched variants
-        strategy: 'best' (highest confidence), 'first', or 'all'
-
-    Returns:
-        Deduplicated DataFrame
-    """
+    """Deduplicate matched variants, keeping best quality matches."""
     if len(df) == 0:
         return df
 
-    # Create user variant key for deduplication
     if "chromosome_user" in df.columns and "position_user" in df.columns:
         df["_dedup_key"] = (
             df["chromosome_user"].astype(str) + ":" + df["position_user"].astype(str)
@@ -351,18 +275,12 @@ def deduplicate_matches(df: pd.DataFrame, strategy: str = "best") -> pd.DataFram
     original_count = len(df)
 
     if strategy == "best":
-        # Keep match with highest confidence per user variant
         if "match_confidence" in df.columns:
             df = df.sort_values("match_confidence", ascending=False)
-            df = df.drop_duplicates(subset="_dedup_key", keep="first")
-        else:
-            df = df.drop_duplicates(subset="_dedup_key", keep="first")
-
+        df = df.drop_duplicates(subset="_dedup_key", keep="first")
     elif strategy == "first":
         df = df.drop_duplicates(subset="_dedup_key", keep="first")
-
     elif strategy == "all":
-        # Keep all matches (no deduplication)
         pass
 
     df = df.drop(columns=["_dedup_key"], errors="ignore")
@@ -387,6 +305,7 @@ def match_variants_hybrid(
     1. Uses improved 23andMe matching with genotype verification
     2. Adds match_confidence scoring to all matches
     3. Better deduplication (keeps highest quality matches)
+    4. Consolidates position/chromosome columns after merge
 
     Args:
         clinvar_df: ClinVar DataFrame
@@ -430,7 +349,6 @@ def match_variants_hybrid(
     if len(unmatched) > 0:
         logger.info(f"Attempting coordinate matching on {len(unmatched):,}...")
 
-        # Use improved 23andMe matching if applicable
         if user_type == "23andme":
             coord_matched = match_by_position_23andme_improved(unmatched, clinvar_df)
         else:
@@ -459,6 +377,34 @@ def match_variants_hybrid(
         avg_conf = combined["match_confidence"].mean()
         logger.info(f"Average match confidence: {avg_conf:.2f}")
 
+    # ========== CRITICAL FIX v6.7.0: Consolidate position/chromosome columns ==========
+    # The merge creates position_user and position_clinvar, but position column may be empty
+    if "position_clinvar" in combined.columns:
+        # Use ClinVar position as authoritative (more accurate)
+        combined["position"] = combined["position_clinvar"].fillna(
+            combined.get("position_user", combined.get("POS"))
+        )
+    elif "position_user" in combined.columns:
+        combined["position"] = combined["position_user"]
+    elif "POS" in combined.columns:
+        combined["position"] = combined["POS"]
+
+    # Also consolidate chromosome
+    if "chromosome_clinvar" in combined.columns:
+        combined["chromosome"] = combined["chromosome_clinvar"].fillna(
+            combined.get("chromosome_user", combined.get("CHROM"))
+        )
+    elif "chromosome_user" in combined.columns:
+        combined["chromosome"] = combined["chromosome_user"]
+    elif "CHROM" in combined.columns:
+        combined["chromosome"] = combined["CHROM"]
+
+    logger.info(
+        f"Consolidated position: {combined['position'].notna().sum()}/{len(combined)} values"
+    )
+    logger.info(
+        f"Consolidated chromosome: {combined['chromosome'].notna().sum()}/{len(combined)} values"
+    )
     logger.info(f"{'='*60}")
 
     return combined, rsid_count, coord_count
@@ -473,22 +419,3 @@ __all__ = [
     "calculate_match_confidence",
     "deduplicate_matches",
 ]
-
-
-def create_coord_key(row):
-    """v6.6.1: Handles VCF (#CHROM/POS/REF/ALT) + 23me (chromosome/position/genotype)."""
-    chrom = (
-        str(row.get("#CHROM", row.get("CHROM", row.get("chromosome", ""))))
-        .upper()
-        .lstrip("CHR")
-    )
-    pos = int(row.get("POS", row.get("position", 0)))
-    ref_col = row.get("REF", row.get("ref", ""))
-    alt_col = row.get("ALT", row.get("alt", ""))
-    geno = row.get("genotype", "")
-
-    # VCF has REF/ALT, 23me has genotype
-    ref = str(ref_col if ref_col else (geno[0] if geno else "?")).upper()
-    alt = str(alt_col if alt_col else (geno[1:] if len(geno) > 1 else ref)).upper()
-
-    return f"{chrom}:{pos}:{ref}>{alt}"
