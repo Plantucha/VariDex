@@ -83,3 +83,16 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .mypy_cache/
+
+# Junk patterns
+*.backup
+*.bak
+*_OLD.md
+*_old.md
+FINAL_*.txt
+results_*/
+!results_michal/
+htmlcov*/
+mypy-report/
+final_test/
+varidex-env/
