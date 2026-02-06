@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-VariDex v7.2.0-dev COMPLETE Pipeline - 17-Code ACMG + gnomAD + FULL EXPORT
+VariDex v7.2.0-dev COMPLETE Pipeline - 19-Code ACMG + gnomAD + FULL EXPORT
 CONFIRMED 13 criteria: BA1,BS1,PM2,PVS1,PM4,PP2,BP1,BP3,PP5,BP6,BP7,BS2,BS3
-NEW: PM1, PM5, PM3, PS1
+NEW: PM1, PM5, PM3, PS1, PP3, BP4
 WITH DEBUG: Position column tracking
 """
 import sys
@@ -60,11 +60,12 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
     """Write ALL output files"""
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    acmg_17 = [
+    acmg_19 = [
         "BA1", "BS1", "PM2", "PVS1", "PM4", "PP2", "BP1", "BP3",
         "PP5", "BP6", "BP7", "BS2", "BS3",
         "PM1", "PM5", "PM3",
-        "PS1"  # NEW - Strong pathogenic evidence
+        "PS1",  # Strong pathogenic evidence
+        "PP3", "BP4"  # Computational predictions
     ]
     
     essentials = [
@@ -72,14 +73,14 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
         "review_status", "molecular_consequence", "gnomad_af", "acmg_classification"
     ]
     
-    export_cols = [col for col in essentials + acmg_17 if col in df.columns]
+    export_cols = [col for col in essentials + acmg_19 if col in df.columns]
     full_df = df[export_cols].copy()
     
-    full_path = output_dir / "results_17codes_FULL.csv"
+    full_path = output_dir / "results_19codes_FULL.csv"
     full_df.to_csv(full_path, index=False)
     print(f"✅ FULL EXPORT: {len(full_df)} rows x {len(export_cols)} cols -> {full_path}")
     
-    df.to_csv(output_dir / "results_17codes.csv", index=False)
+    df.to_csv(output_dir / "results_19codes.csv", index=False)
     
     if "PVS1" in df.columns:
         pvs1_df = df[df["PVS1"] == True]
@@ -93,10 +94,14 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
         ps1_df = df[df["PS1"] == True]
         ps1_df.to_csv(output_dir / "PRIORITY_PS1.csv", index=False)
     
-    summary_cols = [col for col in acmg_17 if col in df.columns]
+    if "PP3" in df.columns:
+        pp3_df = df[df["PP3"] == True]
+        pp3_df.to_csv(output_dir / "PRIORITY_PP3.csv", index=False)
+    
+    summary_cols = [col for col in acmg_19 if col in df.columns]
     summary = {col: int(df[col].sum()) for col in summary_cols}
     
-    print("📊 17 ACMG Criteria True Counts:")
+    print("📊 19 ACMG Criteria True Counts:")
     for col in sorted(summary, key=summary.get, reverse=True):
         print(f"   {col}: {summary[col]}")
 
@@ -104,11 +109,12 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
 def print_summary(df: pd.DataFrame) -> None:
     """Print final pipeline summary"""
     print("=" * 70)
-    print("COMPLETE - 17 ACMG Codes")
+    print("COMPLETE - 19 ACMG Codes")
     print("=" * 70)
     print(f"Total variants: {len(df)}")
     
-    evidence_cols = ["BA1", "BS1", "PM2", "PVS1", "BP7", "PP5", "BP6", "BS2", "PM1", "PM5", "PS1"]
+    evidence_cols = ["BA1", "BS1", "PM2", "PVS1", "BP7", "PP5", "BP6", "BS2", 
+                     "PM1", "PM5", "PS1", "PP3", "BP4"]
     existing_cols = [c for c in evidence_cols if c in df.columns]
     
     if existing_cols:
@@ -124,6 +130,8 @@ def print_summary(df: pd.DataFrame) -> None:
     pm1_count = int(df.get("PM1", pd.Series([False])).sum())
     pm5_count = int(df.get("PM5", pd.Series([False])).sum())
     ps1_count = int(df.get("PS1", pd.Series([False])).sum())
+    pp3_count = int(df.get("PP3", pd.Series([False])).sum())
+    bp4_count = int(df.get("BP4", pd.Series([False])).sum())
     ba1_count = int(df.get("BA1", pd.Series([False])).sum())
     bs1_count = int(df.get("BS1", pd.Series([False])).sum())
     
@@ -133,13 +141,15 @@ def print_summary(df: pd.DataFrame) -> None:
     print(f"  PM1 (critical domains): {pm1_count}")
     print(f"  PM5 (pathogenic position): {pm5_count}")
     print(f"  PS1 (same AA change): {ps1_count}")
+    print(f"  PP3 (computational deleterious): {pp3_count}")
+    print(f"  BP4 (computational benign): {bp4_count}")
     print(f"  BA1 (common benign): {ba1_count}")
     print(f"  BS1 (high frequency): {bs1_count}")
 
 
 def main() -> None:
     parser = ArgumentParser(
-        description=f"VariDex v{version} - Full Pipeline with 17-Code ACMG + gnomAD"
+        description=f"VariDex v{version} - Full Pipeline with 19-Code ACMG + gnomAD"
     )
     parser.add_argument(
         "--clinvar", default="clinvar/clinvar_GRCh37.vcf.gz", help="ClinVar VCF file"
@@ -156,7 +166,7 @@ def main() -> None:
     args: Namespace = parser.parse_args()
     
     print("=" * 70)
-    print(f"VariDex v{version} - 17-Code ACMG + gnomAD Pipeline")
+    print(f"VariDex v{version} - 19-Code ACMG + gnomAD Pipeline")
     print("=" * 70)
     
     cache_file = Path("output/complete_results.csv")
@@ -227,12 +237,13 @@ def main() -> None:
         print("Complete")
         print(f"DEBUG: After Phase 1 - position values: {result_df.position.notna().sum()}")
     
-    print("Step 8: Applying additional 4 criteria (PM1, PM5, PM3, PS1)...")
+    print("Step 8: Applying additional 6 criteria (PM1, PM5, PM3, PS1, PP3, BP4)...")
     try:
         from varidex.acmg.criteria_pm1 import PM1Classifier
         from varidex.acmg.criteria_pm5 import PM5Classifier
         from varidex.acmg.criteria_pm3 import PM3Classifier
         from varidex.acmg.criteria_ps1 import PS1Classifier
+        from varidex.acmg.criteria_pp3_bp4 import PP3_BP4_Classifier
         
         pm1 = PM1Classifier("uniprot/uniprot_sprot.xml.gz")
         result_df = pm1.apply_pm1(result_df)
@@ -243,16 +254,19 @@ def main() -> None:
         pm3 = PM3Classifier()
         result_df = pm3.apply_pm3(result_df)
         
-        # NEW: PS1 - Same amino acid change as pathogenic
         ps1 = PS1Classifier(clinvar_df)
         result_df = ps1.apply_ps1(result_df)
         
-        print("Complete (now 17/28 criteria)")
+        # NEW: PP3/BP4 - Computational predictions
+        pp3_bp4 = PP3_BP4_Classifier()
+        result_df = pp3_bp4.apply_pp3_bp4(result_df)
+        
+        print("Complete (now 19/28 criteria)")
     except Exception as e:
         import traceback
         print(f"Warning: Additional criteria failed: {e}")
         print(traceback.format_exc())
-        print("Continuing with 13/28 criteria")
+        print("Continuing with base criteria")
     
     print(f"DEBUG: Before output - position values: {result_df.position.notna().sum()}")
     
@@ -260,11 +274,12 @@ def main() -> None:
     write_output_files(result_df, output_path)
     
     print(f"Output -> {output_path.resolve()}") 
-    print("  results_17codes.csv")
+    print("  results_19codes.csv")
     print("  PRIORITY_PVS1.csv")
     print("  PRIORITY_PM2.csv")
-    print("  PRIORITY_PS1.csv  ← NEW")
-    print("  results_17codes_FULL.csv  ← 17 criteria + essentials")
+    print("  PRIORITY_PS1.csv")
+    print("  PRIORITY_PP3.csv  ← NEW")
+    print("  results_19codes_FULL.csv  ← 19 criteria + essentials")
     
     print_summary(result_df)
 
