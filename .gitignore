@@ -51,3 +51,14 @@ results_*/
 
 # Build
 varidex.egg-info/
+
+# VariDex output and temporary files
+output/
+results_*/
+uniprot/*.pkl
+
+# Temporary development files
+*_FIXED.py
+*_DEBUG.py
+diagnostic_report*.txt
+*.backup*
