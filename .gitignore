@@ -62,3 +62,24 @@ uniprot/*.pkl
 *_DEBUG.py
 diagnostic_report*.txt
 *.backup*
+
+# VariDex output and cache
+output/
+results_*/
+uniprot/*.pkl
+*.parquet
+clinvar/*_processed.parquet
+
+# Development temporary files
+*_FIXED.py
+*_DEBUG.py
+diagnostic_report*.txt
+*.backup*
+criteria_*_FIXED.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
