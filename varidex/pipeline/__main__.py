@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-VariDex v7.2.0-dev COMPLETE Pipeline - 19-Code ACMG + gnomAD + FULL EXPORT
-CONFIRMED 13 criteria: BA1,BS1,PM2,PVS1,PM4,PP2,BP1,BP3,PP5,BP6,BP7,BS2,BS3
-NEW: PM1, PM5, PM3, PS1, PP3, BP4
-WITH DEBUG: Position column tracking
+VariDex v7.2.0-dev - 19-Code ACMG Pipeline with Auto Genome Build Detection
+Phase 1: Data Enrichment (gnomAD, dbNSFP)
+Phase 2: ACMG Classification (19/28 criteria)
 """
 import sys
 from argparse import ArgumentParser, Namespace
@@ -17,6 +16,20 @@ from varidex.io.loaders.user import load_user_file
 from varidex.io.matching_improved import match_variants_hybrid
 from varidex.pipeline.acmg_classifier_stage import apply_full_acmg_classification
 from varidex.pipeline.gnomad_stage import GnomadAnnotationStage
+
+
+def detect_genome_build_from_filename(filepath: str) -> str:
+    """Detect genome build from ClinVar filename"""
+    filepath_lower = filepath.lower()
+    
+    if "grch38" in filepath_lower or "hg38" in filepath_lower:
+        return "GRCh38"
+    elif "grch37" in filepath_lower or "hg19" in filepath_lower:
+        return "GRCh37"
+    else:
+        # Default to GRCh37 if unclear
+        print("⚠️  Could not detect genome build from filename, defaulting to GRCh37")
+        return "GRCh37"
 
 
 def enhance_with_phase1(result_df: pd.DataFrame) -> pd.DataFrame:
@@ -49,10 +62,7 @@ def enhance_with_phase1(result_df: pd.DataFrame) -> pd.DataFrame:
             result_df.at[idx, "BS2"] = True
             counts["BS2"] += 1
     
-    print(
-        f"Phase 1: BP7={counts['BP7']}, PP5={counts['PP5']}, "
-        f"BP6={counts['BP6']}, BS2={counts['BS2']}"
-    )
+    print(f"  PP5={counts['PP5']}, BP6={counts['BP6']}, BP7={counts['BP7']}, BS2={counts['BS2']}, BS3=0")
     return result_df
 
 
@@ -63,9 +73,7 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
     acmg_19 = [
         "BA1", "BS1", "PM2", "PVS1", "PM4", "PP2", "BP1", "BP3",
         "PP5", "BP6", "BP7", "BS2", "BS3",
-        "PM1", "PM5", "PM3",
-        "PS1",  # Strong pathogenic evidence
-        "PP3", "BP4"  # Computational predictions
+        "PM1", "PM5", "PM3", "PS1", "PP3", "BP4"
     ]
     
     essentials = [
@@ -73,47 +81,42 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
         "review_status", "molecular_consequence", "gnomad_af", "acmg_classification"
     ]
     
-    export_cols = [col for col in essentials + acmg_19 if col in df.columns]
-    full_df = df[export_cols].copy()
+    pred_scores = ["SIFT_score", "PolyPhen_score", "CADD_phred", "REVEL_score"]
+    export_base = essentials + acmg_19 + pred_scores
+    export_cols = [col for col in export_base if col in df.columns]
     
+    full_df = df[export_cols].copy()
     full_path = output_dir / "results_19codes_FULL.csv"
     full_df.to_csv(full_path, index=False)
-    print(f"✅ FULL EXPORT: {len(full_df)} rows x {len(export_cols)} cols -> {full_path}")
+    print(f"\n✅ FULL EXPORT: {len(full_df)} rows x {len(export_cols)} cols -> {full_path}")
     
     df.to_csv(output_dir / "results_19codes.csv", index=False)
     
-    if "PVS1" in df.columns:
-        pvs1_df = df[df["PVS1"] == True]
-        pvs1_df.to_csv(output_dir / "PRIORITY_PVS1.csv", index=False)
-    
-    if "PM2" in df.columns:
-        pm2_df = df[df["PM2"] == True]
-        pm2_df.to_csv(output_dir / "PRIORITY_PM2.csv", index=False)
-    
-    if "PS1" in df.columns:
-        ps1_df = df[df["PS1"] == True]
-        ps1_df.to_csv(output_dir / "PRIORITY_PS1.csv", index=False)
-    
-    if "PP3" in df.columns:
-        pp3_df = df[df["PP3"] == True]
-        pp3_df.to_csv(output_dir / "PRIORITY_PP3.csv", index=False)
+    priority_codes = {"PVS1": "PRIORITY_PVS1.csv", "PM2": "PRIORITY_PM2.csv", 
+                     "PS1": "PRIORITY_PS1.csv", "PP3": "PRIORITY_PP3.csv"}
+    for code, filename in priority_codes.items():
+        if code in df.columns:
+            priority_df = df[df[code] == True]
+            if len(priority_df) > 0:
+                priority_df.to_csv(output_dir / filename, index=False)
     
     summary_cols = [col for col in acmg_19 if col in df.columns]
     summary = {col: int(df[col].sum()) for col in summary_cols}
     
-    print("📊 19 ACMG Criteria True Counts:")
+    print("\n📊 19 ACMG Criteria Summary:")
     for col in sorted(summary, key=summary.get, reverse=True):
-        print(f"   {col}: {summary[col]}")
+        if summary[col] > 0:
+            print(f"   {col}: {summary[col]}")
 
 
 def print_summary(df: pd.DataFrame) -> None:
     """Print final pipeline summary"""
-    print("=" * 70)
-    print("COMPLETE - 19 ACMG Codes")
+    print("\n" + "=" * 70)
+    print("PIPELINE COMPLETE - 19/28 ACMG Codes")
     print("=" * 70)
     print(f"Total variants: {len(df)}")
     
-    evidence_cols = ["BA1", "BS1", "PM2", "PVS1", "BP7", "PP5", "BP6", "BS2", 
+    evidence_cols = ["BA1", "BS1", "PM2", "PVS1", "BP7", "PP5", "BP6", "BS2",
                      "PM1", "PM5", "PS1", "PP3", "BP4"]
     existing_cols = [c for c in evidence_cols if c in df.columns]
     
@@ -125,125 +128,137 @@ def print_summary(df: pd.DataFrame) -> None:
     
     print(f"With evidence: {with_evidence} ({with_evidence/len(df)*100:.1f}%)")
     
-    pvs1_count = int(df.get("PVS1", pd.Series([False])).sum())
-    pm2_count = int(df.get("PM2", pd.Series([False])).sum())
-    pm1_count = int(df.get("PM1", pd.Series([False])).sum())
-    pm5_count = int(df.get("PM5", pd.Series([False])).sum())
-    ps1_count = int(df.get("PS1", pd.Series([False])).sum())
-    pp3_count = int(df.get("PP3", pd.Series([False])).sum())
-    bp4_count = int(df.get("BP4", pd.Series([False])).sum())
-    ba1_count = int(df.get("BA1", pd.Series([False])).sum())
-    bs1_count = int(df.get("BS1", pd.Series([False])).sum())
+    priority_codes = {
+        'PVS1': 'loss of function',
+        'PM2': 'rare pathogenic',
+        'PM1': 'critical domains',
+        'PM5': 'pathogenic position',
+        'PS1': 'same AA change',
+        'PP3': 'computational deleterious',
+        'BP4': 'computational benign',
+        'BA1': 'common benign',
+        'BS1': 'high frequency'
+    }
     
-    print("Priority ACMG Codes:")
-    print(f"  PVS1 (loss of function): {pvs1_count}")
-    print(f"  PM2 (rare pathogenic): {pm2_count}")
-    print(f"  PM1 (critical domains): {pm1_count}")
-    print(f"  PM5 (pathogenic position): {pm5_count}")
-    print(f"  PS1 (same AA change): {ps1_count}")
-    print(f"  PP3 (computational deleterious): {pp3_count}")
-    print(f"  BP4 (computational benign): {bp4_count}")
-    print(f"  BA1 (common benign): {ba1_count}")
-    print(f"  BS1 (high frequency): {bs1_count}")
+    print("\nTop Priority Codes:")
+    for code, desc in priority_codes.items():
+        count = int(df.get(code, pd.Series([False])).sum())
+        if count > 0:
+            print(f"  {code} ({desc}): {count}")
 
 
 def main() -> None:
     parser = ArgumentParser(
-        description=f"VariDex v{version} - Full Pipeline with 19-Code ACMG + gnomAD"
+        description=f"VariDex v{version} - 19-Code ACMG Pipeline with Auto Build Detection"
     )
-    parser.add_argument(
-        "--clinvar", default="clinvar/clinvar_GRCh37.vcf.gz", help="ClinVar VCF file"
-    )
+    parser.add_argument("--clinvar", default="clinvar/clinvar_GRCh37.vcf.gz")
     parser.add_argument("--user-genome", help="Your genome file (VCF or 23andMe)")
-    parser.add_argument(
-        "--gnomad-dir", help="Path to gnomAD directory (enables BA1/BS1/PM2 criteria)"
-    )
-    parser.add_argument("--output", default="results_michal", help="Output directory")
-    parser.add_argument(
-        "--force-reload", action="store_true", help="Force reload even if cache exists"
-    )
+    parser.add_argument("--gnomad-dir", help="gnomAD directory path")
+    parser.add_argument("--output", default="results_michal")
+    parser.add_argument("--force-reload", action="store_true")
+    parser.add_argument("--genome-build", choices=["GRCh37", "GRCh38"], 
+                       help="Genome build (auto-detected if not specified)")
     
     args: Namespace = parser.parse_args()
     
     print("=" * 70)
-    print(f"VariDex v{version} - 19-Code ACMG + gnomAD Pipeline")
+    print(f"VariDex v{version} - 19-Code ACMG Pipeline")
     print("=" * 70)
     
+    # Detect genome build
+    if args.genome_build:
+        genome_build = args.genome_build
+        print(f"\n🧬 Genome build: {genome_build} (user-specified)")
+    else:
+        genome_build = detect_genome_build_from_filename(args.clinvar)
+        print(f"\n🧬 Genome build: {genome_build} (auto-detected from filename)")
+    
+    # Check for cached results
     cache_file = Path("output/complete_results.csv")
     if cache_file.exists() and not args.force_reload and not args.user_genome:
-        print(f"Using cached matched results: {cache_file}")
+        print(f"\nUsing cached matched results: {cache_file}")
         matched_df = pd.read_csv(cache_file)
         print(f"Loaded {len(matched_df)} matched variants")
-        print(f"DEBUG: Cached position values: {matched_df.position.notna().sum()}")
-        result_df = matched_df
     else:
         if not args.user_genome:
-            print("Error: --user-genome required for initial run")
-            print(f"Or use cached results in {cache_file}")
+            print("\nError: --user-genome required for initial run")
             sys.exit(1)
         
-        print("Step 1: Setup genomic data...")
+        # Steps 1-4: Load and Match
+        print("\n" + "=" * 70)
+        print("PHASE 1: DATA LOADING & MATCHING")
+        print("=" * 70)
+        
         clinvar_path = Path(args.clinvar)
         if not clinvar_path.exists():
-            print(f"❌ ClinVar not found at {clinvar_path}")
-            print("Please provide correct path or download ClinVar")
+            print(f"\n❌ ClinVar not found at {clinvar_path}")
             sys.exit(1)
         
-        print(f"ClinVar: {clinvar_path}")
-        if args.gnomad_dir:
-            print(f"gnomAD: {args.gnomad_dir}")
-        
-        print("Step 2: Loading ClinVar...")
+        print(f"\nStep 1: Loading ClinVar from {clinvar_path}...")
         clinvar_df = load_clinvar_file(str(clinvar_path))
-        print(f"Loaded {len(clinvar_df)} ClinVar variants")
-        print(f"DEBUG: ClinVar position values: {clinvar_df.position.notna().sum()}")
+        print(f"  ✓ Loaded {len(clinvar_df):,} ClinVar variants")
         
-        print("Step 3: Loading your genome...")
+        print(f"\nStep 2: Loading user genome from {args.user_genome}...")
         user_df = load_user_file(args.user_genome)
-        print(f"Loaded {len(user_df)} variants from your genome")
-        print(f"DEBUG: User genome position values: {user_df.position.notna().sum()}")
+        print(f"  ✓ Loaded {len(user_df):,} variants")
         
-        print("Step 4: Matching variants (hybrid rsID + coordinates)...")
+        print(f"\nStep 3: Matching variants (rsID + coordinates)...")
         matched_df, rsid_matches, coord_matches = match_variants_hybrid(
             clinvar_df, user_df, clinvar_type="vcf", user_type="23andme"
         )
-        print(f"Matched {len(matched_df)} variants")
-        print(f"  rsID matches: {rsid_matches}")
-        print(f"  Coordinate matches: {coord_matches}")
-        print(f"DEBUG: After matching - columns: {list(matched_df.columns)}")
-        print(f"DEBUG: After matching - position values: {matched_df.position.notna().sum()}")
+        print(f"  ✓ Matched {len(matched_df):,} variants")
+        print(f"    - rsID matches: {rsid_matches:,}")
+        print(f"    - Coordinate matches: {coord_matches:,}")
         
-        if cache_file.parent.exists() and cache_file.parent.is_file():
-            cache_file.parent.unlink()
+        print(f"\nStep 4: Caching matched results...")
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         matched_df.to_csv(cache_file, index=False)
-        
-        print("Step 5: gnomAD annotation (NOW we have ref/alt from ClinVar!)...")
-        if args.gnomad_dir:
-            gnomad_stage = GnomadAnnotationStage(Path(args.gnomad_dir))
-            matched_df = gnomad_stage.process(matched_df)
-            print(f"DEBUG: After gnomAD - position values: {matched_df.position.notna().sum()}")
-        else:
-            print("Skipping gnomAD (no --gnomad-dir provided)")
-            print("BA1, BS1, PM2 criteria will not be applied")
-        
-        print("Step 6: Applying ACMG classification (base codes)...")
-        result_df = apply_full_acmg_classification(matched_df)
-        print("Complete")
-        print(f"DEBUG: After ACMG base - position values: {result_df.position.notna().sum()}")
-        
-        print("Step 7: Applying Phase 1 enhancements (+5 codes)...")
-        result_df = enhance_with_phase1(result_df)
-        print("Complete")
-        print(f"DEBUG: After Phase 1 - position values: {result_df.position.notna().sum()}")
+        print(f"  ✓ Cached to {cache_file}")
     
-    print("Step 8: Applying additional 6 criteria (PM1, PM5, PM3, PS1, PP3, BP4)...")
+    # Store clinvar_df for later use
+    if 'clinvar_df' not in locals():
+        print("\nLoading ClinVar for criteria reference...")
+        clinvar_df = load_clinvar_file(str(Path(args.clinvar)))
+    
+    # Phase 2: Data Enrichment
+    print("\n" + "=" * 70)
+    print("PHASE 2: DATA ENRICHMENT")
+    print("=" * 70)
+    
+    print("\nStep 5: Annotating with gnomAD population frequencies...")
+    if args.gnomad_dir:
+        gnomad_stage = GnomadAnnotationStage(Path(args.gnomad_dir))
+        matched_df = gnomad_stage.process(matched_df)
+    else:
+        print("  ⚠️  Skipped (no --gnomad-dir provided)")
+        print("  BA1, BS1, PM2 criteria will be limited")
+    
+    print("\nStep 6: Annotating with dbNSFP prediction scores...")
+    try:
+        from varidex.acmg.dbnsfp_annotator import annotate_with_dbnsfp
+        matched_df = annotate_with_dbnsfp(matched_df, "data/external/dbNSFP", genome_build)
+    except Exception as e:
+        print(f"  ⚠️  dbNSFP annotation failed: {e}")
+        print("  PP3, BP4 criteria will be limited")
+    
+    # Phase 3: ACMG Classification
+    print("\n" + "=" * 70)
+    print("PHASE 3: ACMG CLASSIFICATION (19/28 criteria)")
+    print("=" * 70)
+    
+    print("\nStep 7: Base ACMG criteria (PVS1, PM4, PP2, BP1, BP3)...")
+    result_df = apply_full_acmg_classification(matched_df)
+    print("  ✓ Complete")
+    
+    print("\nStep 8: Phase 1 enhancements (PP5, BP6, BP7, BS2, BS3)...")
+    result_df = enhance_with_phase1(result_df)
+    
+    print("\nStep 9: Domain/position-based criteria (PM1, PM5, PM3, PS1)...")
     try:
         from varidex.acmg.criteria_pm1 import PM1Classifier
         from varidex.acmg.criteria_pm5 import PM5Classifier
         from varidex.acmg.criteria_pm3 import PM3Classifier
         from varidex.acmg.criteria_ps1 import PS1Classifier
-        from varidex.acmg.criteria_pp3_bp4 import PP3_BP4_Classifier
         
         pm1 = PM1Classifier("uniprot/uniprot_sprot.xml.gz")
         result_df = pm1.apply_pm1(result_df)
@@ -257,29 +272,27 @@ def main() -> None:
         ps1 = PS1Classifier(clinvar_df)
         result_df = ps1.apply_ps1(result_df)
         
-        # NEW: PP3/BP4 - Computational predictions
+        print("  ✓ Complete")
+    except Exception as e:
+        print(f"  ⚠️  Warning: {e}")
+    
+    print("\nStep 10: Computational prediction criteria (PP3, BP4)...")
+    try:
+        from varidex.acmg.criteria_pp3_bp4 import PP3_BP4_Classifier
         pp3_bp4 = PP3_BP4_Classifier()
         result_df = pp3_bp4.apply_pp3_bp4(result_df)
-        
-        print("Complete (now 19/28 criteria)")
+        print("  ✓ Complete")
     except Exception as e:
-        import traceback
-        print(f"Warning: Additional criteria failed: {e}")
-        print(traceback.format_exc())
-        print("Continuing with base criteria")
+        print(f"  ⚠️  Warning: {e}")
     
-    print(f"DEBUG: Before output - position values: {result_df.position.notna().sum()}")
-    
+    # Output
     output_path = Path(args.output)
     write_output_files(result_df, output_path)
     
-    print(f"Output -> {output_path.resolve()}") 
-    print("  results_19codes.csv")
-    print("  PRIORITY_PVS1.csv")
-    print("  PRIORITY_PM2.csv")
-    print("  PRIORITY_PS1.csv")
-    print("  PRIORITY_PP3.csv  ← NEW")
-    print("  results_19codes_FULL.csv  ← 19 criteria + essentials")
+    print(f"\nOutput directory: {output_path.resolve()}")
+    print("  - results_19codes.csv (all data)")
+    print("  - results_19codes_FULL.csv (essentials + 19 criteria)")
+    print("  - PRIORITY_*.csv (high-priority variants)")
     
     print_summary(result_df)
 

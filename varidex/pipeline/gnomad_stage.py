@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
 """
-🧬 VariDex gnomAD Stage FIX - Complete Fixed File
+🧬 VariDex gnomAD Stage - Complete Fixed File with CPU Auto-Detection
 Copy-paste this entire file to replace varidex/pipeline/gnomad_stage.py
 Black-formatted, production-ready, no raw data changes.
 """
-
 from __future__ import annotations
-
 from pathlib import Path
 from typing import Optional
-
 import pandas as pd
 
 from varidex.pipeline.gnomad_annotator import (
     annotate_with_gnomad,
     apply_frequency_acmg_criteria,
 )
+from varidex.utils.cpu_utils import get_optimal_workers
 
 
 class GnomadAnnotationStage:
     """Pipeline stage for gnomAD frequency annotation and ACMG criteria."""
 
-    def __init__(self, gnomad_dir: Optional[Path] = None) -> None:
+    def __init__(
+        self, gnomad_dir: Optional[Path] = None, max_workers: Optional[int] = None
+    ) -> None:
         self.gnomad_dir = gnomad_dir
         self.enabled = gnomad_dir is not None
+        # Auto-detect optimal workers for I/O-bound tasks (gnomAD lookups)
+        self.max_workers = max_workers or get_optimal_workers("io_bound")
 
     def _normalize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """Normalize column names and clean data for gnomAD annotator."""
@@ -46,6 +48,7 @@ class GnomadAnnotationStage:
 
         if "ref_allele" not in result.columns and "REF" in result.columns:
             result["ref_allele"] = result["REF"]
+
         if "alt_allele" not in result.columns and "ALT" in result.columns:
             result["alt_allele"] = result["ALT"]
 
@@ -94,9 +97,13 @@ class GnomadAnnotationStage:
             )
 
         print(f"Annotating {len(df_clean):,} variants with gnomAD...")
+        print(f"Using {self.max_workers} parallel workers (I/O-bound optimization)")
 
         try:
-            result = annotate_with_gnomad(df_clean, self.gnomad_dir)
+            result = annotate_with_gnomad(
+                df_clean, self.gnomad_dir, n_workers=self.max_workers  # ✅ FIXED: Changed from max_workers
+            )
+
             print("Applying BA1, BS1, PM2 frequency criteria...")
             result = apply_frequency_acmg_criteria(result)
 
@@ -124,6 +131,7 @@ class GnomadAnnotationStage:
             print(
                 f"  Propagated gnomAD data to {len(common_index):,} matching variants"
             )
+
             return df_out
 
         except Exception as e:
@@ -136,4 +144,7 @@ class GnomadAnnotationStage:
 
     def __repr__(self) -> str:
         status = "enabled" if self.enabled else "disabled"
-        return f"GnomadAnnotationStage({status}, dir={self.gnomad_dir})"
+        return (
+            f"GnomadAnnotationStage({status}, "
+            f"dir={self.gnomad_dir}, workers={self.max_workers})"
+        )
