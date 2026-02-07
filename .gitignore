@@ -96,3 +96,24 @@ htmlcov*/
 mypy-report/
 final_test/
 varidex-env/
+
+# Results (user-specific, large files)
+results_*/
+VariDex_Medical_Summary_*.zip
+
+# Lock files
+.~lock.*#
+*.lock
+
+# Large data files
+uniprot/*.xml.gz
+uniprot/download*
+data/external/dbNSFP/*.gz
+
+# Temporary scripts
+cleanup_*.py
+git_cleanup.sh
+
+# Old ACMG versions
+varidex/acmg/v2_complete.py
+varidex/acmg/ps1_evaluator.py
