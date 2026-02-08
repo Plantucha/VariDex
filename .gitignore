@@ -1,119 +1,24 @@
-# Cache
-.varidex_cache/
-.checkpoint/
-.backup_*/
-
-# Results
-results/
-resultsFINAL/
-report.html
-
-# Temp files
-*.bak.*
-*.patch
-mypy-report/
-
-# Python
-__pycache__/
-*.pyc
-.venv/
-# Test/Debug artifacts
-.coverage
-.hypothesis/
-.cache/
-*.log
-matcher_debug.log
-test.json
-test_*.py
-fix_*.py
-debug_*.py
-analyze_*.py
-benchmark_*.py
-audit_*.py
-run_*.py
-diagnostic_*.py
-implement_*.py
-integrate_*.py
-
-# Data files
-clinvar/
-gnomad/
-data/
-results_*/
-*.vcf
-*.tsv
-*.fa
-
-# Backups
-*.backup
-*.bak
-*.swp
-
-# Build
-varidex.egg-info/
-
-# VariDex output and temporary files
-output/
-results_*/
-uniprot/*.pkl
-
-# Temporary development files
-*_FIXED.py
-*_DEBUG.py
-diagnostic_report*.txt
-*.backup*
-
-# VariDex output and cache
-output/
-results_*/
-uniprot/*.pkl
-*.parquet
-clinvar/*_processed.parquet
-
-# Development temporary files
-*_FIXED.py
-*_DEBUG.py
-diagnostic_report*.txt
-*.backup*
-criteria_*_FIXED.py
-
-# Python
 __pycache__/
 *.pyc
 *.pyo
-.pytest_cache/
-.mypy_cache/
-
-# Junk patterns
-*.backup
-*.bak
-*_OLD.md
-*_old.md
-FINAL_*.txt
-results_*/
-!results_michal/
-htmlcov*/
-mypy-report/
-final_test/
-varidex-env/
-
-# Results (user-specific, large files)
-results_*/
-VariDex_Medical_Summary_*.zip
-
-# Lock files
-.~lock.*#
-*.lock
-
-# Large data files
-uniprot/*.xml.gz
-uniprot/download*
-data/external/dbNSFP/*.gz
-
-# Temporary scripts
-cleanup_*.py
-git_cleanup.sh
-
-# Old ACMG versions
-varidex/acmg/v2_complete.py
-varidex/acmg/ps1_evaluator.py
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.DS_Store
+Miniconda3-*.sh
+amdgpu-install_*.deb
