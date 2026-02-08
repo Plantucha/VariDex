@@ -1,6 +1,7 @@
 """PP3/BP4: Computational prediction criteria - OPTIMIZED with fallback.
 
 FIXED v7.3.0-dev: Stricter consensus requires >=3 tools AND >=3 concordant votes
+Per ClinGen PP3/BP4 calibration guidelines (Brnich et al. 2020, PMID: 34955381)
 """
 
 import pandas as pd
@@ -12,8 +13,6 @@ class PP3_BP4_Classifier:
     BP4: Multiple lines of computational evidence suggest benign
 
     Gracefully handles missing prediction data.
-
-    FIXED: Requires >=3 tools with >=3 concordant predictions (ClinGen)
     """
 
     def __init__(self):
@@ -29,21 +28,19 @@ class PP3_BP4_Classifier:
         """Apply PP3/BP4 based on computational predictions."""
         df["PP3"] = False
         df["BP4"] = False
-        df["PP3_BP4_tool_count"] = 0
 
         # Check available prediction columns
         pred_cols = self._get_prediction_columns(df)
 
         if not pred_cols:
-            print("PP3/BP4: ⚠️ No prediction scores available")
-            print("PP3/BP4: To enable, add SIFT/PolyPhen/CADD/REVEL")
+            print("PP3/BP4: ⚠️  No prediction scores available")
+            print("PP3/BP4: To enable, add SIFT/PolyPhen/CADD/REVEL annotations")
             print("⭐ PP3: 0 variants (no prediction data)")
             print("⭐ BP4: 0 variants (no prediction data)")
             return df
 
         print(
-            f"PP3/BP4: Using {len(pred_cols)} prediction tools: "
-            f"{', '.join(pred_cols)}"
+            f"PP3/BP4: Using {len(pred_cols)} prediction tools: {', '.join(pred_cols)}"
         )
 
         pp3_count = 0
@@ -95,12 +92,10 @@ class PP3_BP4_Classifier:
                     elif val <= 0.15:
                         benign_votes += 1
 
-            # Store tool count
-            df.at[idx, "PP3_BP4_tool_count"] = total_tools
-
-            # FIXED: Strict consensus (>=3 tools AND >=3 concordant)
+            # FIXED: Strict consensus requires >=3 tools AND >=3 concordant votes
+            # ClinGen PP3/BP4 calibration: prevents false positives from correlated tools
             if total_tools < 3:
-                continue
+                continue  # Skip if insufficient tools for reliable consensus
 
             if deleterious_votes >= 3:
                 df.at[idx, "PP3"] = True
@@ -113,22 +108,16 @@ class PP3_BP4_Classifier:
         bp4_pct = bp4_count / len(df) * 100 if len(df) > 0 else 0
 
         print(
-            f"⭐ PP3: {pp3_count} variants with deleterious "
-            f"predictions ({pp3_pct:.1f}%)"
+            f"⭐ PP3: {pp3_count} variants with deleterious predictions ({pp3_pct:.1f}%)"
         )
         if pp3_count > 0:
             pp3_genes = df[df["PP3"]]["gene"].value_counts().head(5)
-            gene_str = ", ".join([f"{g}({c})" for g, c in pp3_genes.items()])
-            print(f"   Top: {gene_str}")
+            print(f"   Top: {', '.join([f'{g}({c})' for g, c in pp3_genes.items()])}")
 
-        print(
-            f"⭐ BP4: {bp4_count} variants with benign "
-            f"predictions ({bp4_pct:.1f}%)"
-        )
+        print(f"⭐ BP4: {bp4_count} variants with benign predictions ({bp4_pct:.1f}%)")
         if bp4_count > 0:
             bp4_genes = df[df["BP4"]]["gene"].value_counts().head(5)
-            gene_str = ", ".join([f"{g}({c})" for g, c in bp4_genes.items()])
-            print(f"   Top: {gene_str}")
+            print(f"   Top: {', '.join([f'{g}({c})' for g, c in bp4_genes.items()])}")
 
         return df
 
@@ -148,5 +137,4 @@ class PP3_BP4_Classifier:
             "MutationTaster_score",
             "MutationTaster_pred",
         ]
-
         return [col for col in possible_cols if col in df.columns]

@@ -3,8 +3,6 @@
 varidex/acmg/criteria_PS3_PP2.py
 
 PS3: Functional evidence from AlphaMissense + dbNSFP predictors
-
-FIXED v7.3.0-dev: CADD threshold adjusted to 20 (top 1%, standard)
 PP2: Missense constraint from gnomAD + gene lists
 
 FIXED VERSION - Addresses double PP2 application issue
@@ -234,7 +232,7 @@ class PS3_PP2_Classifier:
         cadd_score = self._get_score(row, "CADD_phred")
         if cadd_score is not None:
             scores["CADD"] = cadd_score
-            if cadd_score >= 20:  # Top 1% most deleterious (standard)
+            if cadd_score >= 20:  # Top 1% most deleterious
                 deleterious_sources.append("CADD")
 
         # 4. Meta-predictor: SIFT + PolyPhen agreement
