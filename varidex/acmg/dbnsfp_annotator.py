@@ -4,6 +4,7 @@ Annotates variants with prediction scores (SIFT, PolyPhen, CADD, REVEL)
 Auto-detects GRCh37/GRCh38 genome build
 Memory-efficient streaming with parallel processing + auto CPU detection
 """
+
 import gzip
 from pathlib import Path
 from typing import Dict, Optional
@@ -17,17 +18,17 @@ from varidex.utils.cpu_utils import get_optimal_workers
 def detect_genome_build(df: pd.DataFrame) -> str:
     """
     Auto-detect genome build from variant positions
-    
+
     Uses known variant position differences between builds
     Returns: "GRCh37" or "GRCh38"
     """
     if "position" not in df.columns or len(df) == 0:
         return "GRCh37"
-    
+
     # Check for common variants with known position differences
     # chr1:948921 (rs6605066) is at 1014143 in GRCh38
     sample_positions = df[df["chromosome"] == 1]["position"].head(100)
-    
+
     # GRCh38 positions tend to be higher due to added sequences
     # Simple heuristic: if average position > 1M for chr1, likely GRCh38
     if len(sample_positions) > 0:
@@ -35,7 +36,7 @@ def detect_genome_build(df: pd.DataFrame) -> str:
         # This is a rough heuristic - GRCh38 has longer chromosomes
         if avg_pos > 100_000_000:
             return "GRCh38"
-    
+
     return "GRCh37"  # Default
 
 
@@ -63,7 +64,7 @@ def _process_chromosome_file(
                     pos_idx = header.index("hg19_pos(1-based)")
                 else:  # GRCh38
                     pos_idx = header.index("pos(1-based)")
-                
+
                 ref_idx = header.index("ref")
                 alt_idx = header.index("alt")
                 sift_idx = header.index("SIFT_score")
@@ -86,18 +87,18 @@ def _process_chromosome_file(
                 if key in variant_lookup:
                     idx = variant_lookup[key]
                     annotations[idx] = {
-                        "SIFT_score": fields[sift_idx]
-                        if sift_idx < len(fields)
-                        else ".",
-                        "PolyPhen_score": fields[pp_idx]
-                        if pp_idx < len(fields)
-                        else ".",
-                        "CADD_phred": fields[cadd_idx]
-                        if cadd_idx < len(fields)
-                        else ".",
-                        "REVEL_score": fields[revel_idx]
-                        if revel_idx < len(fields)
-                        else ".",
+                        "SIFT_score": (
+                            fields[sift_idx] if sift_idx < len(fields) else "."
+                        ),
+                        "PolyPhen_score": (
+                            fields[pp_idx] if pp_idx < len(fields) else "."
+                        ),
+                        "CADD_phred": (
+                            fields[cadd_idx] if cadd_idx < len(fields) else "."
+                        ),
+                        "REVEL_score": (
+                            fields[revel_idx] if revel_idx < len(fields) else "."
+                        ),
                     }
 
         return annotations
@@ -112,12 +113,12 @@ def annotate_with_dbnsfp(
 ) -> pd.DataFrame:
     """
     Annotate variants with dbNSFP prediction scores using parallel streaming
-    
+
     Args:
         df: DataFrame with variants
         dbnsfp_dir: Path to dbNSFP directory
         genome_build: "GRCh37", "GRCh38", or None for auto-detection
-    
+
     Returns:
         DataFrame with SIFT, PolyPhen, CADD, REVEL scores added
     """

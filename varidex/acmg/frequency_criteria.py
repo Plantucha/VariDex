@@ -1,7 +1,9 @@
 """
-varidex/acmg/frequency_criteria.py v6.4.0-dev
+varidex/acmg/frequency_criteria.py v7.3.0-dev
 
 Population frequency-based ACMG criteria (PM2, BA1, BS1).
+
+FIXED v7.3.0-dev: PM2 now uses disease-mode-specific thresholds
 
 Development version - not for production use.
 """
@@ -38,7 +40,10 @@ def evaluate_frequency_criteria(
     ACMG Thresholds:
         BA1: >5% (0.05) - Stand-alone benign
         BS1: >1% (0.01) - Strong benign (may vary by disease)
-        PM2: <0.01% (0.0001) - Moderate pathogenic (absent/extremely rare)
+        PM2: Disease-mode-specific (absent/extremely rare):
+        - Dominant/AD: <0.005% (5e-5)
+        - Recessive/AR: <0.1% (1e-3)
+        - Unknown: <0.01% (1e-4)
     """
     criteria = FrequencyCriteria()
 
@@ -58,10 +63,22 @@ def evaluate_frequency_criteria(
         criteria.BS1 = True
         logger.debug(f"BS1 met: AF={allele_freq:.4f} >1%")
 
-    # PM2: Absent or extremely rare in population databases
-    elif allele_freq < 0.0001:
-        criteria.PM2 = True
-        logger.debug(f"PM2 met: AF={allele_freq:.4f} <0.01%")
+    # PM2: Absent or extremely rare (disease-mode-specific)
+    else:
+        pm2_threshold = None
+        if disease_mode in {"dominant", "ad", "AD"}:
+            pm2_threshold = 5e-5  # 0.005% for dominant
+        elif disease_mode in {"recessive", "ar", "AR"}:
+            pm2_threshold = 1e-3  # 0.1% for recessive
+        else:
+            pm2_threshold = 1e-4  # 0.01% default
+
+        if allele_freq < pm2_threshold:
+            criteria.PM2 = True
+            logger.debug(
+                f"PM2 met: AF={allele_freq:.4f} <{pm2_threshold:.5f} "
+                f"(mode={disease_mode})"
+            )
 
     return criteria
 

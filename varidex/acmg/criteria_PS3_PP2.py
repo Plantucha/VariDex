@@ -3,6 +3,8 @@
 varidex/acmg/criteria_PS3_PP2.py
 
 PS3: Functional evidence from AlphaMissense + dbNSFP predictors
+
+FIXED v7.3.0-dev: CADD threshold adjusted to 20 (top 1%, standard)
 PP2: Missense constraint from gnomAD + gene lists
 
 FIXED VERSION - Addresses double PP2 application issue
@@ -48,7 +50,7 @@ class PS3_PP2_Classifier:
 
     PS3: Well-established functional studies show deleterious effect
     PP2: Missense variant in gene with low tolerance to missense variation
-    
+
     USAGE NOTE: Use apply_ps3_only() if PP2 is already applied in Step 7!
     """
 
@@ -66,7 +68,9 @@ class PS3_PP2_Classifier:
             lof_genes: Optional set of LoF-intolerant genes
             missense_genes: Optional set of missense-constrained genes
         """
-        self.gnomad_path = Path(gnomad_constraint_path) if gnomad_constraint_path else None
+        self.gnomad_path = (
+            Path(gnomad_constraint_path) if gnomad_constraint_path else None
+        )
         self.lof_genes = lof_genes or set()
         self.missense_genes = missense_genes or set()
         self.gnomad_constraint = None
@@ -76,10 +80,10 @@ class PS3_PP2_Classifier:
     def apply_ps3_only(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Apply ONLY PS3 criterion, don't modify PP2.
-        
+
         Use this method if PP2 is already applied elsewhere in your pipeline
         (e.g., in Step 7's apply_full_acmg_classification).
-        
+
         Args:
             df: Input DataFrame with variant annotations
 
@@ -87,18 +91,18 @@ class PS3_PP2_Classifier:
             DataFrame with PS3 column added (PP2 unchanged)
         """
         logger.info(f"Applying PS3 (functional evidence) to {len(df)} variants...")
-        
+
         # Check required dependencies
         required_cols = ["REVEL_score", "CADD_phred"]
         missing_cols = [c for c in required_cols if c not in df.columns]
-        
+
         if missing_cols:
             logger.error(f"❌ PS3 FAILED: Missing required columns: {missing_cols}")
             logger.error("   Ensure dbNSFP annotation (Step 6) completed successfully")
             df["PS3"] = False
             df["PS3_error"] = f"Missing columns: {', '.join(missing_cols)}"
             return df
-        
+
         # Check optional but helpful columns
         optional_cols = ["AlphaMissense_score", "SIFT_score", "PolyPhen_score"]
         missing_optional = [c for c in optional_cols if c not in df.columns]
@@ -119,17 +123,19 @@ class PS3_PP2_Classifier:
                 df.at[idx, "PS3"] = True
                 ps3_count += 1
 
-        logger.info(f"  ✅ PS3 applied to {ps3_count} variants ({ps3_count/len(df)*100:.1f}%)")
-        
+        logger.info(
+            f"  ✅ PS3 applied to {ps3_count} variants ({ps3_count/len(df)*100:.1f}%)"
+        )
+
         return df
 
     def apply_pp2_only(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Apply ONLY PP2 criterion, don't modify PS3.
-        
+
         Use this method ONLY if PP2 is NOT already applied in Step 7.
         Check your pipeline to avoid double application!
-        
+
         Args:
             df: Input DataFrame with variant annotations
 
@@ -137,7 +143,7 @@ class PS3_PP2_Classifier:
             DataFrame with PP2 column added (PS3 unchanged)
         """
         logger.info(f"Applying PP2 (missense constraint) to {len(df)} variants...")
-        
+
         # Load constraint data if needed
         self._load_gnomad_constraint()
 
@@ -156,30 +162,34 @@ class PS3_PP2_Classifier:
                     df.at[idx, "PP2"] = True
                     pp2_count += 1
 
-        logger.info(f"  ✅ PP2 applied to {pp2_count} variants ({pp2_count/len(df)*100:.1f}%)")
-        
+        logger.info(
+            f"  ✅ PP2 applied to {pp2_count} variants ({pp2_count/len(df)*100:.1f}%)"
+        )
+
         return df
 
     def apply_ps3_pp2(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Apply both PS3 and PP2 criteria together.
-        
+
         WARNING: Only use this if PP2 is NOT applied in Step 7!
         Otherwise you'll overwrite Step 7's PP2 values.
-        
+
         For most pipelines, use apply_ps3_only() instead.
-        
+
         Args:
             df: Input DataFrame with variant annotations
 
         Returns:
             DataFrame with PS3 and PP2 columns added
         """
-        logger.warning("⚠️  Applying both PS3 and PP2 - ensure PP2 not already applied in Step 7!")
-        
+        logger.warning(
+            "⚠️  Applying both PS3 and PP2 - ensure PP2 not already applied in Step 7!"
+        )
+
         df = self.apply_ps3_only(df)
         df = self.apply_pp2_only(df)
-        
+
         return df
 
     def _evaluate_ps3_for_row(self, row: pd.Series) -> PS3Evidence:
@@ -224,7 +234,7 @@ class PS3_PP2_Classifier:
         cadd_score = self._get_score(row, "CADD_phred")
         if cadd_score is not None:
             scores["CADD"] = cadd_score
-            if cadd_score >= 25:  # Top 0.5% most deleterious
+            if cadd_score >= 20:  # Top 1% most deleterious (standard)
                 deleterious_sources.append("CADD")
 
         # 4. Meta-predictor: SIFT + PolyPhen agreement
@@ -265,7 +275,9 @@ class PS3_PP2_Classifier:
                 strength = "Supporting"
                 interpretation = "PS3_Supporting: High-confidence predictor"
             else:
-                interpretation = f"PS3 not met (single low-confidence source insufficient)"
+                interpretation = (
+                    f"PS3 not met (single low-confidence source insufficient)"
+                )
         else:
             interpretation = f"PS3 not met ({num_sources} sources insufficient)"
 
@@ -358,7 +370,10 @@ class PS3_PP2_Classifier:
 
     def _get_pli_score(self, gene: str) -> Optional[float]:
         """Get gnomAD pLI score for gene."""
-        if self.gnomad_constraint is None or gene not in self.gnomad_constraint["gene"].values:
+        if (
+            self.gnomad_constraint is None
+            or gene not in self.gnomad_constraint["gene"].values
+        ):
             return None
 
         try:
@@ -373,7 +388,10 @@ class PS3_PP2_Classifier:
 
     def _get_missense_z_score(self, gene: str) -> Optional[float]:
         """Get gnomAD missense Z-score for gene."""
-        if self.gnomad_constraint is None or gene not in self.gnomad_constraint["gene"].values:
+        if (
+            self.gnomad_constraint is None
+            or gene not in self.gnomad_constraint["gene"].values
+        ):
             return None
 
         try:
@@ -398,17 +416,47 @@ def load_curated_gene_lists() -> Tuple[Set[str], Set[str]]:
     """
     # Example LoF-intolerant genes (from ClinGen, DECIPHER, etc.)
     lof_genes = {
-        "BRCA1", "BRCA2", "TP53", "PTEN", "ATM", "CHEK2", "PALB2",
-        "MLH1", "MSH2", "MSH6", "PMS2", "APC", "MUTYH",
-        "DMD", "DYSF", "LMNA", "TTN", "MYH7", "MYBPC3",
-        "SCN5A", "KCNQ1", "KCNH2", "RYR2",
+        "BRCA1",
+        "BRCA2",
+        "TP53",
+        "PTEN",
+        "ATM",
+        "CHEK2",
+        "PALB2",
+        "MLH1",
+        "MSH2",
+        "MSH6",
+        "PMS2",
+        "APC",
+        "MUTYH",
+        "DMD",
+        "DYSF",
+        "LMNA",
+        "TTN",
+        "MYH7",
+        "MYBPC3",
+        "SCN5A",
+        "KCNQ1",
+        "KCNH2",
+        "RYR2",
     }
 
     # Example missense-constrained genes
     missense_genes = {
-        "BRCA1", "BRCA2", "TP53", "PTEN", "APC",
-        "PKD1", "PKD2", "COL4A3", "COL4A4", "COL4A5",
-        "FBN1", "TGFBR1", "TGFBR2", "SMAD3",
+        "BRCA1",
+        "BRCA2",
+        "TP53",
+        "PTEN",
+        "APC",
+        "PKD1",
+        "PKD2",
+        "COL4A3",
+        "COL4A4",
+        "COL4A5",
+        "FBN1",
+        "TGFBR1",
+        "TGFBR2",
+        "SMAD3",
     }
 
     return lof_genes, missense_genes
@@ -420,19 +468,23 @@ if __name__ == "__main__":
     # Example usage - apply PS3 only (recommended)
     test_data = {
         "gene": ["BRCA1", "BRCA1", "APOE"],
-        "molecular_consequence": ["missense_variant", "missense_variant", "missense_variant"],
+        "molecular_consequence": [
+            "missense_variant",
+            "missense_variant",
+            "missense_variant",
+        ],
         "REVEL_score": [0.8, 0.3, 0.2],
         "CADD_phred": [28, 15, 10],
         "AlphaMissense_score": [0.9, 0.2, 0.1],
     }
 
     df = pd.DataFrame(test_data)
-    
+
     classifier = PS3_PP2_Classifier()
-    
+
     # Apply PS3 only (doesn't touch PP2)
     result_df = classifier.apply_ps3_only(df)
-    
+
     print("\nPS3 Results:")
     print(result_df[["gene", "PS3", "REVEL_score", "CADD_phred"]])
     print(f"\nPS3 applied: {result_df['PS3'].sum()} variants")

@@ -5,6 +5,7 @@ Performance improvements:
 - Pre-computed gene masks
 - Parallel domain checking (for large datasets)
 """
+
 import gzip
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -46,7 +47,10 @@ class PM1ClassifierOptimized:
                     for gene_elem in elem.iter():
                         if "}gene" in gene_elem.tag:
                             for name_elem in gene_elem.iter():
-                                if "}name" in name_elem.tag and name_elem.get("type") == "primary":
+                                if (
+                                    "}name" in name_elem.tag
+                                    and name_elem.get("type") == "primary"
+                                ):
                                     gene_name = name_elem.text
                                     break
                             if gene_name:
@@ -57,9 +61,12 @@ class PM1ClassifierOptimized:
                             if "}feature" in feature.tag:
                                 feat_type = feature.get("type")
                                 if feat_type in [
-                                    "domain", "region", "active site",
-                                    "binding site", "DNA binding",
-                                    "zinc finger region"
+                                    "domain",
+                                    "region",
+                                    "active site",
+                                    "binding site",
+                                    "DNA binding",
+                                    "zinc finger region",
                                 ]:
                                     for loc in feature.iter():
                                         if "}location" in loc.tag:
@@ -70,9 +77,9 @@ class PM1ClassifierOptimized:
                                                 try:
                                                     start = int(begin.get("position"))
                                                     stop = int(end.get("position"))
-                                                    domains.setdefault(gene_name, []).append(
-                                                        (start, stop)
-                                                    )
+                                                    domains.setdefault(
+                                                        gene_name, []
+                                                    ).append((start, stop))
                                                 except (ValueError, TypeError):
                                                     pass
                     elem.clear()
@@ -125,7 +132,9 @@ class PM1ClassifierOptimized:
         pm1_count = int(df["PM1"].sum())
         pm1_pct = pm1_count / len(df) * 100
 
-        print(f"⭐ PM1: {pm1_count} missense/inframe in genes with domains ({pm1_pct:.1f}%)")
+        print(
+            f"⭐ PM1: {pm1_count} missense/inframe in genes with domains ({pm1_pct:.1f}%)"
+        )
 
         if pm1_count > 0:
             pm1_genes = df[df["PM1"]].gene.value_counts().head(5)
