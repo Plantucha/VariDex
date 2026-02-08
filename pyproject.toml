@@ -1,47 +1,8 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+[tool.mypy]
+ignore_missing_imports = true
 
-[project]
-name = "varidex"
-dynamic = ["version"]
-description = "Genomic variant analysis toolkit"
-readme = "README.md"
-license = {file = "LICENSE"}
-authors = [{name = "VariDex Team", email = "team@varidex.org"}]
-classifiers = [
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
-    "Development Status :: 4 - Beta"
-]
-dependencies = [
-    "pandas>=2.0",
-    "numpy>=1.21",
-    "pydantic>=2.0",
-    "psutil>=5.8",
-    "tqdm>=4.62"
-]
-
-[project.scripts]
-varidex = "varidex.cli:main"
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4",
-    "pytest-cov>=4.1",
-    "hypothesis>=6.0",
-    "pydantic>=2.0",
-    "black>=24.0",
-    "typeguard>=4.4"
-]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["varidex*"]
-
-[tool.setuptools.package-data]
-"varidex" = ["py.typed"]
 
 [tool.black]
-line-length = 88
-target-version = ['py311']
+exclude = '''
+/varidex/pipeline/phase1_enhancement.py
+'''
