@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
-VariDex v7.2.0-dev - 20-Code ACMG Pipeline (FIXED VERSION)
+VariDex v7.2.0-dev - 20-Code ACMG Pipeline with Auto Genome Build Detection
 Phase 1: Data Enrichment (gnomAD, dbNSFP)
 Phase 2: ACMG Classification (20/28 criteria)
 Phase 3: Final ACMG Classification (Pathogenic/Benign/VUS)
 
-FIXED: Only applies PS3 in Step 10 (PP2 remains in Step 7)
-- Avoids double PP2 application
-- Better error handling for missing dbNSFP data
-- Clear logging for PS3 application
+NEW in 20-code: PS3 (Functional Evidence) integrated
 """
 import sys
 from argparse import ArgumentParser, Namespace
@@ -78,7 +75,7 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
     """Write ALL output files with classification-based exports"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 20 codes (PS3 added, PP2 remains from Step 7)
+    # Updated to 20 codes (added PS3)
     acmg_20 = [
         "BA1", "BS1", "PM2", "PVS1", "PM4", "PP2", "BP1", "BP3",
         "PP5", "BP6", "BP7", "BS2", "BS3", "PM1", "PM5", "PM3",
@@ -118,7 +115,7 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
         "PVS1": "PRIORITY_PVS1.csv",
         "PM2": "PRIORITY_PM2.csv",
         "PS1": "PRIORITY_PS1.csv",
-        "PS3": "PRIORITY_PS3.csv",
+        "PS3": "PRIORITY_PS3.csv",  # NEW: PS3 priority file
         "PP3": "PRIORITY_PP3.csv",
     }
     for code, filename in priority_codes.items():
@@ -230,7 +227,7 @@ def print_summary(df: pd.DataFrame) -> None:
         "PM1": ("🟡", "critical domains"),
         "PM5": ("🟠", "pathogenic position"),
         "PS1": ("🔴", "same AA change"),
-        "PS3": ("🔴", "functional evidence"),
+        "PS3": ("🔴", "functional evidence"),  # NEW
         "PP3": ("🟡", "computational deleterious"),
         "BP4": ("🟢", "computational benign"),
         "BA1": ("🟢", "common benign"),
@@ -247,7 +244,7 @@ def print_summary(df: pd.DataFrame) -> None:
     if "PVS1" in df.columns or "PM2" in df.columns or "PS3" in df.columns:
         pvs1_mask = df.get("PVS1", pd.Series([False], dtype=bool))
         pm2_mask = df.get("PM2", pd.Series([False], dtype=bool))
-        ps3_mask = df.get("PS3", pd.Series([False], dtype=bool))
+        ps3_mask = df.get("PS3", pd.Series([False], dtype=bool))  # NEW
         pp3_mask = df.get("PP3", pd.Series([False], dtype=bool))
 
         high_risk = df[pvs1_mask | ps3_mask | (pm2_mask & pp3_mask)].shape[0]
@@ -260,12 +257,12 @@ def print_summary(df: pd.DataFrame) -> None:
 
 def main() -> None:
     parser = ArgumentParser(
-        description=f"VariDex v{version} - 20-Code ACMG Pipeline (FIXED)"
+        description=f"VariDex v{version} - 20-Code ACMG Pipeline with Auto Build Detection"
     )
     parser.add_argument("--clinvar", default="clinvar/clinvar_GRCh37.vcf.gz")
     parser.add_argument("--user-genome", help="Your genome file (VCF or 23andMe)")
     parser.add_argument("--gnomad-dir", help="gnomAD directory path")
-    parser.add_argument("--gnomad-constraint", help="gnomAD constraint file for PP2 (optional)")
+    parser.add_argument("--gnomad-constraint", help="gnomAD constraint file for PP2")
     parser.add_argument("--output", default="results_michal")
     parser.add_argument("--force-reload", action="store_true")
     parser.add_argument(
@@ -277,7 +274,7 @@ def main() -> None:
     args: Namespace = parser.parse_args()
 
     print("=" * 70)
-    print(f"VariDex v{version} - 20-Code ACMG Pipeline (FIXED)")
+    print(f"VariDex v{version} - 20-Code ACMG Pipeline")
     print("=" * 70)
 
     # Detect genome build
@@ -368,7 +365,6 @@ def main() -> None:
     print("\nStep 7: Base ACMG criteria (PVS1, PM4, PP2, BP1, BP3)...")
     result_df = apply_full_acmg_classification(matched_df)
     print("  ✓ Complete")
-    print("  Note: PP2 applied here (basic version)")
 
     print("\nStep 8: Phase 1 enhancements (PP5, BP6, BP7, BS2, BS3)...")
     result_df = enhance_with_phase1(result_df)
@@ -396,28 +392,23 @@ def main() -> None:
     except Exception as e:
         print(f"  ⚠️  Warning: {e}")
 
-    print("\nStep 10: Functional evidence (PS3 only - PP2 already in Step 7)...")
+    print("\nStep 10: Functional evidence criteria (PS3, PP2)...")
     try:
         from varidex.acmg.criteria_PS3_PP2 import PS3_PP2_Classifier, load_curated_gene_lists
 
-        # Load gene lists (for future PP2 enhancement if needed)
+        # Load curated gene lists for PP2
         lof_genes, missense_genes = load_curated_gene_lists()
 
-        ps3_classifier = PS3_PP2_Classifier(
+        ps3_pp2 = PS3_PP2_Classifier(
             gnomad_constraint_path=args.gnomad_constraint,
             lof_genes=lof_genes,
             missense_genes=missense_genes,
         )
-        
-        # CRITICAL: Use apply_ps3_only() to avoid overwriting Step 7's PP2
-        result_df = ps3_classifier.apply_ps3_only(result_df)
+        result_df = ps3_pp2.apply_ps3_pp2(result_df)
         print("  ✓ Complete")
     except Exception as e:
         print(f"  ⚠️  Warning: {e}")
-        print("  PS3 criterion may be missing")
-        # Ensure PS3 column exists even if classifier fails
-        if "PS3" not in result_df.columns:
-            result_df["PS3"] = False
+        print("  PS3 and PP2 criteria may be missing")
 
     print("\nStep 11: Computational prediction criteria (PP3, BP4)...")
     try:
