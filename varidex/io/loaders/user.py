@@ -164,7 +164,7 @@ def load_user_vcf(filepath: Path) -> pd.DataFrame:
                     break  # Header found, stop
                 elif not line.startswith("#"):
                     break  # Data without header
-        
+
         # Read VCF skipping only ## lines
         df = pd.read_csv(
             filepath,
@@ -181,7 +181,7 @@ def load_user_vcf(filepath: Path) -> pd.DataFrame:
             on_bad_lines="skip",
             low_memory=False,
         )
-        
+
         # Handle #CHROM vs CHROM
         if "#CHROM" in df.columns:
             df = df.rename(columns={"#CHROM": "CHROM"})
@@ -224,7 +224,6 @@ def load_user_vcf(filepath: Path) -> pd.DataFrame:
         raise DataLoadError(
             "Failed to load VCF", context={"file": str(filepath), "error": str(e)}
         )
-
 
 
 def load_user_tsv(filepath: Path) -> pd.DataFrame:

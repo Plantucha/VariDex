@@ -131,7 +131,7 @@ class ResourceDownloader:
 
     def __init__(self, download_dir: Optional[Path] = None):
         """Initialize the ResourceDownloader."""
-        self.download_dir = download_dir or Path("./clinvar_data")
+        self.download_dir = download_dir or Path("./clinvar")
         self.download_dir.mkdir(parents=True, exist_ok=True)
         self.safety_margin_gb = SAFETY_MARGIN_GB
         self.files = FILES.copy()
@@ -178,7 +178,7 @@ def main() -> int:
     if len(sys.argv) > 1:
         clinvar_dir = Path(sys.argv[1])
     else:
-        clinvar_dir = Path("./clinvar_data")
+        clinvar_dir = Path("./clinvar")
 
     clinvar_dir.mkdir(parents=True, exist_ok=True)
 

@@ -140,9 +140,7 @@ def _lookup_variant_worker(
         return None
 
 
-def _parse_variant_record_worker(
-    fields: List[str], chromosome: str
-) -> GnomADFrequency:
+def _parse_variant_record_worker(fields: List[str], chromosome: str) -> GnomADFrequency:
     """Parse VCF record fields into GnomADFrequency (worker function)."""
     pos = int(fields[1])
     ref = fields[3]
@@ -440,9 +438,9 @@ class GnomADLoader:
             return []
 
         # Determine if we should use parallel processing
-        use_parallel = (
-            self.max_workers is None or self.max_workers > 1
-        ) and len(variants) > 100
+        use_parallel = (self.max_workers is None or self.max_workers > 1) and len(
+            variants
+        ) > 100
 
         if not use_parallel:
             # Sequential processing (original implementation)
@@ -630,9 +628,7 @@ def load_gnomad_frequencies(
     Returns:
         Annotated DataFrame
     """
-    with GnomADLoader(
-        gnomad_dir, dataset, version, max_workers=max_workers
-    ) as loader:
+    with GnomADLoader(gnomad_dir, dataset, version, max_workers=max_workers) as loader:
         return loader.annotate_dataframe(variants_df)
 
 

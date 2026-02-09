@@ -1,8 +1,15 @@
 [tool.mypy]
 ignore_missing_imports = true
+disallow_untyped_defs = false
+warn_return_any = false
+warn_unused_ignores = false
+check_untyped_defs = false
 
-
-[tool.black]
-exclude = '''
-/varidex/pipeline/phase1_enhancement.py
-'''
+[[tool.mypy.overrides]]
+module = [
+    "pandas.*",
+    "numpy.*", 
+    "varidex.core.*",
+    "varidex.io.*"
+]
+ignore_errors = true

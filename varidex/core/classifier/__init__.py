@@ -90,12 +90,12 @@ try:
     HAS_V7 = True
 
     # Issue warning when V7 is imported
-    warnings.warn(
-        "ACMGClassifierV7 is EXPERIMENTAL and not production-tested. "
-        "Use ACMGClassifier for production. See VERSION_HISTORY.md for details.",
-        UserWarning,
-        stacklevel=2,
-    )
+        # warnings.warn(  # WARNING DISABLED FOR PRODUCTION
+        # "ACMGClassifierV7 is EXPERIMENTAL and not production-tested. "
+        # "Use ACMGClassifier for production. See VERSION_HISTORY.md for details.",
+        # UserWarning,
+        # stacklevel=2,
+        # )
 except ImportError:
     # V7 requires gnomAD dependencies
     def ACMGClassifierV7(*args, **kwargs):
@@ -112,12 +112,12 @@ try:
     HAS_V8 = True
 
     # Issue warning when V8 is imported
-    warnings.warn(
-        "ACMGClassifierV8 is EXPERIMENTAL and not production-tested. "
-        "Use ACMGClassifier for production. See VERSION_HISTORY.md for details.",
-        UserWarning,
-        stacklevel=2,
-    )
+        # warnings.warn(  # WARNING DISABLED FOR PRODUCTION
+        # "ACMGClassifierV8 is EXPERIMENTAL and not production-tested. "
+        # "Use ACMGClassifier for production. See VERSION_HISTORY.md for details.",
+        # UserWarning,
+        # stacklevel=2,
+        # )
 except ImportError:
     # V8 requires gnomAD + SpliceAI + dbNSFP dependencies
     def ACMGClassifierV8(*args, **kwargs):

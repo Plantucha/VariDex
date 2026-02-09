@@ -12,6 +12,7 @@ Features:
 import cudf
 from nvtabular import VCFLoader  # GPU VCF reader
 
+
 class GPUClinVarLoader:
     def load(self, filepath: Path) -> cudf.DataFrame:
         # GPU VCF parsing + INFO extraction

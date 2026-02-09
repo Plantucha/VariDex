@@ -326,9 +326,7 @@ def _extract_gene_vectorized(df: pd.DataFrame) -> pd.Series:
     info_clean = df["INFO"].fillna("")
 
     # Extract GENEINFO value: GENEINFO=BRCA1:672 → BRCA1:672
-    gene_info = info_clean.astype(str).str.extract(
-        r"GENEINFO=([^;]+)", expand=False
-    )
+    gene_info = info_clean.astype(str).str.extract(r"GENEINFO=([^;]+)", expand=False)
 
     # Extract gene name before colon: BRCA1:672 → BRCA1
     # Handle multiple genes: BRCA1:672|BRCA2:675 → BRCA1

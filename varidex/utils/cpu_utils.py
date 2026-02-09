@@ -2,6 +2,7 @@
 CPU Core Detection and Worker Optimization
 Auto-detects cores and calculates optimal workers for different task types
 """
+
 import os
 from typing import Dict
 

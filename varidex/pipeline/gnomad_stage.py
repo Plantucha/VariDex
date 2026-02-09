@@ -101,7 +101,9 @@ class GnomadAnnotationStage:
 
         try:
             result = annotate_with_gnomad(
-                df_clean, self.gnomad_dir, n_workers=self.max_workers  # ✅ FIXED: Changed from max_workers
+                df_clean,
+                self.gnomad_dir,
+                n_workers=self.max_workers,  # ✅ FIXED: Changed from max_workers
             )
 
             print("Applying BA1, BS1, PM2 frequency criteria...")

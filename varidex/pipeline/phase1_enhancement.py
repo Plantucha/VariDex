@@ -83,115 +83,13 @@ def add_phase1_codes_to_pipeline(results_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def show_usage():
-# """Display usage information."""
-# print("=" * 70)
-# print("Phase 1 ACMG Enhancement Module")
-# print("=" * 70)
-# print()
-# print("This module adds 5 ACMG codes to your pipeline WITHOUT removing features.")
-# print()
-# print("📋 INTEGRATION INTO YOUR PIPELINE:")
-# print("-" * 70)
-# print()
-# print("1. Copy this file to your pipeline directory:")
-# print("   cp phase1_enhancement.py varidex/pipeline/")
-# print()
-# print("2. In varidex/pipeline/__main__.py, add after ACMG classification:")
-# print()
-# print(
-# "   from varidex.pipeline.acmg_classifier_stage import apply_full_acmg_classification"
-# )
-# print("   results_df = apply_full_acmg_classification(matched_df)")
-# print()
-# print("   # ADD THESE TWO LINES:")
-# print(
-# "   from varidex.pipeline.phase1_enhancement import add_phase1_codes_to_pipeline"
-# )
-# print("   results_df = add_phase1_codes_to_pipeline(results_df)  # ← Adds 5 codes")
-# print()
-# print("   # Continue with your existing code")
-# print()
-# print("-" * 70)
-# print("📊 CODES ADDED:")
-# print("-" * 70)
-# print("  • BP7  - Synonymous variant (silent, no splice)")
-# print("  • PP5  - Pathogenic by expert panel")
-# print("  • BP6  - Benign by expert panel")
-# print("  • BS2  - High AF contradicts pathogenic")
-# print("  • PS1  - Placeholder (same amino acid change)")
-# print("  • PM5  - Placeholder (different amino acid, same position)")
-# print()
-# print("-" * 70)
-# print("✅ FEATURES PRESERVED:")
-# print("-" * 70)
-# print("  ✓ Parallel matching")
-# print("  ✓ generator.py report generation")
-# print("  ✓ All ClinVar columns (list format)")
-# print("  ✓ Progress bars")
-# print("  ✓ All existing functionality")
-# print()
-# print("=" * 70)
-# print()
-# print("🧪 TEST THIS MODULE:")
-# print("  python3 phase1_enhancement.py test")
-# print()
-
-
-def test_module():
-# """Test the module with cached results."""
-# print("=" * 70)
-# print("Testing Phase 1 Enhancement Module")
-# print("=" * 70)
-# print()
-
-# # Look for cached results
-# cached_file = Path("output/complete_results.csv")
-
-# if not cached_file.exists():
-# print(f"❌ Test requires: {cached_file}")
-# print()
-# print("Generate this file first by running:")
-# print("  python3 -m varidex.pipeline --clinvar ... --user-genome ...")
-# print()
-# return False
-
-# print(f"📁 Loading: {cached_file}")
-# df = pd.read_csv(cached_file, low_memory=False, nrows=1000)  # Test with first 1K
-# print(f"✓ Loaded {len(df):,} variants (test sample)")
-# print()
-
-# # Check required columns
-# required = ["molecular_consequence", "clinical_sig", "review_status"]
-# missing = [col for col in required if col not in df.columns]
-
-# if missing:
-# print(f"⚠️  Missing required columns: {missing}")
-# print("   The cached file might not have full ClinVar annotations.")
-# print()
-# return False
-
-# print("✓ All required columns present")
-# print()
-
-# # Apply enhancement
-# print("Applying Phase 1 codes...")
-# df_enhanced = add_phase1_codes_to_pipeline(df)
-# print()
-
-# # Show results
-# print("✅ Success! Module is working correctly.")
-# print()
-# print(
-# f"New columns added: {[col for col in ['BP7', 'PP5', 'BP6', 'BS2', 'PS1', 'PM5'] if col in df_enhanced.columns]}"
-# )
-# print()
-
-# return True
-
+    """Print usage information."""
+    print("Usage: python phase1_enhancement.py [options]")
+    import sys
+    sys.exit(1)
 
 if __name__ == "__main__":
-# if len(sys.argv) > 1 and sys.argv[1] == "test":
-# # Run test
+    main()
 # success = test_module()
 # sys.exit(0 if success else 1)
 # else:

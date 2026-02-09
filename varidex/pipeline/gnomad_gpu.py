@@ -12,10 +12,12 @@ Features:
 import cudf
 import cuml.ensemble.RandomForestClassifier  # GPU ML
 
+
 class GPUgnomADStage:
     def process(self, variants_gpu: cudf.DataFrame) -> cudf.DataFrame:
         # GPU hash join with gnomAD
         gnomad_gpu = cudf.read_parquet("gnomad.parquet")
-        merged = cudf.merge(variants_gpu, gnomad_gpu, 
-                           on=['chromosome', 'position', 'ref', 'alt'])
+        merged = cudf.merge(
+            variants_gpu, gnomad_gpu, on=["chromosome", "position", "ref", "alt"]
+        )
         return merged

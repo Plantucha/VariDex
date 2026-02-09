@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def detect_optimal_workers():
     """
     Auto-detect optimal number of workers for current system.
-    
+
     Returns worker count that balances CPU usage and I/O overhead.
     """
     cpu_count = mp.cpu_count()
@@ -41,7 +41,7 @@ def annotate_with_gnomad(
 ) -> pd.DataFrame:
     """
     Annotate DataFrame with gnomAD allele frequencies using GnomADLoader.
-    
+
     Now uses the optimized GnomADLoader with ProcessPoolExecutor for
     parallel processing, providing 3-7x speedup on multi-core systems.
 
@@ -57,7 +57,7 @@ def annotate_with_gnomad(
     # Auto-detect optimal configuration
     if n_workers is None:
         n_workers = detect_optimal_workers()
-    
+
     # Log configuration
     if n_workers == 1:
         logger.info("Using sequential processing (1 worker)")
@@ -69,7 +69,7 @@ def annotate_with_gnomad(
         from varidex.io.loaders.gnomad import GnomADLoader
 
         print(f"Using optimized GnomADLoader with {n_workers} parallel workers")
-        
+
         # Initialize loader with parallel workers
         with GnomADLoader(
             gnomad_dir=gnomad_dir,
@@ -80,7 +80,7 @@ def annotate_with_gnomad(
             # Use the built-in annotate_dataframe method
             # This automatically uses parallel processing for batch lookups
             result_df = loader.annotate_dataframe(df, show_progress=True)
-            
+
             # The annotate_dataframe method adds all gnomAD columns
             # We need to merge back with original df
             return result_df
@@ -89,7 +89,7 @@ def annotate_with_gnomad(
         logger.warning(
             f"New GnomADLoader not available ({e}), falling back to legacy method"
         )
-        
+
         # Fall back to old parallel method if available
         try:
             from varidex.integrations.gnomad.query_parallel import (
@@ -164,24 +164,24 @@ def annotate_with_gnomad(
 def apply_frequency_acmg_criteria(df: pd.DataFrame) -> pd.DataFrame:
     """
     Apply ACMG frequency-based evidence codes.
-    
+
     Evidence codes:
     - BA1: Allele frequency >5% in general population (Benign stand-alone)
     - BS1: Allele frequency >1% (Benign strong)
     - PM2: Allele frequency <0.01% or absent (Pathogenic moderate - rare)
-    
+
     Args:
         df: DataFrame with gnomad_af column
-        
+
     Returns:
         DataFrame with added BA1, BS1, PM2 columns
     """
     # BA1: >5% frequency = Benign stand-alone
     df["BA1"] = df["gnomad_af"] > 0.05
-    
+
     # BS1: 1-5% frequency = Benign strong
     df["BS1"] = (df["gnomad_af"] > 0.01) & (df["gnomad_af"] <= 0.05)
-    
+
     # PM2: <0.01% frequency = Pathogenic moderate (rare)
     # Note: NaN values (not found in gnomAD) are treated as rare
     df["PM2"] = (df["gnomad_af"] < 0.0001) | df["gnomad_af"].isna()

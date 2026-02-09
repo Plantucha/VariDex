@@ -80,9 +80,26 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
 
     # 20 codes (PS3 added, PP2 remains from Step 7)
     acmg_20 = [
-        "BA1", "BS1", "PM2", "PVS1", "PM4", "PP2", "BP1", "BP3",
-        "PP5", "BP6", "BP7", "BS2", "BS3", "PM1", "PM5", "PM3",
-        "PS1", "PS3", "PP3", "BP4",
+        "BA1",
+        "BS1",
+        "PM2",
+        "PVS1",
+        "PM4",
+        "PP2",
+        "BP1",
+        "BP3",
+        "PP5",
+        "BP6",
+        "BP7",
+        "BS2",
+        "BS3",
+        "PM1",
+        "PM5",
+        "PM3",
+        "PS1",
+        "PS3",
+        "PP3",
+        "BP4",
     ]
 
     essentials = [
@@ -98,7 +115,13 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
         "acmg_classification",
     ]
 
-    pred_scores = ["SIFT_score", "PolyPhen_score", "CADD_phred", "REVEL_score", "AlphaMissense_score"]
+    pred_scores = [
+        "SIFT_score",
+        "PolyPhen_score",
+        "CADD_phred",
+        "REVEL_score",
+        "AlphaMissense_score",
+    ]
     export_base = essentials + acmg_20 + pred_scores
     export_cols = [col for col in export_base if col in df.columns]
 
@@ -142,18 +165,14 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
             print(f"  🔴 PATHOGENIC_variants.csv ({len(pathogenic_df)} variants)")
 
         # Benign + Likely Benign
-        benign_df = df[
-            df["acmg_classification"].isin(["Benign", "Likely Benign"])
-        ]
+        benign_df = df[df["acmg_classification"].isin(["Benign", "Likely Benign"])]
         if len(benign_df) > 0:
             benign_file = output_dir / "BENIGN_variants.csv"
             benign_df.to_csv(benign_file, index=False)
             print(f"  🟢 BENIGN_variants.csv ({len(benign_df)} variants)")
 
         # VUS / Uncertain Significance
-        vus_df = df[
-            df["acmg_classification"].isin(["VUS", "Uncertain Significance"])
-        ]
+        vus_df = df[df["acmg_classification"].isin(["VUS", "Uncertain Significance"])]
         if len(vus_df) > 0:
             vus_file = output_dir / "VUS_variants.csv"
             vus_df.to_csv(vus_file, index=False)
@@ -207,8 +226,20 @@ def print_summary(df: pd.DataFrame) -> None:
 
     # Evidence coverage
     evidence_cols = [
-        "BA1", "BS1", "PM2", "PVS1", "BP7", "PP5", "BP6", "BS2",
-        "PM1", "PM5", "PS1", "PS3", "PP3", "BP4",
+        "BA1",
+        "BS1",
+        "PM2",
+        "PVS1",
+        "BP7",
+        "PP5",
+        "BP6",
+        "BS2",
+        "PM1",
+        "PM5",
+        "PS1",
+        "PS3",
+        "PP3",
+        "BP4",
     ]
     existing_cols = [c for c in evidence_cols if c in df.columns]
 
@@ -265,7 +296,9 @@ def main() -> None:
     parser.add_argument("--clinvar", default="clinvar/clinvar_GRCh37.vcf.gz")
     parser.add_argument("--user-genome", help="Your genome file (VCF or 23andMe)")
     parser.add_argument("--gnomad-dir", help="gnomAD directory path")
-    parser.add_argument("--gnomad-constraint", help="gnomAD constraint file for PP2 (optional)")
+    parser.add_argument(
+        "--gnomad-constraint", help="gnomAD constraint file for PP2 (optional)"
+    )
     parser.add_argument("--output", default="results_michal")
     parser.add_argument("--force-reload", action="store_true")
     parser.add_argument(
@@ -398,7 +431,10 @@ def main() -> None:
 
     print("\nStep 10: Functional evidence (PS3 only - PP2 already in Step 7)...")
     try:
-        from varidex.acmg.criteria_PS3_PP2 import PS3_PP2_Classifier, load_curated_gene_lists
+        from varidex.acmg.criteria_PS3_PP2 import (
+            PS3_PP2_Classifier,
+            load_curated_gene_lists,
+        )
 
         # Load gene lists (for future PP2 enhancement if needed)
         lof_genes, missense_genes = load_curated_gene_lists()
@@ -408,7 +444,7 @@ def main() -> None:
             lof_genes=lof_genes,
             missense_genes=missense_genes,
         )
-        
+
         # CRITICAL: Use apply_ps3_only() to avoid overwriting Step 7's PP2
         result_df = ps3_classifier.apply_ps3_only(result_df)
         print("  ✓ Complete")

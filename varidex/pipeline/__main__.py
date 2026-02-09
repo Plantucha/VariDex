@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""
-VariDex v7.2.0-dev - 22-Code ACMG Pipeline (FIXED VERSION)
-Phase 1: Data Enrichment (gnomAD, dbNSFP)
-Phase 2: ACMG Classification (20/28 criteria)
-Phase 3: Final ACMG Classification (Pathogenic/Benign/VUS)
 
-FIXED: Only applies PS3 in Step 10 (PP2 remains in Step 7)
-- Avoids double PP2 application
-- Better error handling for missing dbNSFP data
-- Clear logging for PS3 application
 """
+VariDex - ACMG Variant Classification Pipeline
+
+Phase 1: Data Enrichment (gnomAD, dbNSFP)
+Phase 2: ACMG Classification (21/28 criteria implemented)
+Phase 3: Final ACMG Classification (Pathogenic/Benign/VUS)
+"""
+
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -27,7 +25,6 @@ from varidex.pipeline.gnomad_stage import GnomadAnnotationStage
 def detect_genome_build_from_filename(filepath: str) -> str:
     """Detect genome build from ClinVar filename"""
     filepath_lower = filepath.lower()
-
     if "grch38" in filepath_lower or "hg38" in filepath_lower:
         return "GRCh38"
     elif "grch37" in filepath_lower or "hg19" in filepath_lower:
@@ -40,11 +37,13 @@ def detect_genome_build_from_filename(filepath: str) -> str:
 def enhance_with_phase1(result_df: pd.DataFrame) -> pd.DataFrame:
     """Add Phase 1 ACMG codes: PP5, BP6, BP7, BS2, BS3"""
     phase1_codes = ["PP5", "BP6", "BP7", "BS2", "BS3"]
+
     for code in phase1_codes:
         if code not in result_df.columns:
             result_df[code] = False
 
     counts = {code: 0 for code in phase1_codes}
+
     for idx, row in result_df.iterrows():
         cons = str(row.get("molecular_consequence", "")).lower()
         rev = str(row.get("review_status", "")).lower()
@@ -71,6 +70,7 @@ def enhance_with_phase1(result_df: pd.DataFrame) -> pd.DataFrame:
         f"  PP5={counts['PP5']}, BP6={counts['BP6']}, BP7={counts['BP7']}, "
         f"BS2={counts['BS2']}, BS3=0"
     )
+
     return result_df
 
 
@@ -78,53 +78,27 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
     """Write ALL output files with classification-based exports"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 20 codes (PS3 added, PP2 remains from Step 7)
-    acmg_20 = [
-        "BA1",
-        "BS1",
-        "PM2",
-        "PVS1",
-        "PM4",
-        "PP2",
-        "BP1",
-        "BP3",
-        "PP5",
-        "BP6",
-        "BP7",
-        "BS2",
-        "BS3",
-        "PM1",
-        "PM5",
-        "PM3",
-        "PS1",
-        "PS3",
-        "PP3",
-        "BA4",
-        "BP2",
-        "BP4",
+    # All 21 implemented ACMG codes
+    acmg_codes = [
+        "BA1", "BS1", "PM2",
+        "PVS1", "PM4", "PP2", "BP1", "BP3",
+        "PP5", "BP6", "BP7", "BS2", "BS3",
+        "PM1", "PM5", "PM3", "PS1",
+        "PS3", "PP3", "BA4", "BP2", "BP4",
     ]
 
     essentials = [
-        "rsid",
-        "chromosome",
-        "position",
-        "genotype",
-        "gene",
-        "clinical_sig",
-        "review_status",
-        "molecular_consequence",
-        "gnomad_af",
-        "acmg_classification",
+        "rsid", "chromosome", "position", "genotype", "gene",
+        "clinical_sig", "review_status", "molecular_consequence",
+        "gnomad_af", "acmg_classification",
     ]
 
     pred_scores = [
-        "SIFT_score",
-        "PolyPhen_score",
-        "CADD_phred",
-        "REVEL_score",
-        "AlphaMissense_score",
+        "SIFT_score", "PolyPhen_score", "CADD_phred",
+        "REVEL_score", "AlphaMissense_score",
     ]
-    export_base = essentials + acmg_20 + pred_scores
+
+    export_base = essentials + acmg_codes + pred_scores
     export_cols = [col for col in export_base if col in df.columns]
 
     # Full export
@@ -146,6 +120,7 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
         "PS3": "PRIORITY_PS3.csv",
         "PP3": "PRIORITY_PP3.csv",
     }
+
     for code, filename in priority_codes.items():
         if code in df.columns:
             priority_df = df[df[code] == True]
@@ -180,26 +155,125 @@ def write_output_files(df: pd.DataFrame, output_dir: Path) -> None:
             vus_df.to_csv(vus_file, index=False)
             print(f"  🟡 VUS_variants.csv ({len(vus_df)} variants)")
 
-    # ACMG criteria summary
-    summary_cols = [col for col in acmg_20 if col in df.columns]
-    summary = {col: int(df[col].sum()) for col in summary_cols}
 
-    print("\n📊 20 ACMG Criteria Summary:")
-    for col in sorted(summary, key=summary.get, reverse=True):
-        if summary[col] > 0:
-            print(f"   {col}: {summary[col]}")
+def print_acmg_summary(df: pd.DataFrame) -> tuple:
+    """Print detailed ACMG criteria summary with descriptions and percentages"""
+
+    total_variants = len(df)
+
+    # All 28 ACMG criteria with descriptions
+    pathogenic_criteria = {
+        "PVS1": "Null variant in LoF-intolerant gene",
+        "PS1": "Same amino acid change as known pathogenic",
+        "PS3": "Well-established functional studies",
+        "PM1": "Located in mutational hot spot",
+        "PM2": "Absent/extremely rare in population databases",
+        "PM3": "Detected in trans with pathogenic variant",
+        "PM4": "Protein length changes (inframe indels)",
+        "PM5": "Novel missense at same position as pathogenic",
+        "PP2": "Missense in gene with low missense tolerance",
+        "PP3": "Multiple computational evidence support deleterious",
+        "PP5": "Reputable source = pathogenic",
+    }
+
+    benign_criteria = {
+        "BA1": "Allele frequency > 5% in population",
+        "BA4": "LoF variant in LoF-tolerant gene",
+        "BS1": "Allele frequency greater than expected for disorder",
+        "BS2": "Observed in healthy adult(s)",
+        "BS3": "Well-established functional studies show no effect",
+        "BP1": "Missense in gene where truncating is mechanism",
+        "BP2": "Observed in trans with pathogenic variant",
+        "BP3": "Inframe indels in repetitive region without function",
+        "BP4": "Multiple computational evidence suggest benign",
+        "BP6": "Reputable source = benign",
+        "BP7": "Synonymous variant with no splice effect",
+    }
+
+    print("\n📊 ACMG Criteria Summary:")
+    print(f"   Total variants analyzed: {total_variants:,}")
+    print()
+
+    # Count active criteria
+    pathogenic_counts = {}
+    benign_counts = {}
+
+    for code in pathogenic_criteria:
+        if code in df.columns:
+            count = int(df[code].sum())
+            pathogenic_counts[code] = count
+
+    for code in benign_criteria:
+        if code in df.columns:
+            count = int(df[code].sum())
+            benign_counts[code] = count
+
+    # Print pathogenic criteria
+    print("🔴 PATHOGENIC/LIKELY PATHOGENIC:")
+    print("-" * 80)
+    for code, description in pathogenic_criteria.items():
+        if code in pathogenic_counts:
+            count = pathogenic_counts[code]
+            pct = (count / total_variants * 100) if total_variants > 0 else 0.0
+            if count > 0:
+                print(f"   ✅ {code:6s}: {count:5,d} variants ({pct:5.2f}%) - {description}")
+            else:
+                print(f"   ⚪ {code:6s}:     0 variants ( 0.00%) - {description}")
+        else:
+            print(f"   ❌ {code:6s}:   N/A (not implemented)")
+
+    print()
+    print("🟢 BENIGN/LIKELY BENIGN:")
+    print("-" * 80)
+    for code, description in benign_criteria.items():
+        if code in benign_counts:
+            count = benign_counts[code]
+            pct = (count / total_variants * 100) if total_variants > 0 else 0.0
+            if count > 0:
+                print(f"   ✅ {code:6s}: {count:5,d} variants ({pct:5.2f}%) - {description}")
+            else:
+                print(f"   ⚪ {code:6s}:     0 variants ( 0.00%) - {description}")
+        else:
+            print(f"   ❌ {code:6s}:   N/A (not implemented)")
+
+    # Calculate totals
+    active_criteria = sum(1 for c in pathogenic_counts.values() if c > 0)
+    active_criteria += sum(1 for c in benign_counts.values() if c > 0)
+
+    implemented_criteria = len(pathogenic_counts) + len(benign_counts)
+
+    # Total evidence coverage
+    total_with_evidence = sum(pathogenic_counts.values()) + sum(benign_counts.values())
+
+    print()
+    print("=" * 80)
+    print(f"📊 Total Evidence Applied: {total_with_evidence:,} criterion applications")
+    print(f"   Active criteria: {active_criteria}/{implemented_criteria} ({active_criteria/implemented_criteria*100:.1f}%)")
+
+    return active_criteria, implemented_criteria
 
 
 def print_summary(df: pd.DataFrame) -> None:
     """Print final pipeline summary with ACMG classifications"""
-    print("\n" + "=" * 70)
-    print("PIPELINE COMPLETE - 22/28 ACMG Codes")
-    print("=" * 70)
+
+    # Count criteria
+    all_criteria = [
+        "PVS1", "PS1", "PS3", "PM1", "PM2", "PM3", "PM4", "PM5", "PP2", "PP3", "PP5",
+        "BA1", "BA4", "BS1", "BS2", "BS3", "BP1", "BP2", "BP3", "BP4", "BP6", "BP7",
+    ]
+
+    active_count = sum(1 for c in all_criteria if c in df.columns and df[c].sum() > 0)
+    implemented_count = sum(1 for c in all_criteria if c in df.columns)
+
+    print("\n" + "=" * 80)
+    print(f"PIPELINE COMPLETE - {active_count} Active / {implemented_count} Implemented (of 28 ACMG)")
+    print("=" * 80)
     print(f"Total variants: {len(df):,}")
 
     # Count by final ACMG classification
     if "acmg_classification" in df.columns:
         print("\n🔬 ACMG Final Classifications:")
+        print("-" * 80)
         classifications = df["acmg_classification"].value_counts()
 
         # Define order and emojis
@@ -217,31 +291,19 @@ def print_summary(df: pd.DataFrame) -> None:
             count = classifications.get(class_name, 0)
             if count > 0:
                 pct = count / len(df) * 100
-                print(f"  {emoji} {class_name}: {count:,} ({pct:.1f}%)")
+                print(f"   {emoji} {class_name}: {count:,} ({pct:.1f}%)")
                 total_classified += count
 
         # Handle any other classifications
         other_count = len(df) - total_classified
         if other_count > 0:
             pct = other_count / len(df) * 100
-            print(f"  ⚪ Other/Unclassified: {other_count:,} ({pct:.1f}%)")
+            print(f"   ⚪ Other/Unclassified: {other_count:,} ({pct:.1f}%)")
 
     # Evidence coverage
     evidence_cols = [
-        "BA1",
-        "BS1",
-        "PM2",
-        "PVS1",
-        "BP7",
-        "PP5",
-        "BP6",
-        "BS2",
-        "PM1",
-        "PM5",
-        "PS1",
-        "PS3",
-        "PP3",
-        "BP4",
+        "BA1", "BS1", "PM2", "PVS1", "BP7", "PP5", "BP6", "BS2",
+        "PM1", "PM5", "PS1", "PS3", "PP3", "BP4", "BA4",
     ]
     existing_cols = [c for c in evidence_cols if c in df.columns]
 
@@ -256,27 +318,8 @@ def print_summary(df: pd.DataFrame) -> None:
         f"({with_evidence/len(df)*100:.1f}%)"
     )
 
-    # Priority codes breakdown
-    priority_codes = {
-        "PVS1": ("🔴", "loss of function"),
-        "PM2": ("🟠", "rare pathogenic"),
-        "PM1": ("🟡", "critical domains"),
-        "PM5": ("🟠", "pathogenic position"),
-        "PS1": ("🔴", "same AA change"),
-        "PS3": ("🔴", "functional evidence"),
-        "PP3": ("🟡", "computational deleterious"),
-        "BP4": ("🟢", "computational benign"),
-        "BA1": ("🟢", "common benign"),
-        "BS1": ("🟢", "high frequency"),
-        "BA4": ("🟢", "LoF tolerant gene"),
-        "BP2": ("🟢", "observed homozygous"),
-    }
-
-    print("\n🎯 Top Priority Codes:")
-    for code, (emoji, desc) in priority_codes.items():
-        count = int(df.get(code, pd.Series([False])).sum())
-        if count > 0:
-            print(f"  {emoji} {code} ({desc}): {count:,}")
+    # Print detailed criteria summary
+    active_criteria, implemented_criteria = print_acmg_summary(df)
 
     # High-risk summary
     if "PVS1" in df.columns or "PM2" in df.columns or "PS3" in df.columns:
@@ -295,7 +338,7 @@ def print_summary(df: pd.DataFrame) -> None:
 
 def main() -> None:
     parser = ArgumentParser(
-        description=f"VariDex v{version} - 22-Code ACMG Pipeline (FIXED)"
+        description=f"VariDex v{version} - ACMG Variant Classification Pipeline"
     )
     parser.add_argument("--clinvar", default="clinvar/clinvar_GRCh37.vcf.gz")
     parser.add_argument("--user-genome", help="Your genome file (VCF or 23andMe)")
@@ -313,9 +356,9 @@ def main() -> None:
 
     args: Namespace = parser.parse_args()
 
-    print("=" * 70)
-    print(f"VariDex v{version} - 22-Code ACMG Pipeline (FIXED)")
-    print("=" * 70)
+    print("=" * 80)
+    print(f"VariDex v{version} - ACMG Variant Classification Pipeline")
+    print("=" * 80)
 
     # Detect genome build
     if args.genome_build:
@@ -337,9 +380,9 @@ def main() -> None:
             sys.exit(1)
 
         # Steps 1-4: Load and Match
-        print("\n" + "=" * 70)
+        print("\n" + "=" * 80)
         print("PHASE 1: DATA LOADING & MATCHING")
-        print("=" * 70)
+        print("=" * 80)
 
         clinvar_path = Path(args.clinvar)
         if not clinvar_path.exists():
@@ -373,9 +416,9 @@ def main() -> None:
         clinvar_df = load_clinvar_file(str(Path(args.clinvar)))
 
     # Phase 2: Data Enrichment
-    print("\n" + "=" * 70)
+    print("\n" + "=" * 80)
     print("PHASE 2: DATA ENRICHMENT")
-    print("=" * 70)
+    print("=" * 80)
 
     print("\nStep 5: Annotating with gnomAD population frequencies...")
     if args.gnomad_dir:
@@ -398,16 +441,15 @@ def main() -> None:
         print("  PS3, PP3, BP4 criteria will be limited")
 
     # Phase 3: ACMG Classification
-    print("\n" + "=" * 70)
-    print("PHASE 3: ACMG CLASSIFICATION (20/28 criteria)")
-    print("=" * 70)
+    print("\n" + "=" * 80)
+    print("PHASE 3: ACMG CLASSIFICATION (21/28 criteria implemented)")
+    print("=" * 80)
 
     print("\nStep 7: Base ACMG criteria (PVS1, PM4, PP2, BP1, BP3)...")
     result_df = apply_full_acmg_classification(
         matched_df, gnomad_constraint_path=args.gnomad_constraint
     )
     print("  ✓ Complete")
-    print("  Note: PP2 applied here (basic version)")
 
     print("\nStep 8: Phase 1 enhancements (PP5, BP6, BP7, BS2, BS3)...")
     result_df = enhance_with_phase1(result_df)
@@ -435,14 +477,13 @@ def main() -> None:
     except Exception as e:
         print(f"  ⚠️  Warning: {e}")
 
-    print("\nStep 10: Functional evidence (PS3 only - PP2 already in Step 7)...")
+    print("\nStep 10: Functional evidence (PS3)...")
     try:
         from varidex.acmg.criteria_PS3_PP2 import (
             PS3_PP2_Classifier,
             load_curated_gene_lists,
         )
 
-        # Load gene lists (for future PP2 enhancement if needed)
         lof_genes, missense_genes = load_curated_gene_lists()
 
         ps3_classifier = PS3_PP2_Classifier(
@@ -451,15 +492,15 @@ def main() -> None:
             missense_genes=missense_genes,
         )
 
-        # CRITICAL: Use apply_ps3_only() to avoid overwriting Step 7's PP2
         result_df = ps3_classifier.apply_ps3_only(result_df)
         print("  ✓ Complete")
     except Exception as e:
         print(f"  ⚠️  Warning: {e}")
         print("  PS3 criterion may be missing")
-        # Ensure PS3 column exists even if classifier fails
-        if "PS3" not in result_df.columns:
-            result_df["PS3"] = False
+
+    # Ensure PS3 column exists even if classifier fails
+    if "PS3" not in result_df.columns:
+        result_df["PS3"] = False
 
     print("\nStep 11: Computational prediction criteria (PP3, BP4)...")
     try:
@@ -477,7 +518,7 @@ def main() -> None:
 
     print(f"\nOutput directory: {output_path.resolve()}")
     print("  - results_20codes.csv (all data)")
-    print("  - results_20codes_FULL.csv (essentials + 20 criteria)")
+    print("  - results_20codes_FULL.csv (essentials + ACMG criteria)")
     print("  - PATHOGENIC_variants.csv (high-risk)")
     print("  - BENIGN_variants.csv (safe)")
     print("  - VUS_variants.csv (uncertain)")
