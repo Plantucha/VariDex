@@ -22,3 +22,36 @@ MANIFEST
 .DS_Store
 Miniconda3-*.sh
 amdgpu-install_*.deb
+# Local caches and temp
+.cache/
+.checkpoint/
+.varidex_cache/
+.coverage
+.pyproject.toml.swp
+
+# Large reference / data
+clinvar/
+gnomad/
+GRCh37.fa
+uniprot/
+data/
+output/
+results_*/
+EVE/
+variant_summary.txt.gz
+*.tsv
+*.tsv.gz
+*.zip
+
+# Local installers
+Miniconda3-latest-Linux-x86_64.sh*
+
+# Temp / backup / junk python files
+*.bak
+*.backup*
+* (Copy).py
+* (Copy [0-9]).py
+temp_phase1.py
+cleanup_*.py
+downloader.py
+test_*.py
